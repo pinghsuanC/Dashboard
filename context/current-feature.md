@@ -17,3 +17,5 @@
 ## History
 
 <!-- Keep this updated, earliest to latest -->
+
+- **2026-09-19** — Initialized Next.js 16 project: React 19, TypeScript, Tailwind v4, App Router.
