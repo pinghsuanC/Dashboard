@@ -711,6 +711,21 @@ The marketing homepage and the authenticated app have different chrome. Consider
 
 Corrections and gaps found while reviewing the original notes.
 
+## Screenshots
+
+Reference screenshots for the UI. Treat them as a guide rather than a spec — the build doesn't need to match them exactly.
+
+**Dashboard** — sidebar shell, collections grid, pinned items, item detail drawer:
+
+- @context/references/dashboard-ui-main.png
+- @context/references/dashboard-ui-drawer.png
+
+**Marketing homepage** — desktop and mobile:
+
+- @context/references/homepage-full.png
+- @context/references/homepage-full-visible.png
+- @context/references/homepage-mobile.png
+
 ### Corrected
 
 | # | Issue | Resolution |
@@ -726,7 +741,6 @@ Corrections and gaps found while reviewing the original notes.
 
 These are referenced by the notes but absent from the repository:
 
-- `screen.png` — the dashboard screenshot. `public/` was emptied during cleanup and no longer exists; recreate it when you add the image.
 - `.env.example` — referenced by `cp .env.example .env`.
 - `LICENSE` — MIT is claimed in the badge and the license section.
 - **Vitest** — listed under Tech Stack and Scripts, but not in `package.json`. `CLAUDE.md` currently records "no test runner configured"; update it when you install one.
