@@ -1,15 +1,14 @@
-import { FolderPlus, PanelLeft, Plus, Search } from "lucide-react";
+import { FolderPlus, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
-/** Display only — nothing here is wired up yet. */
+/** Search and the action buttons are display only; the trigger is live. */
 export function TopBar() {
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <Button variant="ghost" size="icon" aria-label="Toggle sidebar">
-        <PanelLeft />
-      </Button>
+      <SidebarTrigger />
 
       <div className="relative w-full max-w-md">
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
