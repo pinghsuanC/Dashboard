@@ -21,7 +21,7 @@ function initials(name: string) {
     .join("");
 }
 
-export function SidebarUser({ user }: SidebarUserProps) {
+export const SidebarUser = ({ user }: SidebarUserProps) => {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -54,4 +54,4 @@ export function SidebarUser({ user }: SidebarUserProps) {
       </SidebarMenuItem>
     </SidebarMenu>
   );
-}
+};

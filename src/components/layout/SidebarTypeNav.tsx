@@ -30,7 +30,7 @@ interface SidebarTypeNavProps {
  * Client component only because the active row depends on the current URL.
  * The data itself is passed down from the server component that owns it.
  */
-export function SidebarTypeNav({ types }: SidebarTypeNavProps) {
+export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
   const pathname = usePathname();
 
   return (
@@ -78,4 +78,4 @@ export function SidebarTypeNav({ types }: SidebarTypeNavProps) {
       </SidebarGroup>
     </Collapsible>
   );
-}
+};

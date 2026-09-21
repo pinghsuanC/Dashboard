@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   description: "A unified hub for developer knowledge and resources.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+const RootLayout = ({ children }: LayoutProps<"/">) => {
   return (
     <html
       lang="en"
@@ -26,4 +26,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
-}
+};
+
+export default RootLayout;

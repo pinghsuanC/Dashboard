@@ -22,7 +22,7 @@ import { MOCK_COLLECTIONS, MOCK_ITEM_TYPES, MOCK_USER } from "@/lib/mock-data";
  * actually renders cross the client boundary, so MOCK_ITEMS never ships to the
  * browser. Swapping these imports for Prisma queries is a drop-in change.
  */
-export function AppSidebar() {
+export const AppSidebar = () => {
   const favorites = MOCK_COLLECTIONS.filter((c) => c.isFavorite);
   const others = MOCK_COLLECTIONS.filter((c) => !c.isFavorite);
 
@@ -58,4 +58,4 @@ export function AppSidebar() {
       <SidebarRail />
     </Sidebar>
   );
-}
+};
