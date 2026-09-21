@@ -1,19 +1,29 @@
-import { TopBar } from "@/components/layout/TopBar";
+import { cookies } from "next/headers";
 
-export default function DashboardLayout({
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { TopBar } from "@/components/layout/TopBar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+export default async function DashboardLayout({
   children,
 }: LayoutProps<"/dashboard">) {
-  return (
-    <div className="flex min-h-svh w-full">
-      {/* Placeholder — the real sidebar lands in phase 2. */}
-      <aside className="bg-sidebar hidden w-64 shrink-0 border-r p-4 md:block">
-        <h2 className="text-lg font-semibold">Sidebar</h2>
-      </aside>
+  // SidebarProvider persists its open state in this cookie. Reading it on the
+  // server means the sidebar renders in the right state instead of flashing
+  // open and snapping shut after hydration.
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
-    </div>
+  return (
+    <TooltipProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <AppSidebar />
+
+        <SidebarInset>
+          <TopBar />
+          <main className="flex-1 p-6">{children}</main>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
