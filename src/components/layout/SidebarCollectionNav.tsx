@@ -29,10 +29,10 @@ function collectionHref(collection: Collection) {
   return `/collections/${collection.slug}`;
 }
 
-export function SidebarCollectionNav({
+export const SidebarCollectionNav = ({
   favorites,
   others,
-}: SidebarCollectionNavProps) {
+}: SidebarCollectionNavProps) => {
   const pathname = usePathname();
 
   return (
@@ -93,4 +93,4 @@ export function SidebarCollectionNav({
       </SidebarGroup>
     </Collapsible>
   );
-}
+};
