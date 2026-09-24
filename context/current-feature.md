@@ -12,3 +12,4 @@
 - **2026-09-20** — Dashboard phase 1: shadcn/ui set up, `/dashboard` shell with top bar, dark mode by default.
 - **2026-09-20** — Dashboard phase 2: collapsible sidebar (types, collections, user footer), mobile drawer, live top-bar trigger.
 - **2026-09-20** — Dashboard phase 3: main area with 4 stat cards, collections grid, pinned items, 10 recent items. Components switched to arrow functions.
+- **2026-09-23** — Database: Prisma 7 + Neon Postgres, initial schema and `init` migration applied to the dev branch. No `Session` model (JWT strategy).

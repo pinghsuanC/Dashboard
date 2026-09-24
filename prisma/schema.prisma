@@ -1,0 +1,209 @@
+// Prisma 7: connection URLs live in prisma.config.ts, not here, and the
+// client is generated into the app source rather than node_modules.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────  Auth  ─────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // null for OAuth-only accounts
+
+  plan                   Plan      @default(FREE)
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+
+  // Editor preferences (settings page)
+  preferredTheme    String @default("dark")
+  preferredFontSize Int    @default(14)
+
+  accounts    Account[]
+  items       Item[]
+  collections Collection[]
+  tags        Tag[]
+  itemTypes   ItemType[] // custom types only
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Auth.js OAuth account linking (GitHub).
+/// No Session model: the JWT strategy keeps sessions off the database.
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model PasswordResetToken {
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@index([email])
+}
+
+// ─────────────────────────────  Content  ─────────────────────────────
+
+/// Seven system types are seeded (isSystem = true, userId = null).
+/// Pro users may define their own; uniqueness is per-owner.
+///
+/// Known gap: Postgres treats NULLs as distinct, so @@unique([userId, name])
+/// does not stop two system types sharing a name, and Prisma cannot upsert
+/// on a compound key containing null. The seed must find-then-create system
+/// types, or a manual migration can add a partial unique index on name
+/// WHERE "userId" IS NULL.
+model ItemType {
+  id       String  @id @default(cuid())
+  name     String // slug: "snippet", "prompt", ...
+  label    String // display: "Snippet"
+  icon     String? // lucide icon name
+  isSystem Boolean @default(false)
+  userId   String?
+
+  user  User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items Item[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Item {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+
+  // Polymorphic payload — which columns are used depends on ItemType.
+  content  String? @db.Text // snippet / prompt / command / note body
+  language String? // snippets: "typescript", "bash", ...
+  url      String? // links
+
+  // File & image items (R2)
+  fileKey  String? // object key in the bucket
+  fileName String?
+  fileSize Int?
+  mimeType String?
+
+  isPinned   Boolean @default(false)
+  isFavorite Boolean @default(false)
+
+  userId String
+  typeId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade: deleting a type that still has items must fail.
+  type   ItemType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+
+  collections CollectionItem[]
+  tags        ItemTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, typeId])
+  @@index([userId, isFavorite])
+  @@index([userId, isPinned])
+  @@index([userId, createdAt])
+  // Not in project-overview: the Restrict check on ItemType delete looks up
+  // items by typeId alone, which the userId-first indexes above can't serve.
+  @@index([typeId])
+}
+
+model Collection {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  icon        String?
+  color       String?
+
+  userId String
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  CollectionItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@index([userId])
+}
+
+/// Explicit join table so we can record when an item joined a collection.
+model CollectionItem {
+  collectionId String
+  itemId       String
+  addedAt      DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, itemId])
+  @@index([itemId])
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String
+  slug String
+
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items  ItemTag[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, slug])
+  @@index([userId])
+}
+
+model ItemTag {
+  itemId String
+  tagId  String
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+  @@index([tagId])
+}
+
+enum Plan {
+  FREE
+  PRO
+}
