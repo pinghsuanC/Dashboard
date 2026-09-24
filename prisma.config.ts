@@ -6,7 +6,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    // Prisma 7 never runs this automatically after migrate; use `npm run db:seed`.
+    // Prisma 7 never runs this automatically after migrate; use `npx prisma db seed`.
+    // It seeds 7 system types + a demo user from src/lib/mock-data.ts, idempotently.
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
