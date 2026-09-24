@@ -19,6 +19,7 @@ npm run db:migrate   # prisma migrate dev — create + apply a migration (Neon d
 npm run db:deploy    # prisma migrate deploy — apply existing migrations (production)
 npm run db:generate  # prisma generate — also runs on postinstall
 npm run db:studio    # prisma studio
+npm run db:test      # testScripts/test-db.ts — read-only DB smoke checks (not a test runner)
 ```
 
 There is **no test runner configured** — no test script, and no Jest/Vitest/Playwright/Testing Library in `package.json`. Do not invent test commands; if tests are wanted, set up the harness first and record the invocation here.
