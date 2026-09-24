@@ -6,6 +6,8 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // Prisma 7 never runs this automatically after migrate; use `npm run db:seed`.
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // The CLI (migrate, studio) uses the direct, unpooled Neon connection:

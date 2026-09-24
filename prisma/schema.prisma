@@ -93,6 +93,7 @@ model ItemType {
   name     String // slug: "snippet", "prompt", ...
   label    String // display: "Snippet"
   icon     String? // lucide icon name
+  color    String // hex, e.g. "#3b82f6": icon tint + collection border
   isSystem Boolean @default(false)
   userId   String?
 
@@ -152,6 +153,7 @@ model Collection {
   description String?
   icon        String?
   color       String?
+  isFavorite  Boolean @default(false)
 
   userId String
   user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -162,6 +164,7 @@ model Collection {
 
   @@unique([userId, slug])
   @@index([userId])
+  @@index([userId, isFavorite])
 }
 
 /// Explicit join table so we can record when an item joined a collection.

@@ -17,6 +17,7 @@ npm run start    # serve the production build
 npm run lint     # ESLint 9 flat config; bare `eslint`, no path args needed
 npm run db:migrate   # prisma migrate dev — create + apply a migration (Neon dev branch)
 npm run db:deploy    # prisma migrate deploy — apply existing migrations (production)
+npm run db:seed      # prisma/seed.ts — 7 system types + demo user from src/lib/mock-data.ts; idempotent
 npm run db:generate  # prisma generate — also runs on postinstall
 npm run db:studio    # prisma studio
 ```
