@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 /** Search and the action buttons are display only; the trigger is live. */
-export function TopBar() {
+export const TopBar = () => {
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
       <SidebarTrigger />
@@ -35,4 +35,4 @@ export function TopBar() {
       </div>
     </header>
   );
-}
+};

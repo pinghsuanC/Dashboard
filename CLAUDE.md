@@ -15,6 +15,11 @@ npm run dev      # dev server (Turbopack), http://localhost:3000
 npm run build    # production build — also runs the TypeScript check
 npm run start    # serve the production build
 npm run lint     # ESLint 9 flat config; bare `eslint`, no path args needed
+npm run db:migrate   # prisma migrate dev — create + apply a migration (Neon dev branch)
+npm run db:deploy    # prisma migrate deploy — apply existing migrations (production)
+npm run db:generate  # prisma generate — also runs on postinstall
+npm run db:studio    # prisma studio
+npm run db:test      # testScripts/test-db.ts — read-only DB smoke checks (not a test runner)
 ```
 
 There is **no test runner configured** — no test script, and no Jest/Vitest/Playwright/Testing Library in `package.json`. Do not invent test commands; if tests are wanted, set up the harness first and record the invocation here.
@@ -49,6 +54,13 @@ There is **no `tailwind.config.js`**, by design. Tailwind v4 is configured from 
 `globals.css` has been deliberately stripped to the bare `@import "tailwindcss"` — no color tokens, no dark-mode block, no `body` rule. Tailwind's own defaults (preflight plus its stock theme tokens, in `node_modules/tailwindcss/theme.css`) are therefore what is in effect. Add design tokens back in a `@theme` block in that file, not a JS config.
 
 **Known loose end:** `layout.tsx` still loads Geist and Geist_Mono via `next/font/google` and sets `--font-geist-sans` / `--font-geist-mono` on `<html>`, but the `@theme inline` block that bound those variables to the `font-sans` / `font-mono` utilities was removed with the rest of globals.css. The fonts are fetched but never rendered, and `font-sans` now resolves to Tailwind's default stack. Either rebind them in `@theme` or drop the `next/font/google` import.
+
+### Database: Prisma 7 + Neon
+
+- **Pinned to Prisma 7.** npm's `latest` tag for `prisma` points at an 8.x release candidate, so a bare `npm i prisma` installs 8. Keep `prisma` and `@prisma/client` on matching `^7` versions.
+- **Always `db:migrate`, never `prisma db push`** unless explicitly asked. `.env` points at the Neon dev branch; production is a separate branch and only gets `db:deploy`.
+- Config is in `prisma.config.ts`, not the schema: it loads `.env` via `dotenv` (Prisma 7 no longer does) and gives the CLI `DIRECT_URL` (unpooled). The app uses the pooled `DATABASE_URL` through the `PrismaNeon` driver adapter in `src/lib/prisma.ts`, which is the only place a `PrismaClient` should be constructed.
+- The client is generated into `src/generated/prisma/` (gitignored). Import it from `@/generated/prisma/client`, not `@prisma/client`. `migrate dev` no longer runs `generate` for you. Run `db:generate` after schema changes if the dev server doesn't pick them up.
 
 ## AGENTS.md is generated — put durable guidance here instead
 
