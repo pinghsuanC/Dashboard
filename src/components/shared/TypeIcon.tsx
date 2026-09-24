@@ -1,12 +1,21 @@
 import { createElement, type CSSProperties } from "react";
 
 import { getItemTypeIcon } from "@/lib/item-type-icons";
-import type { ItemType } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
+/**
+ * Structural, so both mock `ItemType`s and database rows fit. `icon` is
+ * nullable in the schema; a missing icon falls back to the generic one.
+ */
+interface TypeIconType {
+  label: string;
+  icon: string | null;
+  color: string;
+}
+
 interface TypeIconProps {
-  /** Undefined when an item or collection names a type that no longer exists. */
-  type?: ItemType;
+  /** Undefined when an item names a type that no longer exists. */
+  type?: TypeIconType;
   className?: string;
 }
 

@@ -1,55 +1,40 @@
 import {
-  MOCK_COLLECTIONS,
   MOCK_ITEM_TYPES,
   MOCK_ITEMS,
-  type Collection,
   type Item,
   type ItemType,
 } from "@/lib/mock-data";
+import type { CollectionStats } from "@/lib/db/collections";
 
 /**
- * Every slice the dashboard renders, derived in one place.
+ * The item slices the dashboard renders, still read from mock data.
  *
- * The page and its cards stay declarative; when Prisma lands, each function
- * below becomes a query (`prisma.item.count()`, `orderBy: { updatedAt: 'desc' }`,
- * `take: 10`) and nothing above this file has to change.
+ * Collections moved to `@/lib/db/collections`; the functions below become
+ * queries (`prisma.item.count()`, `orderBy: { updatedAt: 'desc' }`, `take: 10`)
+ * when items follow.
  */
 
-export const RECENT_COLLECTION_LIMIT = 6;
 export const RECENT_ITEM_LIMIT = 10;
 
-export interface DashboardStats {
+export interface ItemStats {
   items: number;
-  collections: number;
   favoriteItems: number;
-  favoriteCollections: number;
 }
 
+export type DashboardStats = ItemStats & CollectionStats;
+
 /**
- * Counted from the arrays rather than read off `itemCount`: the `itemCount`
- * fields on types and collections are display-only mock numbers that do not
- * agree with `MOCK_ITEMS` (24 snippets claimed, 3 present). These four stats
- * must be internally consistent, so they are derived.
+ * Counted from `MOCK_ITEMS` rather than read off the types' `itemCount`, which
+ * is a display-only mock number (24 snippets claimed, 3 present).
+ *
+ * KNOWN DEVIATION: the seed mirrors `MOCK_ITEMS`, so these match the database
+ * today, but they are not queried. Switch to `prisma.item.count()` with items.
  */
-export function getDashboardStats(): DashboardStats {
+export function getItemStats(): ItemStats {
   return {
     items: MOCK_ITEMS.length,
-    collections: MOCK_COLLECTIONS.length,
     favoriteItems: MOCK_ITEMS.filter((item) => item.isFavorite).length,
-    favoriteCollections: MOCK_COLLECTIONS.filter((c) => c.isFavorite).length,
   };
-}
-
-/**
- * KNOWN DEVIATION: `Collection` carries no `createdAt`/`updatedAt`, so there is
- * nothing to sort by and array order stands in for recency. The planned Prisma
- * model does have both columns — swap this for `orderBy: { updatedAt: 'desc' }`
- * when the database lands.
- */
-export function getRecentCollections(
-  limit: number = RECENT_COLLECTION_LIMIT,
-): Collection[] {
-  return MOCK_COLLECTIONS.slice(0, limit);
 }
 
 function byNewestFirst(a: Item, b: Item) {

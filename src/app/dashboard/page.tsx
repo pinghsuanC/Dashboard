@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Clock, Pin } from "lucide-react";
 
 import { CollectionCard } from "@/components/collections/CollectionCard";
@@ -6,13 +7,17 @@ import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { ItemRow } from "@/components/items/ItemRow";
 import {
-  getDashboardStats,
+  getItemStats,
   getItemTypesById,
   getPinnedItems,
-  getRecentCollections,
   getRecentItems,
   RECENT_ITEM_LIMIT,
 } from "@/lib/dashboard-data";
+import {
+  getCollectionStats,
+  getRecentCollections,
+} from "@/lib/db/collections";
+import { getDemoUserId } from "@/lib/db/demo-user";
 
 export const metadata: Metadata = {
   title: "Dashboard | DevStash",
@@ -20,14 +25,23 @@ export const metadata: Metadata = {
 };
 
 /**
- * Server component: the mock arrays are read here and only the rendered slices
- * exist in the output, so the full dataset never ships to the browser. Nothing
- * on this page is interactive yet, so no client boundary is needed.
+ * Server component: collections are queried here and items read from mock
+ * data, and only the rendered slices reach the browser. Nothing on this page
+ * is interactive yet, so no client boundary is needed.
  */
-const DashboardPage = () => {
-  const stats = getDashboardStats();
+const DashboardPage = async () => {
+  // Nothing here reads cookies or headers yet, so without this Next would
+  // prerender the page at build time and freeze the database results.
+  await connection();
+
+  const userId = await getDemoUserId();
+  const [collections, collectionStats] = await Promise.all([
+    getRecentCollections(userId),
+    getCollectionStats(userId),
+  ]);
+
+  const stats = { ...getItemStats(), ...collectionStats };
   const typesById = getItemTypesById();
-  const collections = getRecentCollections();
   const pinnedItems = getPinnedItems();
   const recentItems = getRecentItems();
 
@@ -48,11 +62,7 @@ const DashboardPage = () => {
         <SectionHeader title="Collections" href="/collections" />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {collections.map((collection) => (
-            <CollectionCard
-              key={collection.id}
-              collection={collection}
-              typesById={typesById}
-            />
+            <CollectionCard key={collection.id} collection={collection} />
           ))}
         </div>
       </section>

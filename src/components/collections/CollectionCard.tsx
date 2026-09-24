@@ -4,24 +4,17 @@ import { Star } from "lucide-react";
 
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Collection, ItemType } from "@/lib/mock-data";
+import type { CollectionSummary } from "@/lib/db/collections";
 
 interface CollectionCardProps {
-  collection: Collection;
-  typesById: Map<string, ItemType>;
+  collection: CollectionSummary;
 }
 
-export const CollectionCard = ({
-  collection,
-  typesById,
-}: CollectionCardProps) => {
-  // `itemTypeIds` is raw data and may name a type that no longer exists, so
-  // resolve first and drop the misses rather than rendering an undefined icon.
-  const types = collection.itemTypeIds
-    .map((id) => typesById.get(id))
-    .filter((type): type is ItemType => type !== undefined);
+export const CollectionCard = ({ collection }: CollectionCardProps) => {
+  const { types } = collection;
 
-  // The first type tints the card edge, as in the reference screenshot.
+  // Types arrive most-used first, so the first one tints the card edge. An
+  // empty collection has no types and keeps the plain border.
   const accent = types[0]?.color ?? "var(--border)";
 
   return (
@@ -40,7 +33,8 @@ export const CollectionCard = ({
             )}
           </CardTitle>
           <p className="text-muted-foreground text-sm">
-            {collection.itemCount} items
+            {collection.itemCount}{" "}
+            {collection.itemCount === 1 ? "item" : "items"}
           </p>
         </CardHeader>
 
