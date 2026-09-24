@@ -13,7 +13,7 @@ datasource db {
 // ─────────────────────────────  Auth  ─────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   name          String?
   email         String    @unique
   emailVerified DateTime?
@@ -70,7 +70,7 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id      String   @id @default(cuid())
+  id      String   @id @default(uuid())
   email   String
   token   String   @unique
   expires DateTime
@@ -89,7 +89,7 @@ model PasswordResetToken {
 /// types, or a manual migration can add a partial unique index on name
 /// WHERE "userId" IS NULL.
 model ItemType {
-  id       String  @id @default(cuid())
+  id       String  @id @default(uuid())
   name     String // slug: "snippet", "prompt", ...
   label    String // display: "Snippet"
   icon     String? // lucide icon name
@@ -107,7 +107,7 @@ model ItemType {
 }
 
 model Item {
-  id          String  @id @default(cuid())
+  id          String  @id @default(uuid())
   title       String
   description String?
 
@@ -147,7 +147,7 @@ model Item {
 }
 
 model Collection {
-  id          String  @id @default(cuid())
+  id          String  @id @default(uuid())
   name        String
   slug        String
   description String?
@@ -181,7 +181,7 @@ model CollectionItem {
 }
 
 model Tag {
-  id   String @id @default(cuid())
+  id   String @id @default(uuid())
   name String
   slug String
 
