@@ -11,6 +11,8 @@ if (!process.env.DATABASE_URL) {
 
 const { prisma } = await import("../src/lib/prisma");
 
+const UUID = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+
 const check = async (label: string, run: () => Promise<unknown>) => {
   const start = performance.now();
   try {
@@ -38,6 +40,23 @@ const results = [
     items: await prisma.item.count(),
     tags: await prisma.tag.count(),
   })),
+
+  await check("all ids are UUIDs", async () => {
+    // Postgres regex; `!~*` is case-insensitive "does not match".
+    const rows = await prisma.$queryRaw<{ table: string; bad: number }[]>`
+      select 'User' as table, count(*)::int as bad from "User" where id !~* ${UUID}
+      union all select 'ItemType', count(*)::int from "ItemType" where id !~* ${UUID}
+      union all select 'Collection', count(*)::int from "Collection" where id !~* ${UUID}
+      union all select 'Tag', count(*)::int from "Tag" where id !~* ${UUID}
+      union all select 'Item', count(*)::int from "Item" where id !~* ${UUID}`;
+    const bad = rows.filter((row) => row.bad > 0);
+    if (bad.length) {
+      throw new Error(
+        `non-UUID ids: ${bad.map((row) => `${row.table} ${row.bad}`).join(", ")}`,
+      );
+    }
+    return "5 tables checked";
+  }),
 
   await check("system item types", async () => {
     const types = await prisma.itemType.findMany({

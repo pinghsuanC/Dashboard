@@ -14,3 +14,4 @@
 - **2026-09-20** — Dashboard phase 3: main area with 4 stat cards, collections grid, pinned items, 10 recent items. Components switched to arrow functions.
 - **2026-09-23** — Database: Prisma 7 + Neon Postgres, initial schema and `init` migration applied to the dev branch. No `Session` model (JWT strategy).
 - **2026-09-23** — Database seed: `ItemType.color` + `Collection.isFavorite` migration; idempotent `prisma db seed` with 7 system types and a demo user mirroring the mock data.
+- **2026-09-23** — UUID ids: existing rows rewritten to UUIDs, `@default(uuid())` on all models, seed matches on natural keys; seed spec and UUID check in `db:test`.
