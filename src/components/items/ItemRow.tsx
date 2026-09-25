@@ -5,12 +5,10 @@ import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatShortDate } from "@/lib/format";
-import type { Item, ItemType } from "@/lib/mock-data";
+import type { ItemSummary } from "@/lib/db/items";
 
 interface ItemRowProps {
-  item: Item;
-  /** Undefined when the item names a type that no longer exists. */
-  type?: ItemType;
+  item: ItemSummary;
 }
 
 /**
@@ -18,16 +16,16 @@ interface ItemRowProps {
  * click and no `/items/[id]` route exists yet, so linking here would only
  * produce 404s. Wire it up with the item detail view.
  */
-export const ItemRow = ({ item, type }: ItemRowProps) => {
-  // Set once on the card so the left edge and the icon tint stay in step; the
-  // icon paints itself from the same type, so both read as one accent.
-  const accent = type?.color ?? "var(--border)";
+export const ItemRow = ({ item }: ItemRowProps) => {
+  // The type is a required relation (deletes are Restricted), so every row has
+  // one. Set once on the card so the left edge and the icon tint stay in step.
+  const { type } = item;
 
   return (
     <Card
       size="sm"
       className="border-l-4 border-l-(--type-color)"
-      style={{ "--type-color": accent } as CSSProperties}
+      style={{ "--type-color": type.color } as CSSProperties}
     >
       <CardContent className="flex items-start gap-3">
         <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-(--type-color)/10">
@@ -44,7 +42,7 @@ export const ItemRow = ({ item, type }: ItemRowProps) => {
               <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
             )}
             <time
-              dateTime={item.updatedAt}
+              dateTime={item.updatedAt.toISOString()}
               className="text-muted-foreground ml-auto shrink-0 text-xs"
             >
               {formatShortDate(item.updatedAt)}
