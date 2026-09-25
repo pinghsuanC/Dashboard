@@ -15,16 +15,23 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { MOCK_COLLECTIONS, MOCK_ITEM_TYPES, MOCK_USER } from "@/lib/mock-data";
+import { getSidebarCollections } from "@/lib/db/collections";
+import { getDemoUserId } from "@/lib/db/demo-user";
+import { getSystemItemTypes } from "@/lib/db/items";
+import { MOCK_USER } from "@/lib/mock-data";
 
 /**
- * Server component: the mock arrays are read here and only the slices the nav
- * actually renders cross the client boundary, so MOCK_ITEMS never ships to the
- * browser. Swapping these imports for Prisma queries is a drop-in change.
+ * Server component: types and collections are queried here and only the
+ * slices the nav renders cross the client boundary.
+ *
+ * KNOWN DEVIATION: the user footer still reads `MOCK_USER` until auth lands.
  */
-export const AppSidebar = () => {
-  const favorites = MOCK_COLLECTIONS.filter((c) => c.isFavorite);
-  const others = MOCK_COLLECTIONS.filter((c) => !c.isFavorite);
+export const AppSidebar = async () => {
+  const userId = await getDemoUserId();
+  const [types, { favorites, recents }] = await Promise.all([
+    getSystemItemTypes(userId),
+    getSidebarCollections(userId),
+  ]);
 
   return (
     <Sidebar collapsible="icon">
@@ -46,9 +53,9 @@ export const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarTypeNav types={MOCK_ITEM_TYPES} />
+        <SidebarTypeNav types={types} />
         <SidebarSeparator />
-        <SidebarCollectionNav favorites={favorites} others={others} />
+        <SidebarCollectionNav favorites={favorites} recents={recents} />
       </SidebarContent>
 
       <SidebarFooter>

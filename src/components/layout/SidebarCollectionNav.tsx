@@ -1,8 +1,9 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Folder, Star } from "lucide-react";
+import { ArrowRight, ChevronDown, Folder, Star } from "lucide-react";
 
 import {
   Collapsible,
@@ -18,20 +19,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { Collection } from "@/lib/mock-data";
+import type { SidebarCollection } from "@/lib/db/collections";
 
 interface SidebarCollectionNavProps {
-  favorites: Collection[];
-  others: Collection[];
+  favorites: SidebarCollection[];
+  recents: SidebarCollection[];
 }
 
-function collectionHref(collection: Collection) {
+function collectionHref(collection: SidebarCollection) {
   return `/collections/${collection.slug}`;
 }
 
 export const SidebarCollectionNav = ({
   favorites,
-  others,
+  recents,
 }: SidebarCollectionNavProps) => {
   const pathname = usePathname();
 
@@ -69,24 +70,52 @@ export const SidebarCollectionNav = ({
             </SidebarMenu>
 
             <p className="text-sidebar-foreground/50 px-2 pt-4 pb-1 text-xs font-medium tracking-wider uppercase group-data-[collapsible=icon]:hidden">
-              All collections
+              Recent
             </p>
             <SidebarMenu>
-              {others.map((collection) => (
+              {recents.map((collection) => (
                 <SidebarMenuItem key={collection.id}>
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === collectionHref(collection)}
                     tooltip={collection.name}
+                    // Room for the dot + count badge, which overlays the row.
+                    className="pr-10"
                   >
                     <Link href={collectionHref(collection)}>
                       <Folder />
                       <span>{collection.name}</span>
                     </Link>
                   </SidebarMenuButton>
-                  <SidebarMenuBadge>{collection.itemCount}</SidebarMenuBadge>
+                  <SidebarMenuBadge className="gap-2">
+                    {/* Most-used type's colour; empty collections get none. */}
+                    {collection.color && (
+                      <span
+                        aria-hidden
+                        className="size-2 rounded-full bg-(--type-color)"
+                        style={
+                          { "--type-color": collection.color } as CSSProperties
+                        }
+                      />
+                    )}
+                    {collection.itemCount}
+                  </SidebarMenuBadge>
                 </SidebarMenuItem>
               ))}
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/collections"}
+                  tooltip="View all collections"
+                  className="text-sidebar-foreground/70"
+                >
+                  <Link href="/collections">
+                    <ArrowRight />
+                    <span>View all collections</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </CollapsibleContent>

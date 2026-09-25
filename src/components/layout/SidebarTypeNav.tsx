@@ -20,10 +20,10 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
-import type { ItemType } from "@/lib/mock-data";
+import type { SidebarItemType } from "@/lib/db/items";
 
 interface SidebarTypeNavProps {
-  types: ItemType[];
+  types: SidebarItemType[];
 }
 
 /**
@@ -47,7 +47,7 @@ export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
           <SidebarGroupContent>
             <SidebarMenu>
               {types.map((type) => {
-                const Icon = getItemTypeIcon(type.icon);
+                const Icon = getItemTypeIcon(type.icon ?? "");
 
                 return (
                   <SidebarMenuItem key={type.id}>

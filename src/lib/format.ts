@@ -11,7 +11,7 @@ const SHORT_DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-/** "2024-01-15T09:24:00.000Z" -> "Jan 15" */
-export function formatShortDate(iso: string): string {
-  return SHORT_DATE.format(new Date(iso));
+/** 2024-01-15T09:24:00.000Z -> "Jan 15" */
+export function formatShortDate(date: Date): string {
+  return SHORT_DATE.format(date);
 }
