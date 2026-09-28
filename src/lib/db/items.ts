@@ -25,6 +25,8 @@ export interface ItemSummary {
 
 export interface SidebarItemType {
   id: string;
+  /** Slug: "snippet", "file", ... */
+  name: string;
   label: string;
   icon: string | null;
   color: string;
@@ -112,6 +114,7 @@ export async function getSystemItemTypes(
 
   return types.map(({ name, _count, ...type }) => ({
     ...type,
+    name,
     // Every system type pluralizes with a plain "s" (snippet -> snippets).
     route: `/items/${name}s`,
     itemCount: _count.items,
