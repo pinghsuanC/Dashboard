@@ -4,6 +4,7 @@ import { Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -44,13 +45,17 @@ export const SidebarUser = ({ user }: SidebarUserProps) => {
           </Link>
         </SidebarMenuButton>
 
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-1/2 right-1 flex size-7 -translate-y-1/2 items-center justify-center rounded-md group-data-[collapsible=icon]:hidden"
+        {/* A menu action, not a free-floating link: its presence makes the
+            button reserve pr-8, so a long name or email truncates before the
+            gear. `top-1/2!` beats the action's own size-lg top offset. */}
+        <SidebarMenuAction
+          asChild
+          className="text-sidebar-foreground/60 size-7 top-1/2! -translate-y-1/2"
         >
-          <Settings className="size-4" />
-        </Link>
+          <Link href="/settings" aria-label="Settings">
+            <Settings />
+          </Link>
+        </SidebarMenuAction>
       </SidebarMenuItem>
     </SidebarMenu>
   );
