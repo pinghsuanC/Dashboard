@@ -25,7 +25,11 @@ const ITEM_TYPE_ICONS: Record<string, LucideIcon> = {
   Link,
 };
 
-/** Falls back to a generic file icon so an unknown custom type still renders. */
+/**
+ * Falls back to a generic file icon so an unknown custom type still renders.
+ * Own keys only: a plain-object lookup would hand back `Object.prototype`
+ * members for names like "constructor" and crash the render.
+ */
 export function getItemTypeIcon(name: string): LucideIcon {
-  return ITEM_TYPE_ICONS[name] ?? File;
+  return Object.hasOwn(ITEM_TYPE_ICONS, name) ? ITEM_TYPE_ICONS[name] : File;
 }

@@ -102,8 +102,9 @@ model ItemType {
 
   createdAt DateTime @default(now())
 
+  // No separate [userId] index: the unique above leads with userId and serves
+  // those lookups (and the User cascade).
   @@unique([userId, name])
-  @@index([userId])
 }
 
 model Item {
@@ -140,7 +141,8 @@ model Item {
   @@index([userId, typeId])
   @@index([userId, isFavorite])
   @@index([userId, isPinned])
-  @@index([userId, createdAt])
+  // updatedAt, not createdAt: pinned and recent lists both sort newest-updated.
+  @@index([userId, updatedAt])
   // Not in project-overview: the Restrict check on ItemType delete looks up
   // items by typeId alone, which the userId-first indexes above can't serve.
   @@index([typeId])
@@ -162,8 +164,8 @@ model Collection {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // [userId] lookups are served by the unique below; no separate index.
   @@unique([userId, slug])
-  @@index([userId])
   @@index([userId, isFavorite])
 }
 
@@ -191,8 +193,8 @@ model Tag {
 
   createdAt DateTime @default(now())
 
+  // [userId] lookups are served by the unique below; no separate index.
   @@unique([userId, slug])
-  @@index([userId])
 }
 
 model ItemTag {

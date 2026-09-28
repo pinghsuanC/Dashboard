@@ -1,10 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
-export const RECENT_COLLECTION_LIMIT = 6;
+const RECENT_COLLECTION_LIMIT = 6;
 
 /** The slice of an item type a collection card needs to draw its icons. */
-export interface CollectionType {
+interface CollectionType {
   id: string;
   label: string;
   icon: string | null;
@@ -86,7 +86,7 @@ function rankTypesByUse(types: CollectionType[]): CollectionType[] {
     .map(({ type }) => type);
 }
 
-export const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
+const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
 
 /** The slice of a collection a sidebar row needs. */
 export interface SidebarCollection {

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { CollectionStats } from "@/lib/db/collections";
 import type { ItemStats } from "@/lib/db/items";
 
-export type DashboardStats = ItemStats & CollectionStats;
+type DashboardStats = ItemStats & CollectionStats;
 
 interface StatCardsProps {
   stats: DashboardStats;

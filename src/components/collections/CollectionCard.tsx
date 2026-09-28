@@ -5,6 +5,7 @@ import { Star } from "lucide-react";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CollectionSummary } from "@/lib/db/collections";
+import { collectionHref } from "@/lib/routes";
 
 interface CollectionCardProps {
   collection: CollectionSummary;
@@ -18,7 +19,7 @@ export const CollectionCard = ({ collection }: CollectionCardProps) => {
   const accent = types[0]?.color ?? "var(--border)";
 
   return (
-    <Link href={`/collections/${collection.slug}`} className="group block">
+    <Link href={collectionHref(collection.slug)} className="group block">
       <Card
         className="hover:bg-muted/40 h-full border-l-4 border-l-(--type-color) transition-colors"
         style={{ "--type-color": accent } as CSSProperties}
@@ -39,9 +40,11 @@ export const CollectionCard = ({ collection }: CollectionCardProps) => {
         </CardHeader>
 
         <CardContent className="flex flex-col gap-3">
-          <p className="text-muted-foreground line-clamp-2">
-            {collection.description}
-          </p>
+          {collection.description && (
+            <p className="text-muted-foreground line-clamp-2">
+              {collection.description}
+            </p>
+          )}
 
           <div className="flex items-center gap-2">
             {types.map((type) => (

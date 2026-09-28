@@ -15,3 +15,4 @@
 - **2026-09-23** — Database phase 1: set up Neon and Prisma, updated schema, seeded database.
 - **2026-09-25** — Database phase 2: dashboard and sidebar loaded from the database.
 - **2026-09-28** — Sidebar: PRO badge on File and Image types.
+- **2026-09-28** — Audit quick wins: sidebar and dashboard fixes, robustness guards, index migration.

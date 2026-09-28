@@ -49,9 +49,11 @@ export const ItemRow = ({ item }: ItemRowProps) => {
             </time>
           </div>
 
-          <p className="text-muted-foreground mt-1 line-clamp-2">
-            {item.description}
-          </p>
+          {item.description && (
+            <p className="text-muted-foreground mt-1 line-clamp-2">
+              {item.description}
+            </p>
+          )}
 
           {item.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">

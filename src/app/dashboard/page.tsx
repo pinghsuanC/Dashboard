@@ -11,12 +11,7 @@ import {
   getRecentCollections,
 } from "@/lib/db/collections";
 import { getDemoUserId } from "@/lib/db/demo-user";
-import {
-  getItemStats,
-  getPinnedItems,
-  getRecentItems,
-  RECENT_ITEM_LIMIT,
-} from "@/lib/db/items";
+import { getItemStats, getPinnedItems, getRecentItems } from "@/lib/db/items";
 
 export const metadata: Metadata = {
   title: "Dashboard | DevStash",
@@ -80,7 +75,7 @@ const DashboardPage = async () => {
 
       <section>
         <SectionHeader
-          title={`Recent (${RECENT_ITEM_LIMIT})`}
+          title={`Recent (${recentItems.length})`}
           icon={Clock}
           size="sm"
           href="/items"

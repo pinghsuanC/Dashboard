@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
-export const RECENT_ITEM_LIMIT = 10;
+const RECENT_ITEM_LIMIT = 10;
 
 /** The slice of an item type an item row needs for its icon and accent. */
-export interface ItemRowType {
+interface ItemRowType {
   id: string;
   label: string;
   icon: string | null;
@@ -100,7 +100,9 @@ export async function getSystemItemTypes(
   userId: string,
 ): Promise<SidebarItemType[]> {
   const types = await prisma.itemType.findMany({
-    where: { isSystem: true },
+    // userId: null too: a user-owned row flagged isSystem must not show up
+    // in every user's sidebar.
+    where: { isSystem: true, userId: null },
     orderBy: [{ createdAt: "asc" }, { name: "asc" }],
     select: {
       id: true,
