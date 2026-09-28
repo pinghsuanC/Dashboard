@@ -32,9 +32,11 @@ This is Next.js 16.3.5 with React 19. The version-correct docs ship inside the r
 
 ## Architecture
 
-App Router under `src/app/`. Currently only the root layout and the `/` route exist, so most structural decisions are still open.
+App Router under `src/app/`. Routes: `/` (still a placeholder) and `/dashboard`, which has its own layout (sidebar + top bar) and page.
 
-- **`src/app/layout.tsx`** is the root layout and is required — it owns the `<html>`/`<body>` tags, the font wiring, and the default `metadata` export.
+- **`src/app/layout.tsx`** is the root layout and is required — it owns the `<html>`/`<body>` tags, the font wiring, the always-on `dark` class, and the default `metadata` export.
+- **Data access lives in `src/lib/db/`** (`items.ts`, `collections.ts`, `demo-user.ts`): server-side Prisma queries that return plain, UI-shaped types. Server components call these directly and pass data down; client components (e.g. the sidebar navs) only take props.
+- **Components** are grouped by feature under `src/components/` (`dashboard/`, `collections/`, `items/`, `layout/`, `shared/`). `src/components/ui/` is shadcn-generated.
 - **`@/*` maps to `./src/*`** (`tsconfig.json`).
 - **`public/` does not currently exist.** For favicons and social images, prefer App Router metadata file conventions — `icon.png`, `apple-icon.png`, `opengraph-image.png` placed in `src/app/` get hashed URLs and auto-generated `<link>`/`<meta>` tags. Recreate `public/` only for assets that genuinely need a stable, hand-referenced path.
 
@@ -51,9 +53,13 @@ Two consequences:
 
 There is **no `tailwind.config.js`**, by design. Tailwind v4 is configured from `src/app/globals.css` via `@import "tailwindcss"` and `@theme` blocks; PostCSS just loads `@tailwindcss/postcss`.
 
-`globals.css` has been deliberately stripped to the bare `@import "tailwindcss"` — no color tokens, no dark-mode block, no `body` rule. Tailwind's own defaults (preflight plus its stock theme tokens, in `node_modules/tailwindcss/theme.css`) are therefore what is in effect. Add design tokens back in a `@theme` block in that file, not a JS config.
+`globals.css` holds the shadcn setup: it imports `tw-animate-css` and `shadcn/tailwind.css`, defines the `dark` custom variant, the color and radius tokens, and the base `body` styles. Add or change design tokens there, not in a JS config.
 
-**Known loose end:** `layout.tsx` still loads Geist and Geist_Mono via `next/font/google` and sets `--font-geist-sans` / `--font-geist-mono` on `<html>`, but the `@theme inline` block that bound those variables to the `font-sans` / `font-mono` utilities was removed with the rest of globals.css. The fonts are fetched but never rendered, and `font-sans` now resolves to Tailwind's default stack. Either rebind them in `@theme` or drop the `next/font/google` import.
+Fonts: `layout.tsx` loads Geist and Geist Mono via `next/font/google` into `--font-sans` / `--font-mono` on `<html>`, and the `@theme inline` block binds them to the `font-sans` / `font-mono` utilities. `--font-sans: var(--font-sans)` looks self-referential but is not a bug — `inline` writes the `var()` into the utility, which reads the value `next/font` sets.
+
+### Class merging: the `cn` package
+
+`cn` comes from the [`cn`](https://github.com/shadcn-ui/cn) npm package (shadcn's drop-in replacement for `clsx` + `tailwind-merge`), not a local helper. The `ui/` files import it straight from `"cn"`; `src/lib/utils.ts` re-exports it for app code. Don't reinstall `clsx`/`tailwind-merge` or rewrite `utils.ts` back to the old wrapper.
 
 ### Database: Prisma 7 + Neon
 
