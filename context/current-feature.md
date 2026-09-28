@@ -14,3 +14,4 @@
 - **2026-09-20** — Dashboard phase 3: main area with 4 stat cards, collections grid, pinned items, 10 recent items. Components switched to arrow functions.
 - **2026-09-23** — Database phase 1: set up Neon and Prisma, updated schema, seeded database.
 - **2026-09-25** — Database phase 2: dashboard and sidebar loaded from the database.
+- **2026-09-28** — Sidebar: PRO badge on File and Image types.

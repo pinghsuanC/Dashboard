@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,6 +22,12 @@ import {
 } from "@/components/ui/sidebar";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 import type { SidebarItemType } from "@/lib/db/items";
+
+/**
+ * Types that need a Pro subscription. Pro is a per-user flag that will come
+ * from the session; until then the badge shows for every user.
+ */
+const PRO_TYPE_NAMES = new Set(["file", "image"]);
 
 interface SidebarTypeNavProps {
   types: SidebarItemType[];
@@ -65,9 +72,23 @@ export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
                             { "--type-color": type.color } as CSSProperties
                           }
                         />
-                        <span>{type.label}</span>
+                        {/* The button only truncates its last span, which is
+                            now the badge, so the label truncates itself. */}
+                        <span className="truncate">{type.label}</span>
+                        {PRO_TYPE_NAMES.has(type.name) && (
+                          <Badge
+                            variant="outline"
+                            className="h-4 px-1.5 text-[10px] font-semibold tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden"
+                          >
+                            PRO
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
+                    {/* Known issue: the count is absolutely positioned and the
+                        button reserves no room for it, so a long label (or
+                        label + PRO) runs underneath. Fine for the current
+                        labels; add `pr-8` to the button if custom types land. */}
                     <SidebarMenuBadge>{type.itemCount}</SidebarMenuBadge>
                   </SidebarMenuItem>
                 );
