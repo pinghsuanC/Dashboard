@@ -21,7 +21,7 @@ import { getSystemItemTypes } from "@/lib/db/items";
 /**
  * Server component: types and collections are queried here and only the
  * slices the nav renders cross the client boundary.
- * The user footer reads the signed-in profile from `UserProvider`.
+ * The user footer is a server component too, reading the cached session user.
  */
 export const AppSidebar = async () => {
   const [types, { favorites, recents }] = await Promise.all([

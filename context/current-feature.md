@@ -2,7 +2,7 @@
 
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
-<!-- Next part of auth: local/prod callback switching (via env settings), sign-out. -->
+<!-- Next part of auth: local/prod callback switching (via env settings). -->
 
 ---
 
@@ -20,3 +20,4 @@
 - **2026-09-28** — Audit quick wins: sidebar and dashboard fixes, robustness guards, index migration.
 - **2026-09-29** — Auth phase 1: GitHub sign-in, protected dashboard, session user profile; demo user removed.
 - **2026-09-29** — Auth phase 2: email/password sign-in and `/api/auth/register`, bcrypt hashing, Zod validation.
+- **2026-09-29** — Auth phase 3: custom sign-in and register pages, sidebar sign-out, shared avatar, register toast.
