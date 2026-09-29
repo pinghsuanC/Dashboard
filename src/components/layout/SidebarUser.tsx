@@ -1,27 +1,26 @@
-"use client";
-
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { signOutAction } from "@/actions/auth";
+import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useCurrentUser } from "@/components/auth/UserProvider";
+import { getCurrentUser } from "@/lib/db/current-user";
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
+/**
+ * Server component. `getCurrentUser()` is cached per request, so this reuses
+ * the layout's lookup rather than querying again. The sidebar primitives are
+ * client components; they render here as islands with server-built children.
+ */
+export const SidebarUser = async () => {
+  const user = await getCurrentUser();
+  // The dashboard layout has already redirected when there is no user.
+  if (!user) return null;
 
-export const SidebarUser = () => {
-  const user = useCurrentUser();
   // GitHub profiles may have no display name; fall back to the email.
   const displayName = user.name ?? user.email;
 
@@ -30,14 +29,7 @@ export const SidebarUser = () => {
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" tooltip={displayName} asChild>
           <Link href="/profile">
-            <Avatar className="size-8 rounded-full">
-              {user.image ? (
-                <AvatarImage src={user.image} alt={displayName} />
-              ) : null}
-              <AvatarFallback className="rounded-full text-xs">
-                {initials(displayName)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar name={user.name} email={user.email} image={user.image} />
             <div className="grid flex-1 text-left leading-tight">
               <span className="truncate text-sm font-medium">
                 {displayName}
@@ -60,6 +52,21 @@ export const SidebarUser = () => {
             <Settings />
           </Link>
         </SidebarMenuAction>
+      </SidebarMenuItem>
+
+      <SidebarMenuItem>
+        {/* A server-action form, so sign-out clears the cookie on the server
+            and redirects without any client-side session code. */}
+        <form action={signOutAction}>
+          <SidebarMenuButton
+            type="submit"
+            tooltip="Sign out"
+            className="text-sidebar-foreground/70"
+          >
+            <LogOut />
+            <span>Sign out</span>
+          </SidebarMenuButton>
+        </form>
       </SidebarMenuItem>
     </SidebarMenu>
   );

@@ -3,6 +3,7 @@ import { cache } from "react";
 
 import { auth } from "@/auth";
 import type { Plan } from "@/generated/prisma/client";
+import { signInHref } from "@/lib/auth-redirect";
 import { prisma } from "@/lib/prisma";
 
 /** The signed-in user's profile, safe to hand to client components. */
@@ -55,6 +56,6 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
  */
 export const requireCurrentUserId = async (): Promise<string> => {
   const user = await getCurrentUser();
-  if (!user) redirect("/api/auth/signin?callbackUrl=/dashboard");
+  if (!user) redirect(signInHref());
   return user.id;
 };

@@ -2,7 +2,10 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 
-/** Fields NextAuth's default sign-in page renders for the Credentials form. */
+/**
+ * The fields `authorize` receives. Only the built-in sign-in page renders
+ * them; the custom `/sign-in` form posts the same names.
+ */
 export const credentialFields = {
   email: { label: "Email", type: "email" },
   password: { label: "Password", type: "password" },
@@ -17,6 +20,8 @@ export const credentialFields = {
  */
 export default {
   providers: [GitHub, Credentials({ credentials: credentialFields, authorize: () => null })],
+  // Errors (e.g. OAuthAccountNotLinked) land on the sign-in page as `?error=`.
+  pages: { signIn: "/sign-in", error: "/sign-in" },
   callbacks: {
     // With the JWT strategy the token only carries identity: `sub` is the
     // adapter's User.id. The profile itself is read from the DB per request
