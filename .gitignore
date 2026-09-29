@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local tooling (MCP config holds API keys; Claude agents/skills; Playwright MCP snapshots)
+.mcp.json
+.playwright-mcp/
+.claude/agents/
+.claude/skills/

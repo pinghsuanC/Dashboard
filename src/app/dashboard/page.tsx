@@ -10,7 +10,6 @@ import {
   getCollectionStats,
   getRecentCollections,
 } from "@/lib/db/collections";
-import { getDemoUserId } from "@/lib/db/demo-user";
 import { getItemStats, getPinnedItems, getRecentItems } from "@/lib/db/items";
 
 export const metadata: Metadata = {
@@ -24,18 +23,19 @@ export const metadata: Metadata = {
  * boundary is needed.
  */
 const DashboardPage = async () => {
-  // Nothing here reads cookies or headers yet, so without this Next would
-  // prerender the page at build time and freeze the database results.
+  // The queries read the session cookie, which already makes this dynamic;
+  // this keeps it explicit so the page is never prerendered at build time.
   await connection();
 
-  const userId = await getDemoUserId();
+  // Each query scopes itself to the session user; the lookup is cached, so
+  // five calls still mean one session check and one profile query.
   const [collections, collectionStats, itemStats, pinnedItems, recentItems] =
     await Promise.all([
-      getRecentCollections(userId),
-      getCollectionStats(userId),
-      getItemStats(userId),
-      getPinnedItems(userId),
-      getRecentItems(userId),
+      getRecentCollections(),
+      getCollectionStats(),
+      getItemStats(),
+      getPinnedItems(),
+      getRecentItems(),
     ]);
 
   const stats = { ...itemStats, ...collectionStats };
