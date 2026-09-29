@@ -19,3 +19,4 @@
 - **2026-09-28** — Sidebar: PRO badge on File and Image types.
 - **2026-09-28** — Audit quick wins: sidebar and dashboard fixes, robustness guards, index migration.
 - **2026-09-29** — Auth phase 1: GitHub sign-in, protected dashboard, session user profile; demo user removed.
+- **2026-09-29** — Auth phase 2: email/password sign-in and `/api/auth/register`, bcrypt hashing, Zod validation.
