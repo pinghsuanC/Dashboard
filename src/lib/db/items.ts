@@ -1,3 +1,4 @@
+import { requireCurrentUserId } from "@/lib/db/current-user";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -70,7 +71,8 @@ function toItemSummary({ tags, ...item }: ItemSummaryRow): ItemSummary {
 }
 
 /** Every pinned item, newest first. Unbounded: pinning is a deliberate act. */
-export async function getPinnedItems(userId: string): Promise<ItemSummary[]> {
+export async function getPinnedItems(): Promise<ItemSummary[]> {
+  const userId = await requireCurrentUserId();
   const items = await prisma.item.findMany({
     where: { userId, isPinned: true },
     orderBy: newestFirst,
@@ -80,9 +82,9 @@ export async function getPinnedItems(userId: string): Promise<ItemSummary[]> {
 }
 
 export async function getRecentItems(
-  userId: string,
   limit: number = RECENT_ITEM_LIMIT,
 ): Promise<ItemSummary[]> {
+  const userId = await requireCurrentUserId();
   const items = await prisma.item.findMany({
     where: { userId },
     orderBy: newestFirst,
@@ -96,9 +98,8 @@ export async function getRecentItems(
  * The built-in types with how many items the user has of each.
  * Custom (Pro) types are not listed yet.
  */
-export async function getSystemItemTypes(
-  userId: string,
-): Promise<SidebarItemType[]> {
+export async function getSystemItemTypes(): Promise<SidebarItemType[]> {
+  const userId = await requireCurrentUserId();
   const types = await prisma.itemType.findMany({
     // userId: null too: a user-owned row flagged isSystem must not show up
     // in every user's sidebar.
@@ -123,7 +124,8 @@ export async function getSystemItemTypes(
   }));
 }
 
-export async function getItemStats(userId: string): Promise<ItemStats> {
+export async function getItemStats(): Promise<ItemStats> {
+  const userId = await requireCurrentUserId();
   const [items, favoriteItems] = await Promise.all([
     prisma.item.count({ where: { userId } }),
     prisma.item.count({ where: { userId, isFavorite: true } }),

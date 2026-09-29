@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { requireCurrentUserId } from "@/lib/db/current-user";
 import { prisma } from "@/lib/prisma";
 
 const RECENT_COLLECTION_LIMIT = 6;
@@ -36,9 +37,9 @@ export interface CollectionStats {
  * Move to a `groupBy` or raw query if collections grow to hundreds of items.
  */
 export async function getRecentCollections(
-  userId: string,
   limit: number = RECENT_COLLECTION_LIMIT,
 ): Promise<CollectionSummary[]> {
+  const userId = await requireCurrentUserId();
   const collections = await prisma.collection.findMany({
     where: { userId },
     // Seeded rows share an `updatedAt` to the millisecond; name keeps the
@@ -109,9 +110,9 @@ export interface SidebarCollections {
  * Same per-item tally as `getRecentCollections`, but only the colour survives.
  */
 export async function getSidebarCollections(
-  userId: string,
   recentLimit: number = SIDEBAR_RECENT_COLLECTION_LIMIT,
 ): Promise<SidebarCollections> {
+  const userId = await requireCurrentUserId();
   const select = {
     id: true,
     name: true,
@@ -158,9 +159,8 @@ export async function getSidebarCollections(
   };
 }
 
-export async function getCollectionStats(
-  userId: string,
-): Promise<CollectionStats> {
+export async function getCollectionStats(): Promise<CollectionStats> {
+  const userId = await requireCurrentUserId();
   const [collections, favoriteCollections] = await Promise.all([
     prisma.collection.count({ where: { userId } }),
     prisma.collection.count({ where: { userId, isFavorite: true } }),
