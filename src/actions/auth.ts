@@ -5,8 +5,10 @@ import { AuthError } from "next-auth";
 import type { z } from "zod";
 
 import { signIn, signOut } from "@/auth";
+import { EmailNotVerifiedError } from "@/lib/auth-errors";
 import { safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
 import { registerSchema, signInSchema } from "@/lib/auth-schemas";
+import { resendVerificationLink } from "@/lib/email-verification";
 import { registerPasswordUser } from "@/lib/register-user";
 import type { FormState } from "@/types/forms";
 
@@ -40,6 +42,10 @@ export const signInWithCredentials = async (
       redirectTo: safeCallbackUrl(formData.get("callbackUrl")),
     });
   } catch (error) {
+    if (error instanceof EmailNotVerifiedError) {
+      await resendVerificationLink(error.email);
+      return { error: "Verify your email before signing in. Check your inbox for the link." };
+    }
     if (error instanceof AuthError) {
       return {
         error:
@@ -53,7 +59,10 @@ export const signInWithCredentials = async (
   return {};
 };
 
-/** Creates the account, then sends the user to sign in, where a toast confirms it. */
+/**
+ * Creates the account and mails the verification link, then sends the user to
+ * sign in, where a toast tells them to check their inbox.
+ */
 export const registerWithCredentials = async (
   _prev: FormState,
   formData: FormData,

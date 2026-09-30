@@ -21,3 +21,4 @@
 - **2026-09-29** — Auth phase 1: GitHub sign-in, protected dashboard, session user profile; demo user removed.
 - **2026-09-29** — Auth phase 2: email/password sign-in and `/api/auth/register`, bcrypt hashing, Zod validation.
 - **2026-09-29** — Auth phase 3: custom sign-in and register pages, sidebar sign-out, shared avatar, register toast.
+- **2026-09-30** — Email verification: Resend link on register, unverified sign-in blocked with auto-resend, email templates module.

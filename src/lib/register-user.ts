@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import { Prisma } from "@/generated/prisma/client";
 import type { registerSchema } from "@/lib/auth-schemas";
+import { sendVerificationLink } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
 
 const BCRYPT_ROUNDS = 12;
@@ -34,6 +35,11 @@ export const registerPasswordUser = async ({
       data: { name, email, passwordHash: await hash(password, BCRYPT_ROUNDS) },
       select: { id: true, email: true },
     });
+    // A failed send doesn't undo the account: signing in with the right
+    // password mails a fresh link.
+    await sendVerificationLink(user.email).catch((error: unknown) =>
+      console.error("Sending verification email failed", error),
+    );
     return { success: true, data: user };
   } catch (error) {
     // Two requests racing past the check above.

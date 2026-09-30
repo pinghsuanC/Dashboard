@@ -5,6 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 
 import authConfig, { credentialFields } from "@/auth.config";
+import { EmailNotVerifiedError } from "@/lib/auth-errors";
 import { signInSchema } from "@/lib/auth-schemas";
 import { prisma } from "@/lib/prisma";
 
@@ -22,12 +23,23 @@ const credentials = Credentials({
     // Case-insensitive: GitHub-created rows keep the provider's casing.
     const user = await prisma.user.findFirst({
       where: { email: { equals: parsed.data.email, mode: "insensitive" } },
-      select: { id: true, name: true, email: true, image: true, passwordHash: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        passwordHash: true,
+        emailVerified: true,
+      },
     });
     if (!user?.passwordHash) return null;
 
     const valid = await compare(parsed.data.password, user.passwordHash);
     if (!valid) return null;
+
+    // Checked after the password, so only the account owner learns the email
+    // is registered but unverified.
+    if (!user.emailVerified) throw new EmailNotVerifiedError(user.email);
 
     return { id: user.id, name: user.name, email: user.email, image: user.image };
   },
