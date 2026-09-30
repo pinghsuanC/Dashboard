@@ -23,6 +23,19 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 const DEFAULT_ERROR = "Sign-in failed. Please try again.";
 
+// `/api/auth/verify-email` lands here with `?verify=`.
+const VERIFY_MESSAGES: Record<string, { text: string; ok: boolean }> = {
+  success: { text: "Email verified. You can sign in now.", ok: true },
+  expired: {
+    text: "That verification link expired. Sign in to get a new one.",
+    ok: false,
+  },
+  invalid: {
+    text: "That verification link is invalid or was already used. Try signing in.",
+    ok: false,
+  },
+};
+
 const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
   const params = await searchParams;
   const callbackUrl = safeCallbackUrl(firstParam(params.callbackUrl));
@@ -33,6 +46,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
 
   const errorCode = firstParam(params.error);
   const error = errorCode ? (ERROR_MESSAGES[errorCode] ?? DEFAULT_ERROR) : null;
+  const verify = VERIFY_MESSAGES[firstParam(params.verify) ?? ""];
   const registered = firstParam(params.registered) === "1";
   const registerHref = `/register?${new URLSearchParams({ callbackUrl })}`;
 
@@ -44,6 +58,14 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
       </CardHeader>
       <CardContent className="grid gap-6">
         {registered ? <RegisteredToast callbackUrl={callbackUrl} /> : null}
+        {verify ? (
+          <p
+            role={verify.ok ? "status" : "alert"}
+            className={verify.ok ? "text-sm text-emerald-500" : "text-destructive text-sm"}
+          >
+            {verify.text}
+          </p>
+        ) : null}
         {error ? (
           <p role="alert" className="text-destructive text-sm">
             {error}

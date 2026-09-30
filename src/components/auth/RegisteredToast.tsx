@@ -22,7 +22,7 @@ export const RegisteredToast = ({ callbackUrl }: RegisteredToastProps) => {
   useEffect(() => {
     toast.success("Account created", {
       id: "registered",
-      description: "You can now sign in with your email and password.",
+      description: "Check your email for a link to verify your account, then sign in.",
     });
     router.replace(signInHref(callbackUrl), { scroll: false });
   }, [callbackUrl, router]);
