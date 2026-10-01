@@ -4,6 +4,16 @@ import { headers } from "next/headers";
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * `EMAIL_VERIFICATION=off` lets password users register and sign in without
+ * an email, so the app runs without Resend. Anything else, including unset,
+ * keeps verification on: a deploy that forgets the variable stays closed.
+ * Users who registered while it was off stay unverified, so turning it back
+ * on blocks their next sign-in and mails them a link.
+ */
+export const isEmailVerificationEnabled = (): boolean =>
+  process.env.EMAIL_VERIFICATION?.trim().toLowerCase() !== "off";
+
 const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 // A fresh token is only issued once the last one is this old, so repeated
 // sign-in attempts don't flood the inbox.

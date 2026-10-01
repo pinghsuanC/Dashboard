@@ -60,8 +60,9 @@ export const signInWithCredentials = async (
 };
 
 /**
- * Creates the account and mails the verification link, then sends the user to
- * sign in, where a toast tells them to check their inbox.
+ * Creates the account and mails the verification link (unless
+ * `EMAIL_VERIFICATION=off`), then sends the user to sign in, where a toast
+ * says what to do next.
  */
 export const registerWithCredentials = async (
   _prev: FormState,

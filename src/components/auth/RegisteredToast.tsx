@@ -8,6 +8,8 @@ import { signInHref } from "@/lib/auth-redirect";
 
 interface RegisteredToastProps {
   callbackUrl: string;
+  /** From the server, which reads `EMAIL_VERIFICATION`; the client can't. */
+  verifyEmail: boolean;
 }
 
 /**
@@ -16,16 +18,18 @@ interface RegisteredToastProps {
  * the flag so a refresh or Back doesn't show it again. The fixed toast id
  * keeps Strict Mode's double effect down to one toast.
  */
-export const RegisteredToast = ({ callbackUrl }: RegisteredToastProps) => {
+export const RegisteredToast = ({ callbackUrl, verifyEmail }: RegisteredToastProps) => {
   const router = useRouter();
 
   useEffect(() => {
     toast.success("Account created", {
       id: "registered",
-      description: "Check your email for a link to verify your account, then sign in.",
+      description: verifyEmail
+        ? "Check your email for a link to verify your account, then sign in."
+        : "You can sign in now.",
     });
     router.replace(signInHref(callbackUrl), { scroll: false });
-  }, [callbackUrl, router]);
+  }, [callbackUrl, verifyEmail, router]);
 
   return null;
 };
