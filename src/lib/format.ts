@@ -15,3 +15,15 @@ const SHORT_DATE = new Intl.DateTimeFormat("en-US", {
 export function formatShortDate(date: Date): string {
   return SHORT_DATE.format(date);
 }
+
+const LONG_DATE = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** 2024-01-15T09:24:00.000Z -> "January 15, 2024" */
+export function formatLongDate(date: Date): string {
+  return LONG_DATE.format(date);
+}

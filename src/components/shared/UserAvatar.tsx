@@ -6,6 +6,8 @@ interface UserAvatarProps {
   email: string;
   image: string | null;
   className?: string;
+  /** For the initials: their text size is set here, not inherited from `className`. */
+  fallbackClassName?: string;
 }
 
 /** "Brad Traversy" → "BT", "ada" → "A". Falls back to the email's first letter. */
@@ -23,11 +25,19 @@ const initials = (name: string | null, email: string) => {
  * The GitHub image when there is one, initials otherwise. Radix keeps showing
  * the fallback until the image loads, and keeps it if the image fails.
  */
-export const UserAvatar = ({ name, email, image, className }: UserAvatarProps) => {
+export const UserAvatar = ({
+  name,
+  email,
+  image,
+  className,
+  fallbackClassName,
+}: UserAvatarProps) => {
   return (
     <Avatar className={cn("size-8 rounded-full", className)}>
       {image ? <AvatarImage src={image} alt={name ?? email} /> : null}
-      <AvatarFallback className="rounded-full text-xs">{initials(name, email)}</AvatarFallback>
+      <AvatarFallback className={cn("rounded-full text-xs", fallbackClassName)}>
+        {initials(name, email)}
+      </AvatarFallback>
     </Avatar>
   );
 };

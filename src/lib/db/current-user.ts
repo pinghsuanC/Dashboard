@@ -55,7 +55,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
  * can't rely on the layout's own redirect having run first.
  */
 export const requireCurrentUserId = async (): Promise<string> => {
+  const user = await requireCurrentUser();
+  return user.id;
+};
+
+/** Like `requireCurrentUserId`, for pages that render the profile itself. */
+export const requireCurrentUser = async (): Promise<CurrentUser> => {
   const user = await getCurrentUser();
   if (!user) redirect(signInHref());
-  return user.id;
+  return user;
 };

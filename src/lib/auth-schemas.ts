@@ -36,6 +36,18 @@ export const registerSchema = z
 
 export const forgotPasswordSchema = z.object({ email });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password").refine(fitsBcrypt),
+    password,
+    confirmPassword: z.string(),
+  })
+  .refine(passwordsMatch, mismatch)
+  .refine((data) => data.password !== data.currentPassword, {
+    message: "New password must be different",
+    path: ["password"],
+  });
+
 export const resetPasswordSchema = z
   .object({
     token: z.string().min(1),

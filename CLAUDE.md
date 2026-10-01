@@ -20,9 +20,15 @@ npm run db:deploy    # prisma migrate deploy — apply existing migrations (prod
 npm run db:generate  # prisma generate — also runs on postinstall
 npm run db:studio    # prisma studio
 npm run db:test      # testScripts/test-db.ts — read-only DB smoke checks (not a test runner)
+npm test             # vitest run — unit tests, single run
+npm run test:watch   # vitest in watch mode
 ```
 
-There is **no test runner configured** — no test script, and no Jest/Vitest/Playwright/Testing Library in `package.json`. Do not invent test commands; if tests are wanted, set up the harness first and record the invocation here.
+Tests are **Vitest 4** (`vitest.config.ts`), for server actions and utilities only, not components. Test files sit next to their source as `*.test.ts`. Vitest is pinned to `^4`: v5 needs `@types/node` 22+, and this project is on 20.
+
+- Write tests from the feature's requirements, not from the code, and prove each can fail: break the behaviour it covers and check that it goes red.
+- Database code is tested against `src/test/fake-prisma.ts`, an in-memory stand-in that keeps the cascade and `ON DELETE RESTRICT` rules, so tests assert what is stored rather than which calls were made. Mock `@/lib/prisma` with it; extend it when new code needs more of Prisma.
+- The run's `TZ` is set far from UTC in `vitest.config.ts` so date code that follows the machine zone fails.
 
 For a typecheck without a full build: `npx tsc --noEmit`.
 
@@ -32,7 +38,7 @@ This is Next.js 16.3.5 with React 19. The version-correct docs ship inside the r
 
 ## Architecture
 
-App Router under `src/app/`. Routes: `/` (still a placeholder), `/dashboard` with its own layout (sidebar + top bar), and `/sign-in`, `/register`, `/forgot-password` + `/reset-password` in the `(auth)` route group, which shares a centered layout without adding a URL segment.
+App Router under `src/app/`. Routes: `/` (still a placeholder), `/dashboard` and `/profile` in the `(app)` route group, which shares the sidebar + top bar layout, and `/sign-in`, `/register`, `/forgot-password` + `/reset-password` in the `(auth)` route group, which shares a centered layout without adding a URL segment.
 
 - **`src/app/layout.tsx`** is the root layout and is required — it owns the `<html>`/`<body>` tags, the font wiring, the always-on `dark` class, the default `metadata` export, and the Sonner `<Toaster theme="dark">` (pinned, since there is no `next-themes` provider).
 - **Data access lives in `src/lib/db/`** (`items.ts`, `collections.ts`, `current-user.ts`): server-side Prisma queries that return plain, UI-shaped types. Server components call these directly and pass data down; client components (e.g. the sidebar navs) only take props.
