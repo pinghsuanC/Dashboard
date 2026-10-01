@@ -9,7 +9,6 @@ Set up NextAuth v5 with Prisma adapter and GitHub OAuth. Use NextAuth's default 
 - Install NextAuth v5 (`next-auth@beta`) and `@auth/prisma-adapter`
 - Set up split auth config pattern for edge compatibility
 - Add GitHub OAuth provider and contruct it to be usable
-- Add ability to detect local / prod environment so we can switch call back based on environmental vairable.
 - Protect `/dashboard/*` routes using Next.js 16 proxy
 - Redirect unauthenticated users to sign-in
 
