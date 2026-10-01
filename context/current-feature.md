@@ -3,6 +3,9 @@
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
 <!-- Next part of auth: local/prod callback switching (via env settings). -->
+<!-- Next: user session. One central source for per-user constants (user info, system item type definitions), loaded once: `getUserSession()` on the server (React `cache()`), `UserSessionProvider` + `useUserSession()` in the `(app)` layout for client components. Counts stay live queries; changes refresh it; keep the per-request user check as the auth guard. Absorbs the duplicate `getSystemItemTypes()` call on /profile (sidebar + page). -->
+<!-- Later: `sessionVersion` on User so a password change or reset signs out other devices (JWT sessions can't be revoked today). -->
+<!-- Later: Next.js 16.3.5 -> 16.3.8 for the next/og advisory (task chip raised). -->
 
 ---
 
@@ -24,3 +27,4 @@
 - **2026-09-30** — Email verification: Resend link on register, unverified sign-in blocked with auto-resend, email templates module.
 - **2026-10-01** — Email verification toggle: `EMAIL_VERIFICATION=off` skips the verification email and sign-in block; on by default.
 - **2026-10-01** — Forgot password: emailed 1-hour reset link via `PasswordResetToken`, reset verifies the email, no account enumeration.
+- **2026-10-01** — Profile page: `/profile` in shared `(app)` layout with user info, usage stats, change password and delete account; Vitest set up.

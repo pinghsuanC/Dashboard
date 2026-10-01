@@ -18,7 +18,7 @@ import { getCurrentUser } from "@/lib/db/current-user";
  */
 export const SidebarUser = async () => {
   const user = await getCurrentUser();
-  // The dashboard layout has already redirected when there is no user.
+  // The (app) layout has already redirected when there is no user.
   if (!user) return null;
 
   // GitHub profiles may have no display name; fall back to the email.

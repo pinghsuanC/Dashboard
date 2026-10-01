@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { AuthError } from "next-auth";
-import type { z } from "zod";
 
 import { signIn, signOut } from "@/auth";
 import { EmailNotVerifiedError } from "@/lib/auth-errors";
@@ -15,18 +14,10 @@ import {
   signInSchema,
 } from "@/lib/auth-schemas";
 import { resendVerificationLink } from "@/lib/email-verification";
+import { fieldErrorsOf } from "@/lib/form-errors";
 import { RESET_TOKEN_ERRORS, requestPasswordReset, resetPassword } from "@/lib/password-reset";
 import { registerPasswordUser } from "@/lib/register-user";
 import type { FormState } from "@/types/forms";
-
-/** First message per field, in the shape `ActionForm` reads. */
-const fieldErrorsOf = (error: z.ZodError): FormState["fieldErrors"] => {
-  const fieldErrors: Record<string, string> = {};
-  for (const issue of error.issues) {
-    fieldErrors[String(issue.path[0])] ??= issue.message;
-  }
-  return fieldErrors;
-};
 
 /**
  * Credentials sign-in. On success `signIn` throws Next's redirect, which must

@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 
 import { signInWithCredentials } from "@/actions/auth";
 import { GitHubSignInButton } from "@/components/auth/GitHubSignInButton";
-import { SignInToast } from "@/components/auth/SignInToast";
 import { ActionForm } from "@/components/shared/ActionForm";
+import { FlagToast } from "@/components/shared/FlagToast";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam, safeCallbackUrl } from "@/lib/auth-redirect";
+import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
 import { getCurrentUser } from "@/lib/db/current-user";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
@@ -37,7 +37,7 @@ const VERIFY_MESSAGES: Record<string, { text: string; ok: boolean }> = {
   },
 };
 
-// One-shot flags from the register and reset-password actions.
+// One-shot flags from the register, reset-password and delete-account actions.
 const signInToast = (params: Record<string, string | string[] | undefined>) => {
   if (firstParam(params.registered) === "1") {
     return {
@@ -53,6 +53,13 @@ const signInToast = (params: Record<string, string | string[] | undefined>) => {
       id: "password-reset",
       title: "Password updated",
       description: "Sign in with your new password.",
+    };
+  }
+  if (firstParam(params.deleted) === "1") {
+    return {
+      id: "account-deleted",
+      title: "Account deleted",
+      description: "Your account and everything in it are gone.",
     };
   }
   return null;
@@ -79,7 +86,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
         <CardDescription>Welcome back to DevStash.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        {toast ? <SignInToast {...toast} callbackUrl={callbackUrl} /> : null}
+        {toast ? <FlagToast {...toast} href={signInHref(callbackUrl)} /> : null}
         {verify ? (
           <p
             role={verify.ok ? "status" : "alert"}

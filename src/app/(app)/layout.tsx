@@ -8,7 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { signInHref } from "@/lib/auth-redirect";
 import { getCurrentUser } from "@/lib/db/current-user";
 
-const DashboardLayout = async ({ children }: LayoutProps<"/dashboard">) => {
+const AppLayout = async ({ children }: LayoutProps<"/">) => {
   // SidebarProvider persists its open state in this cookie. Reading it on the
   // server means the sidebar renders in the right state instead of flashing
   // open and snapping shut after hydration.
@@ -37,4 +37,4 @@ const DashboardLayout = async ({ children }: LayoutProps<"/dashboard">) => {
   );
 };
 
-export default DashboardLayout;
+export default AppLayout;
