@@ -23,3 +23,4 @@
 - **2026-09-29** — Auth phase 3: custom sign-in and register pages, sidebar sign-out, shared avatar, register toast.
 - **2026-09-30** — Email verification: Resend link on register, unverified sign-in blocked with auto-resend, email templates module.
 - **2026-10-01** — Email verification toggle: `EMAIL_VERIFICATION=off` skips the verification email and sign-in block; on by default.
+- **2026-10-01** — Forgot password: emailed 1-hour reset link via `PasswordResetToken`, reset verifies the email, no account enumeration.

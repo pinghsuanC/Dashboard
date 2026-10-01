@@ -1,6 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
-import { headers } from "next/headers";
-
+import { appOrigin, hashToken, newToken } from "@/lib/auth-tokens";
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
@@ -19,33 +17,12 @@ const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 // sign-in attempts don't flood the inbox.
 const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 
-// Only the hash is stored: a leaked row can't be replayed as a link.
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
-
-// hostname[:port] only, so a forged header can't smuggle a path or markup.
-const HOST_PATTERN = /^[a-z0-9.-]+(:\d+)?$/i;
-
-/**
- * Where the link points. AUTH_URL wins when set; otherwise the request's
- * `host`, which is right on localhost and on Vercel. `x-forwarded-host` is
- * ignored: a proxy that passes it through from the client would let anyone
- * mail a valid token to a link on their own domain.
- */
-const appOrigin = async (): Promise<string> => {
-  if (process.env.AUTH_URL) return new URL(process.env.AUTH_URL).origin;
-  const h = await headers();
-  const host = h.get("host") ?? "";
-  if (!HOST_PATTERN.test(host)) throw new Error(`Refusing to build a link for host: ${host}`);
-  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
-  return `${isLocal ? "http" : "https"}://${host}`;
-};
-
 /**
  * Replaces any earlier token for this email and mails a new link. Call it from
  * a request (server action or route handler); it reads the request's host.
  */
 export const sendVerificationLink = async (email: string): Promise<void> => {
-  const token = randomBytes(32).toString("base64url");
+  const token = newToken();
   await prisma.$transaction([
     prisma.verificationToken.deleteMany({ where: { identifier: email } }),
     prisma.verificationToken.create({

@@ -32,7 +32,7 @@ This is Next.js 16.3.5 with React 19. The version-correct docs ship inside the r
 
 ## Architecture
 
-App Router under `src/app/`. Routes: `/` (still a placeholder), `/dashboard` with its own layout (sidebar + top bar), and `/sign-in` + `/register` in the `(auth)` route group, which shares a centered layout without adding a URL segment.
+App Router under `src/app/`. Routes: `/` (still a placeholder), `/dashboard` with its own layout (sidebar + top bar), and `/sign-in`, `/register`, `/forgot-password` + `/reset-password` in the `(auth)` route group, which shares a centered layout without adding a URL segment.
 
 - **`src/app/layout.tsx`** is the root layout and is required — it owns the `<html>`/`<body>` tags, the font wiring, the always-on `dark` class, the default `metadata` export, and the Sonner `<Toaster theme="dark">` (pinned, since there is no `next-themes` provider).
 - **Data access lives in `src/lib/db/`** (`items.ts`, `collections.ts`, `current-user.ts`): server-side Prisma queries that return plain, UI-shaped types. Server components call these directly and pass data down; client components (e.g. the sidebar navs) only take props.

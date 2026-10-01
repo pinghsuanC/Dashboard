@@ -7,19 +7,28 @@ import { Label } from "@/components/ui/label";
 interface FormFieldProps extends React.ComponentProps<typeof Input> {
   name: string;
   label: string;
+  /** Shown at the end of the label row, e.g. a "Forgot password?" link. */
+  labelAction?: React.ReactNode;
 }
 
 /**
  * Label, input and its error, wired together for screen readers. A client
  * leaf only so it can read its error from the surrounding `ActionForm`.
  */
-export const FormField = ({ name, label, ...inputProps }: FormFieldProps) => {
+export const FormField = ({ name, label, labelAction, ...inputProps }: FormFieldProps) => {
   const error = useActionForm().state.fieldErrors?.[name];
   const errorId = `${name}-error`;
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor={name}>{label}</Label>
+      {labelAction ? (
+        <div className="flex items-center justify-between">
+          <Label htmlFor={name}>{label}</Label>
+          {labelAction}
+        </div>
+      ) : (
+        <Label htmlFor={name}>{label}</Label>
+      )}
       <Input
         id={name}
         name={name}
