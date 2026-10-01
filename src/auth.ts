@@ -7,6 +7,7 @@ import { compare } from "bcryptjs";
 import authConfig, { credentialFields } from "@/auth.config";
 import { EmailNotVerifiedError } from "@/lib/auth-errors";
 import { signInSchema } from "@/lib/auth-schemas";
+import { isEmailVerificationEnabled } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
 
 // Replaces the placeholder in `auth.config.ts`. Returning null makes Auth.js
@@ -39,7 +40,9 @@ const credentials = Credentials({
 
     // Checked after the password, so only the account owner learns the email
     // is registered but unverified.
-    if (!user.emailVerified) throw new EmailNotVerifiedError(user.email);
+    if (!user.emailVerified && isEmailVerificationEnabled()) {
+      throw new EmailNotVerifiedError(user.email);
+    }
 
     return { id: user.id, name: user.name, email: user.email, image: user.image };
   },

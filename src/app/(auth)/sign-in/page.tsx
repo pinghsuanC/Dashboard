@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firstParam, safeCallbackUrl } from "@/lib/auth-redirect";
 import { getCurrentUser } from "@/lib/db/current-user";
+import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
 export const metadata: Metadata = { title: "Sign in · DevStash" };
 
@@ -57,7 +58,9 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
         <CardDescription>Welcome back to DevStash.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        {registered ? <RegisteredToast callbackUrl={callbackUrl} /> : null}
+        {registered ? (
+          <RegisteredToast callbackUrl={callbackUrl} verifyEmail={isEmailVerificationEnabled()} />
+        ) : null}
         {verify ? (
           <p
             role={verify.ok ? "status" : "alert"}
