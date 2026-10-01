@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { registerWithCredentials } from "@/actions/auth";
 import { ActionForm } from "@/components/shared/ActionForm";
@@ -8,7 +7,7 @@ import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
-import { getCurrentUser } from "@/lib/db/current-user";
+import { redirectIfSignedIn } from "@/lib/db/current-user";
 
 export const metadata: Metadata = { title: "Register · DevStash" };
 
@@ -16,7 +15,7 @@ const RegisterPage = async ({ searchParams }: PageProps<"/register">) => {
   const callbackUrl = safeCallbackUrl(firstParam((await searchParams).callbackUrl));
 
   // DB-backed for the same reason as on /sign-in: avoids a redirect loop.
-  if (await getCurrentUser()) redirect(callbackUrl);
+  await redirectIfSignedIn(callbackUrl);
 
   return (
     <Card>

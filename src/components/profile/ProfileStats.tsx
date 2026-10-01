@@ -2,16 +2,18 @@ import { FileStack, Folder } from "lucide-react";
 
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { SidebarItemType } from "@/lib/db/items";
+import type { ItemTypeDefinition } from "@/lib/db/item-types";
+import type { ItemCounts } from "@/lib/db/items";
 
 interface ProfileStatsProps {
   items: number;
   collections: number;
-  /** Every system type, including those with no items, so zeros show. */
-  types: SidebarItemType[];
+  /** Every system type, from the session, so types with no items show 0. */
+  types: ItemTypeDefinition[];
+  itemCounts: ItemCounts["byType"];
 }
 
-export const ProfileStats = ({ items, collections, types }: ProfileStatsProps) => {
+export const ProfileStats = ({ items, collections, types, itemCounts }: ProfileStatsProps) => {
   const totals = [
     { label: "Items", value: items, icon: FileStack },
     { label: "Collections", value: collections, icon: Folder },
@@ -47,7 +49,9 @@ export const ProfileStats = ({ items, collections, types }: ProfileStatsProps) =
                 <TypeIcon type={type} className="size-4" />
                 {type.label}
               </span>
-              <span className="text-muted-foreground text-sm tabular-nums">{type.itemCount}</span>
+              <span className="text-muted-foreground text-sm tabular-nums">
+                {itemCounts[type.id] ?? 0}
+              </span>
             </li>
           ))}
         </ul>

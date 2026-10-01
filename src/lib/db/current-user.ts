@@ -3,7 +3,7 @@ import { cache } from "react";
 
 import { auth } from "@/auth";
 import type { Plan } from "@/generated/prisma/client";
-import { signInHref } from "@/lib/auth-redirect";
+import { DEFAULT_SIGN_IN_REDIRECT, signInHref } from "@/lib/auth-redirect";
 import { prisma } from "@/lib/prisma";
 
 /** The signed-in user's profile, safe to hand to client components. */
@@ -16,16 +16,21 @@ export interface CurrentUser {
   isPro: boolean;
   preferredTheme: string;
   preferredFontSize: number;
+  createdAt: Date;
+  /** Whether the user can sign in with a password. Never the hash itself. */
+  hasPassword: boolean;
 }
 
 /**
- * Loads the profile of the session user from the database. It runs on every
- * request rather than living in the JWT, so plan or preference changes show up
- * on the next load while the token is still valid. `select` keeps
- * passwordHash and the Stripe ids from ever reaching the client.
+ * Who is signed in, and their profile, in one read of the user row. It does
+ * two jobs on purpose: it is the auth check (guards, actions, auth pages) and
+ * the user session's profile source. Cached per request, so every caller in
+ * one render shares the single query.
  *
- * Returns null when there is no session, or when the token points at a user
- * that no longer exists.
+ * Checks the database, not just the JWT: a valid token whose user row is gone
+ * (e.g. deleted) returns null. `select` keeps the Stripe ids out, and the
+ * password hash is read only to become `hasPassword` (keyed off the hash, not
+ * the linked provider, so a GitHub user who later set a password counts).
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth();
@@ -42,26 +47,41 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       plan: true,
       preferredTheme: true,
       preferredFontSize: true,
+      createdAt: true,
+      passwordHash: true,
     },
   });
   if (!user) return null;
 
-  return { ...user, isPro: user.plan === "PRO" };
+  const { passwordHash, ...profile } = user;
+  return { ...profile, isPro: profile.plan === "PRO", hasPassword: passwordHash !== null };
 });
 
 /**
- * The session user's id, for scoping queries. Redirects to sign-in when there
- * is none: a layout and its page render concurrently, so a page's queries
- * can't rely on the layout's own redirect having run first.
+ * The signed-in user, or a redirect to sign-in. A layout and its page render
+ * concurrently, so a page's queries can't rely on the layout's own redirect
+ * having run first.
  */
+export const requireCurrentUser = async (): Promise<CurrentUser> => {
+  const user = await getCurrentUser();
+  if (!user) redirect(signInHref());
+  return user;
+};
+
+/** The signed-in user's id, for scoping queries and actions. */
 export const requireCurrentUserId = async (): Promise<string> => {
   const user = await requireCurrentUser();
   return user.id;
 };
 
-/** Like `requireCurrentUserId`, for pages that render the profile itself. */
-export const requireCurrentUser = async (): Promise<CurrentUser> => {
-  const user = await getCurrentUser();
-  if (!user) redirect(signInHref());
-  return user;
+/**
+ * For the sign-in, register and password pages: someone already signed in
+ * goes into the app instead, where the `(app)` layout loads their session.
+ * A token for a deleted user is not "signed in", so it stays here rather than
+ * bouncing between this page and the layout.
+ */
+export const redirectIfSignedIn = async (
+  destination: string = DEFAULT_SIGN_IN_REDIRECT,
+): Promise<void> => {
+  if (await getCurrentUser()) redirect(destination);
 };

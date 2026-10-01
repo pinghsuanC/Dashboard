@@ -13,19 +13,43 @@ interface UserRow {
   email: string;
   passwordHash: string | null;
   createdAt: Date;
+  image?: string | null;
+  plan?: "FREE" | "PRO";
+  stripeCustomerId?: string | null;
+  preferredTheme?: string;
+  preferredFontSize?: number;
 }
 interface ItemTypeRow {
   id: string;
   userId: string | null;
+  name?: string;
+  label?: string;
+  icon?: string | null;
+  color?: string;
+  isSystem?: boolean;
+  createdAt?: Date;
 }
 interface ItemRow {
   id: string;
   userId: string;
   typeId: string;
+  title?: string;
+  description?: string | null;
+  content?: string | null;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  updatedAt?: Date;
+  tags?: string[];
+  collectionIds?: string[];
 }
 interface CollectionRow {
   id: string;
   userId: string;
+  name?: string;
+  slug?: string;
+  description?: string | null;
+  isFavorite?: boolean;
+  updatedAt?: Date;
 }
 interface VerificationTokenRow {
   identifier: string;
@@ -64,10 +88,26 @@ const query = async <T>(run: () => T): Promise<T> => {
 
 type Select = Record<string, boolean>;
 
-const pick = (row: UserRow, select?: Select) =>
+// Like Prisma, a selected column the row lacks comes back as null.
+const pick = <Row extends object>(row: Row, select?: Select) =>
   select
-    ? Object.fromEntries(Object.keys(select).map((key) => [key, row[key as keyof UserRow]]))
+    ? Object.fromEntries(
+        Object.keys(select).map((key) => [key, (row as Record<string, unknown>)[key] ?? null]),
+      )
     : { ...row };
+
+type OrderBy = Record<string, "asc" | "desc">[];
+
+const compareBy = (orderBy: OrderBy) => (a: object, b: object) => {
+  for (const order of orderBy) {
+    const [key, direction] = Object.entries(order)[0];
+    const left = (a as Record<string, unknown>)[key] as string | number | Date;
+    const right = (b as Record<string, unknown>)[key] as string | number | Date;
+    if (left < right) return direction === "asc" ? -1 : 1;
+    if (left > right) return direction === "asc" ? 1 : -1;
+  }
+  return 0;
+};
 
 const findUser = (id: string) => db.users.find((user) => user.id === id);
 
@@ -108,13 +148,120 @@ export const fakePrisma = {
         return { ...user };
       }),
   },
+  itemType: {
+    findMany: ({
+      where,
+      orderBy = [],
+      select,
+    }: {
+      where: Partial<Pick<ItemTypeRow, "isSystem" | "userId">>;
+      orderBy?: OrderBy;
+      select?: Select;
+    }) =>
+      query(() =>
+        db.itemTypes
+          .filter((row) =>
+            Object.entries(where).every(([key, value]) => row[key as keyof ItemTypeRow] === value),
+          )
+          .sort(compareBy(orderBy))
+          .map((row) => pick(row, select)),
+      ),
+  },
   item: {
+    /**
+     * Returns rows in the shape the item select asks for: the type and tag
+     * relations nested as Prisma nests them. Honours `where` (userId,
+     * isPinned), `orderBy`, `take`, and top-level `select` keys, so a field
+     * the code doesn't select never comes back.
+     */
+    findMany: ({
+      where,
+      orderBy = [],
+      take,
+      select,
+    }: {
+      where: { userId: string; isPinned?: boolean };
+      orderBy?: OrderBy;
+      take?: number;
+      select: Select & { tags?: { orderBy?: unknown } };
+    }) =>
+      query(() =>
+        db.items
+          .filter(
+            (row) =>
+              row.userId === where.userId &&
+              (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned),
+          )
+          .sort(compareBy(orderBy))
+          .slice(0, take ?? Infinity)
+          .map((row) => {
+            const type = db.itemTypes.find((itemType) => itemType.id === row.typeId);
+            const tags = [...(row.tags ?? [])];
+            if (select.tags?.orderBy) tags.sort();
+            return pick(
+              {
+                ...row,
+                type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
+                tags: tags.map((name) => ({ tag: { name } })),
+              },
+              select as Select,
+            );
+          }),
+      ),
+    groupBy: ({ where }: { by: ["typeId"]; where: { userId: string } }) =>
+      query(() => {
+        const counts = new Map<string, number>();
+        for (const item of db.items) {
+          if (item.userId === where.userId) {
+            counts.set(item.typeId, (counts.get(item.typeId) ?? 0) + 1);
+          }
+        }
+        return [...counts].map(([typeId, all]) => ({ typeId, _count: { _all: all } }));
+      }),
+    count: ({ where }: { where: { userId: string; isFavorite?: boolean } }) =>
+      query(
+        () =>
+          db.items.filter(
+            (row) =>
+              row.userId === where.userId &&
+              (where.isFavorite === undefined || Boolean(row.isFavorite) === where.isFavorite),
+          ).length,
+      ),
     deleteMany: ({ where }: { where: { userId: string } }) =>
       query(() => {
         const before = db.items.length;
         db.items = db.items.filter((row) => row.userId !== where.userId);
         return { count: before - db.items.length };
       }),
+  },
+  collection: {
+    /**
+     * Membership comes from the fake items' `collectionIds`; `items` returns
+     * one join row per member with its type, as the collection select nests it.
+     */
+    findMany: ({ where, select }: { where: { userId: string }; select?: Select }) =>
+      query(() =>
+        db.collections
+          .filter((row) => row.userId === where.userId)
+          .map((row) =>
+            pick(
+              {
+                ...row,
+                items: db.items
+                  .filter((item) => item.collectionIds?.includes(row.id))
+                  .map((item) => {
+                    const type = db.itemTypes.find((itemType) => itemType.id === item.typeId);
+                    return {
+                      item: {
+                        type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
+                      },
+                    };
+                  }),
+              },
+              select,
+            ),
+          ),
+      ),
   },
   verificationToken: {
     deleteMany: ({ where }: { where: { identifier: string } }) =>

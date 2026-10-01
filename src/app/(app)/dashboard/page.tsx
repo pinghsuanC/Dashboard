@@ -1,16 +1,7 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
-import { Clock, Pin } from "lucide-react";
 
-import { CollectionCard } from "@/components/collections/CollectionCard";
-import { SectionHeader } from "@/components/dashboard/SectionHeader";
-import { StatCards } from "@/components/dashboard/StatCards";
-import { ItemRow } from "@/components/items/ItemRow";
-import {
-  getCollectionStats,
-  getRecentCollections,
-} from "@/lib/db/collections";
-import { getItemStats, getPinnedItems, getRecentItems } from "@/lib/db/items";
+import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import { getRecentItems } from "@/lib/db/items";
 
 export const metadata: Metadata = {
   title: "Dashboard | DevStash",
@@ -18,27 +9,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Server component: everything is queried here and only the rendered slices
- * reach the browser. Nothing on this page is interactive yet, so no client
- * boundary is needed.
+ * Only the recent items are queried here, on every visit (pages re-render on
+ * navigation; the layout does not). Stats, collections and pinned items come
+ * from the user session the `(app)` layout loaded.
  */
 const DashboardPage = async () => {
-  // The queries read the session cookie, which already makes this dynamic;
-  // this keeps it explicit so the page is never prerendered at build time.
-  await connection();
-
-  // Each query scopes itself to the session user; the lookup is cached, so
-  // five calls still mean one session check and one profile query.
-  const [collections, collectionStats, itemStats, pinnedItems, recentItems] =
-    await Promise.all([
-      getRecentCollections(),
-      getCollectionStats(),
-      getItemStats(),
-      getPinnedItems(),
-      getRecentItems(),
-    ]);
-
-  const stats = { ...itemStats, ...collectionStats };
+  const recentItems = await getRecentItems();
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -51,41 +27,7 @@ const DashboardPage = async () => {
         </p>
       </header>
 
-      <StatCards stats={stats} />
-
-      <section>
-        <SectionHeader title="Collections" href="/collections" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {collections.map((collection) => (
-            <CollectionCard key={collection.id} collection={collection} />
-          ))}
-        </div>
-      </section>
-
-      {pinnedItems.length > 0 && (
-        <section>
-          <SectionHeader title="Pinned" icon={Pin} size="sm" />
-          <div className="flex flex-col gap-3">
-            {pinnedItems.map((item) => (
-              <ItemRow key={item.id} item={item} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section>
-        <SectionHeader
-          title={`Recent (${recentItems.length})`}
-          icon={Clock}
-          size="sm"
-          href="/items"
-        />
-        <div className="flex flex-col gap-3">
-          {recentItems.map((item) => (
-            <ItemRow key={item.id} item={item} />
-          ))}
-        </div>
-      </section>
+      <DashboardContent recentItems={recentItems} />
     </div>
   );
 };

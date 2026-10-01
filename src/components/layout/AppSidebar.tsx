@@ -15,20 +15,12 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { getSidebarCollections } from "@/lib/db/collections";
-import { getSystemItemTypes } from "@/lib/db/items";
 
 /**
- * Server component: types and collections are queried here and only the
- * slices the nav renders cross the client boundary.
- * The user footer is a server component too, reading the cached session user.
+ * Server component for the static frame only. The type nav, collection nav
+ * and user footer read the user session themselves, so this queries nothing.
  */
-export const AppSidebar = async () => {
-  const [types, { favorites, recents }] = await Promise.all([
-    getSystemItemTypes(),
-    getSidebarCollections(),
-  ]);
-
+export const AppSidebar = () => {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -49,9 +41,9 @@ export const AppSidebar = async () => {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarTypeNav types={types} />
+        <SidebarTypeNav />
         <SidebarSeparator />
-        <SidebarCollectionNav favorites={favorites} recents={recents} />
+        <SidebarCollectionNav />
       </SidebarContent>
 
       <SidebarFooter>

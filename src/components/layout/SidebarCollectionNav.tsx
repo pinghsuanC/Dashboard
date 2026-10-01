@@ -1,10 +1,11 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { type CSSProperties, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowRight, ChevronDown, Folder, Star } from "lucide-react";
 
+import { useUserSession } from "@/components/session/UserSessionProvider";
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,19 +20,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { SidebarCollection } from "@/lib/db/collections";
 import { collectionHref } from "@/lib/routes";
+import { selectSidebarCollections } from "@/lib/session-selectors";
 
-interface SidebarCollectionNavProps {
-  favorites: SidebarCollection[];
-  recents: SidebarCollection[];
-}
-
-export const SidebarCollectionNav = ({
-  favorites,
-  recents,
-}: SidebarCollectionNavProps) => {
+/** Derived from the session, so a local collection change shows at once. */
+export const SidebarCollectionNav = () => {
   const pathname = usePathname();
+  const { collections } = useUserSession();
+  const { favorites, recents } = useMemo(
+    () => selectSidebarCollections(collections),
+    [collections],
+  );
 
   return (
     <Collapsible defaultOpen className="group/collections">

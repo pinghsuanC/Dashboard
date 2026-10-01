@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { signInWithCredentials } from "@/actions/auth";
 import { GitHubSignInButton } from "@/components/auth/GitHubSignInButton";
@@ -10,7 +9,7 @@ import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
-import { getCurrentUser } from "@/lib/db/current-user";
+import { redirectIfSignedIn } from "@/lib/db/current-user";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 
 export const metadata: Metadata = { title: "Sign in · DevStash" };
@@ -71,7 +70,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
 
   // The DB-backed check, not bare `auth()`: a valid JWT whose user row is
   // gone would bounce between here and the dashboard layout forever.
-  if (await getCurrentUser()) redirect(callbackUrl);
+  await redirectIfSignedIn(callbackUrl);
 
   const errorCode = firstParam(params.error);
   const error = errorCode ? (ERROR_MESSAGES[errorCode] ?? DEFAULT_ERROR) : null;
