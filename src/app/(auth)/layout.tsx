@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-// Shared by /sign-in and /register: the route group adds no URL segment.
+// Shared by the sign-in, register and password-reset pages: the route group
+// adds no URL segment.
 const AuthLayout = ({ children }: LayoutProps<"/">) => {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-6">

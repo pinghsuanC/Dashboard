@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { signInWithCredentials } from "@/actions/auth";
 import { GitHubSignInButton } from "@/components/auth/GitHubSignInButton";
-import { RegisteredToast } from "@/components/auth/RegisteredToast";
+import { SignInToast } from "@/components/auth/SignInToast";
 import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
@@ -37,6 +37,27 @@ const VERIFY_MESSAGES: Record<string, { text: string; ok: boolean }> = {
   },
 };
 
+// One-shot flags from the register and reset-password actions.
+const signInToast = (params: Record<string, string | string[] | undefined>) => {
+  if (firstParam(params.registered) === "1") {
+    return {
+      id: "registered",
+      title: "Account created",
+      description: isEmailVerificationEnabled()
+        ? "Check your email for a link to verify your account, then sign in."
+        : "You can sign in now.",
+    };
+  }
+  if (firstParam(params.reset) === "1") {
+    return {
+      id: "password-reset",
+      title: "Password updated",
+      description: "Sign in with your new password.",
+    };
+  }
+  return null;
+};
+
 const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
   const params = await searchParams;
   const callbackUrl = safeCallbackUrl(firstParam(params.callbackUrl));
@@ -48,7 +69,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
   const errorCode = firstParam(params.error);
   const error = errorCode ? (ERROR_MESSAGES[errorCode] ?? DEFAULT_ERROR) : null;
   const verify = VERIFY_MESSAGES[firstParam(params.verify) ?? ""];
-  const registered = firstParam(params.registered) === "1";
+  const toast = signInToast(params);
   const registerHref = `/register?${new URLSearchParams({ callbackUrl })}`;
 
   return (
@@ -58,9 +79,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
         <CardDescription>Welcome back to DevStash.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        {registered ? (
-          <RegisteredToast callbackUrl={callbackUrl} verifyEmail={isEmailVerificationEnabled()} />
-        ) : null}
+        {toast ? <SignInToast {...toast} callbackUrl={callbackUrl} /> : null}
         {verify ? (
           <p
             role={verify.ok ? "status" : "alert"}
@@ -92,6 +111,16 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
             type="password"
             autoComplete="current-password"
             required
+            labelAction={
+              // Beside the label, it's tabbed to before the password field
+              // rather than between it and Sign in.
+              <Link
+                href="/forgot-password"
+                className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            }
           />
           <FormError />
           <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>

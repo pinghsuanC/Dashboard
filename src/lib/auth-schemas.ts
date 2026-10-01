@@ -20,6 +20,11 @@ export const signInSchema = z.object({
   password: z.string().min(1).refine(fitsBcrypt),
 });
 
+// Shared by register and reset: both ask for the new password twice.
+const passwordsMatch = (data: { password: string; confirmPassword: string }) =>
+  data.password === data.confirmPassword;
+const mismatch = { message: "Passwords do not match", path: ["confirmPassword"] };
+
 export const registerSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(100),
@@ -27,7 +32,14 @@ export const registerSchema = z
     password,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+  .refine(passwordsMatch, mismatch);
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1),
+    password,
+    confirmPassword: z.string(),
+  })
+  .refine(passwordsMatch, mismatch);

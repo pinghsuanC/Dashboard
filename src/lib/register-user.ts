@@ -6,7 +6,8 @@ import type { registerSchema } from "@/lib/auth-schemas";
 import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
 
-const BCRYPT_ROUNDS = 12;
+// Shared with password reset, so both writers of `passwordHash` use one cost.
+export const BCRYPT_ROUNDS = 12;
 const EMAIL_TAKEN = "An account with this email already exists";
 
 export type RegisterResult =

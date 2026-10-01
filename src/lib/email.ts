@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-import { verificationEmail } from "@/lib/email-templates";
+import { type EmailTemplate, passwordResetEmail, verificationEmail } from "@/lib/email-templates";
 
 // Resend's shared test sender needs no domain setup, but it only delivers to
 // the address that owns the Resend account. Set EMAIL_FROM to an address on a
@@ -16,12 +16,19 @@ const resend = (): Resend => {
   return client;
 };
 
-/** Sends the link from `/api/auth/verify-email`. Throws when Resend rejects it. */
-export const sendVerificationEmail = async (to: string, link: string): Promise<void> => {
+const send = async (to: string, template: EmailTemplate): Promise<void> => {
   const { error } = await resend().emails.send({
     from: process.env.EMAIL_FROM ?? DEFAULT_FROM,
     to,
-    ...verificationEmail(link),
+    ...template,
   });
   if (error) throw new Error(`Resend: ${error.message}`);
 };
+
+/** Sends the link from `/api/auth/verify-email`. Throws when Resend rejects it. */
+export const sendVerificationEmail = (to: string, link: string): Promise<void> =>
+  send(to, verificationEmail(link));
+
+/** Sends the link to `/reset-password`. Throws when Resend rejects it. */
+export const sendPasswordResetEmail = (to: string, link: string): Promise<void> =>
+  send(to, passwordResetEmail(link));

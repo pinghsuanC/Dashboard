@@ -1,14 +1,21 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { AuthError } from "next-auth";
 import type { z } from "zod";
 
 import { signIn, signOut } from "@/auth";
 import { EmailNotVerifiedError } from "@/lib/auth-errors";
 import { safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
-import { registerSchema, signInSchema } from "@/lib/auth-schemas";
+import {
+  forgotPasswordSchema,
+  registerSchema,
+  resetPasswordSchema,
+  signInSchema,
+} from "@/lib/auth-schemas";
 import { resendVerificationLink } from "@/lib/email-verification";
+import { RESET_TOKEN_ERRORS, requestPasswordReset, resetPassword } from "@/lib/password-reset";
 import { registerPasswordUser } from "@/lib/register-user";
 import type { FormState } from "@/types/forms";
 
@@ -81,6 +88,43 @@ export const registerWithCredentials = async (
 
   // Outside any try/catch: redirect() works by throwing.
   redirect(signInHref(safeCallbackUrl(formData.get("callbackUrl")), { registered: "1" }));
+};
+
+/**
+ * Always lands on the same "check your inbox" message. The lookup and the
+ * email run in `after()`, once the response is sent, so an existing account
+ * doesn't answer slower than an unknown email.
+ */
+export const requestPasswordResetAction = async (
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> => {
+  const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
+
+  after(() => requestPasswordReset(parsed.data.email));
+  redirect("/forgot-password?sent=1");
+};
+
+/** Sets the new password, then sends the user to sign in with it. */
+export const resetPasswordAction = async (
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> => {
+  const parsed = resetPasswordSchema.safeParse({
+    token: formData.get("token"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    const fieldErrors = fieldErrorsOf(parsed.error);
+    return fieldErrors?.token ? { error: RESET_TOKEN_ERRORS.invalid } : { fieldErrors };
+  }
+
+  const result = await resetPassword(parsed.data.token, parsed.data.password);
+  if (result !== "success") return { error: RESET_TOKEN_ERRORS[result] };
+
+  redirect(signInHref(undefined, { reset: "1" }));
 };
 
 export const signInWithGitHub = async (formData: FormData) => {
