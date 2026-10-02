@@ -1,65 +1,59 @@
-import type { Prisma } from "@/generated/prisma/client";
 import { requireCurrentUserId } from "@/lib/db/current-user";
+import type { ItemRowType } from "@/lib/db/items";
 import { prisma } from "@/lib/prisma";
 
-const RECENT_COLLECTION_LIMIT = 6;
-
-/** The slice of an item type a collection card needs to draw its icons. */
-interface CollectionType {
-  id: string;
-  label: string;
-  icon: string | null;
-  color: string;
-}
-
-export interface CollectionSummary {
+/**
+ * A collection as the session holds it, with its item count and types
+ * worked out at load time: the session doesn't hold every item, so they
+ * can't be derived on the client.
+ */
+export interface SessionCollection {
   id: string;
   name: string;
   slug: string;
   description: string | null;
   isFavorite: boolean;
+  updatedAt: Date;
   itemCount: number;
   /** Every type in the collection, most-used first: `types[0]` tints the card. */
-  types: CollectionType[];
+  types: ItemRowType[];
 }
 
-export interface CollectionStats {
-  collections: number;
-  favoriteCollections: number;
-}
+/** Distinct types, most frequent first; ties keep first-seen order. */
+const rankTypesByUse = (types: ItemRowType[]): ItemRowType[] => {
+  const tally = new Map<string, { type: ItemRowType; count: number }>();
+  for (const type of types) {
+    const entry = tally.get(type.id);
+    if (entry) entry.count++;
+    else tally.set(type.id, { type, count: 1 });
+  }
+  // `sort` is stable, so equal counts stay in insertion order.
+  return [...tally.values()].sort((a, b) => b.count - a.count).map(({ type }) => type);
+};
 
 /**
- * Most recently updated collections, with item counts and types derived from
- * their items.
+ * Every collection of the signed-in user, for the user session. Collections
+ * are few next to items, so all of them load up front.
  *
- * Pulls one row per item (just its type) and tallies in JS: Prisma's `_count`
- * can't group by a relation's field, and a handful of cards makes this cheap.
- * Move to a `groupBy` or raw query if collections grow to hundreds of items.
+ * Pulls one join row per item (just its type) and tallies in JS: Prisma's
+ * `_count` can't group by a relation's field. Move to a raw `GROUP BY` if
+ * collections grow to hundreds of items.
  */
-export async function getRecentCollections(
-  limit: number = RECENT_COLLECTION_LIMIT,
-): Promise<CollectionSummary[]> {
+export const getSessionCollections = async (): Promise<SessionCollection[]> => {
   const userId = await requireCurrentUserId();
   const collections = await prisma.collection.findMany({
     where: { userId },
-    // Seeded rows share an `updatedAt` to the millisecond; name keeps the
-    // order stable between requests.
-    orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
-    take: limit,
     select: {
       id: true,
       name: true,
       slug: true,
       description: true,
       isFavorite: true,
+      updatedAt: true,
       items: {
         select: {
           item: {
-            select: {
-              type: {
-                select: { id: true, label: true, icon: true, color: true },
-              },
-            },
+            select: { type: { select: { id: true, label: true, icon: true, color: true } } },
           },
         },
       },
@@ -71,99 +65,4 @@ export async function getRecentCollections(
     itemCount: items.length,
     types: rankTypesByUse(items.map(({ item }) => item.type)),
   }));
-}
-
-/** Distinct types, most frequent first; ties keep first-seen order. */
-function rankTypesByUse(types: CollectionType[]): CollectionType[] {
-  const tally = new Map<string, { type: CollectionType; count: number }>();
-  for (const type of types) {
-    const entry = tally.get(type.id);
-    if (entry) entry.count++;
-    else tally.set(type.id, { type, count: 1 });
-  }
-  // `sort` is stable, so equal counts stay in insertion order.
-  return [...tally.values()]
-    .sort((a, b) => b.count - a.count)
-    .map(({ type }) => type);
-}
-
-const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
-
-/** The slice of a collection a sidebar row needs. */
-export interface SidebarCollection {
-  id: string;
-  name: string;
-  slug: string;
-  itemCount: number;
-  /** Colour of the most-used item type; null for an empty collection. */
-  color: string | null;
-}
-
-export interface SidebarCollections {
-  favorites: SidebarCollection[];
-  /** Non-favorites only, so no collection is listed twice. */
-  recents: SidebarCollection[];
-}
-
-/**
- * Every favorite (alphabetical) and the most recently updated non-favorites.
- * Same per-item tally as `getRecentCollections`, but only the colour survives.
- */
-export async function getSidebarCollections(
-  recentLimit: number = SIDEBAR_RECENT_COLLECTION_LIMIT,
-): Promise<SidebarCollections> {
-  const userId = await requireCurrentUserId();
-  const select = {
-    id: true,
-    name: true,
-    slug: true,
-    items: {
-      select: {
-        item: {
-          select: {
-            type: {
-              select: { id: true, label: true, icon: true, color: true },
-            },
-          },
-        },
-      },
-    },
-  } satisfies Prisma.CollectionSelect;
-
-  const [favorites, recents] = await Promise.all([
-    prisma.collection.findMany({
-      where: { userId, isFavorite: true },
-      orderBy: { name: "asc" },
-      select,
-    }),
-    prisma.collection.findMany({
-      where: { userId, isFavorite: false },
-      orderBy: [{ updatedAt: "desc" }, { name: "asc" }],
-      take: recentLimit,
-      select,
-    }),
-  ]);
-
-  const toSidebarCollection = ({
-    items,
-    ...collection
-  }: (typeof favorites)[number]): SidebarCollection => ({
-    ...collection,
-    itemCount: items.length,
-    color: rankTypesByUse(items.map(({ item }) => item.type))[0]?.color ?? null,
-  });
-
-  return {
-    favorites: favorites.map(toSidebarCollection),
-    recents: recents.map(toSidebarCollection),
-  };
-}
-
-export async function getCollectionStats(): Promise<CollectionStats> {
-  const userId = await requireCurrentUserId();
-  const [collections, favoriteCollections] = await Promise.all([
-    prisma.collection.count({ where: { userId } }),
-    prisma.collection.count({ where: { userId, isFavorite: true } }),
-  ]);
-  return { collections, favoriteCollections };
-}
+};

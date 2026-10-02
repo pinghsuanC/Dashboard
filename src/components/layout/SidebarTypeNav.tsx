@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
+import { useUserSession } from "@/components/session/UserSessionProvider";
 import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
@@ -21,24 +22,23 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
-import type { SidebarItemType } from "@/lib/db/items";
 
 /**
- * Types that need a Pro subscription. Pro is a per-user flag that will come
- * from the session; until then the badge shows for every user.
+ * Types that need a Pro subscription.
+ * KNOWN DEVIATION: the badge shows for every user, Pro included. `isPro` is
+ * now in the session (`useUserSession().user.isPro`); hiding the badge for Pro
+ * users is a visible behaviour change left for its own feature.
  */
 const PRO_TYPE_NAMES = new Set(["file", "image"]);
 
-interface SidebarTypeNavProps {
-  types: SidebarItemType[];
-}
-
 /**
- * Client component only because the active row depends on the current URL.
- * The data itself is passed down from the server component that owns it.
+ * Client component: the active row depends on the current URL, and the types
+ * and counts come from the user session, so a local count change shows with
+ * no request.
  */
-export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
+export const SidebarTypeNav = () => {
   const pathname = usePathname();
+  const { itemTypes, itemCounts } = useUserSession();
 
   return (
     <Collapsible defaultOpen className="group/types">
@@ -53,7 +53,7 @@ export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
         <CollapsibleContent>
           <SidebarGroupContent>
             <SidebarMenu>
-              {types.map((type) => {
+              {itemTypes.map((type) => {
                 const Icon = getItemTypeIcon(type.icon ?? "");
 
                 return (
@@ -89,7 +89,7 @@ export const SidebarTypeNav = ({ types }: SidebarTypeNavProps) => {
                         button reserves no room for it, so a long label (or
                         label + PRO) runs underneath. Fine for the current
                         labels; add `pr-8` to the button if custom types land. */}
-                    <SidebarMenuBadge>{type.itemCount}</SidebarMenuBadge>
+                    <SidebarMenuBadge>{itemCounts.byType[type.id] ?? 0}</SidebarMenuBadge>
                   </SidebarMenuItem>
                 );
               })}

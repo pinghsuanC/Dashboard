@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { resetPasswordAction } from "@/actions/auth";
 import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEFAULT_SIGN_IN_REDIRECT, firstParam } from "@/lib/auth-redirect";
-import { getCurrentUser } from "@/lib/db/current-user";
+import { firstParam } from "@/lib/auth-redirect";
+import { redirectIfSignedIn } from "@/lib/db/current-user";
 import { checkResetToken, RESET_TOKEN_ERRORS } from "@/lib/password-reset";
 
 export const metadata: Metadata = {
@@ -21,7 +20,7 @@ const linkClass = "text-foreground underline-offset-4 hover:underline";
 
 const ResetPasswordPage = async ({ searchParams }: PageProps<"/reset-password">) => {
   // DB-backed for the same reason as on /sign-in: avoids a redirect loop.
-  if (await getCurrentUser()) redirect(DEFAULT_SIGN_IN_REDIRECT);
+  await redirectIfSignedIn();
 
   const token = firstParam((await searchParams).token) ?? "";
   // Checked, not used up: the token is only consumed when the form submits.

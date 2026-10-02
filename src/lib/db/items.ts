@@ -2,16 +2,20 @@ import { requireCurrentUserId } from "@/lib/db/current-user";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
 
-const RECENT_ITEM_LIMIT = 10;
+export const RECENT_ITEM_LIMIT = 10;
 
 /** The slice of an item type an item row needs for its icon and accent. */
-interface ItemRowType {
+export interface ItemRowType {
   id: string;
   label: string;
   icon: string | null;
   color: string;
 }
 
+/**
+ * An item as list rows show it, without the body (content, url, file
+ * fields). The detail view loads those on demand.
+ */
 export interface ItemSummary {
   id: string;
   title: string;
@@ -21,25 +25,22 @@ export interface ItemSummary {
   updatedAt: Date;
   /** Tag names, alphabetical: the join table records no order of its own. */
   tags: string[];
+  /**
+   * Embedded rather than looked up in the session's type list: that list is
+   * the system types, and a Pro user's items can use their own types.
+   */
   type: ItemRowType;
 }
 
-export interface SidebarItemType {
-  id: string;
-  /** Slug: "snippet", "file", ... */
-  name: string;
-  label: string;
-  icon: string | null;
-  color: string;
-  /** `/items/snippets`: routes are plural, the stored type `name` is not. */
-  route: string;
-  /** The user's items of this type. */
-  itemCount: number;
-}
-
-export interface ItemStats {
-  items: number;
-  favoriteItems: number;
+/**
+ * The user's item numbers, for display without loading the items: stat
+ * cards, sidebar badges, profile usage.
+ */
+export interface ItemCounts {
+  total: number;
+  favorites: number;
+  /** Item count per type id. Types with no items are absent; read with `?? 0`. */
+  byType: Record<string, number>;
 }
 
 const itemSummarySelect = {
@@ -66,12 +67,28 @@ type ItemSummaryRow = Prisma.ItemGetPayload<{
   select: typeof itemSummarySelect;
 }>;
 
-function toItemSummary({ tags, ...item }: ItemSummaryRow): ItemSummary {
-  return { ...item, tags: tags.map(({ tag }) => tag.name) };
-}
+const toItemSummary = ({ tags, ...item }: ItemSummaryRow): ItemSummary => ({
+  ...item,
+  tags: tags.map(({ tag }) => tag.name),
+});
+
+/**
+ * Counted in the database (indexed by `[userId, typeId]` and
+ * `[userId, isFavorite]`): only numbers come back, never item rows.
+ */
+export const getItemCounts = async (): Promise<ItemCounts> => {
+  const userId = await requireCurrentUserId();
+  const [groups, favorites] = await Promise.all([
+    prisma.item.groupBy({ by: ["typeId"], where: { userId }, _count: { _all: true } }),
+    prisma.item.count({ where: { userId, isFavorite: true } }),
+  ]);
+  const byType = Object.fromEntries(groups.map((group) => [group.typeId, group._count._all]));
+  const total = groups.reduce((sum, group) => sum + group._count._all, 0);
+  return { total, favorites, byType };
+};
 
 /** Every pinned item, newest first. Unbounded: pinning is a deliberate act. */
-export async function getPinnedItems(): Promise<ItemSummary[]> {
+export const getPinnedItems = async (): Promise<ItemSummary[]> => {
   const userId = await requireCurrentUserId();
   const items = await prisma.item.findMany({
     where: { userId, isPinned: true },
@@ -79,11 +96,15 @@ export async function getPinnedItems(): Promise<ItemSummary[]> {
     select: itemSummarySelect,
   });
   return items.map(toItemSummary);
-}
+};
 
-export async function getRecentItems(
+/**
+ * Not part of the user session: the dashboard fetches it on every visit, so
+ * it is always current without local upkeep.
+ */
+export const getRecentItems = async (
   limit: number = RECENT_ITEM_LIMIT,
-): Promise<ItemSummary[]> {
+): Promise<ItemSummary[]> => {
   const userId = await requireCurrentUserId();
   const items = await prisma.item.findMany({
     where: { userId },
@@ -92,43 +113,4 @@ export async function getRecentItems(
     select: itemSummarySelect,
   });
   return items.map(toItemSummary);
-}
-
-/**
- * The built-in types with how many items the user has of each.
- * Custom (Pro) types are not listed yet.
- */
-export async function getSystemItemTypes(): Promise<SidebarItemType[]> {
-  const userId = await requireCurrentUserId();
-  const types = await prisma.itemType.findMany({
-    // userId: null too: a user-owned row flagged isSystem must not show up
-    // in every user's sidebar.
-    where: { isSystem: true, userId: null },
-    orderBy: [{ createdAt: "asc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      label: true,
-      icon: true,
-      color: true,
-      _count: { select: { items: { where: { userId } } } },
-    },
-  });
-
-  return types.map(({ name, _count, ...type }) => ({
-    ...type,
-    name,
-    // Every system type pluralizes with a plain "s" (snippet -> snippets).
-    route: `/items/${name}s`,
-    itemCount: _count.items,
-  }));
-}
-
-export async function getItemStats(): Promise<ItemStats> {
-  const userId = await requireCurrentUserId();
-  const [items, favoriteItems] = await Promise.all([
-    prisma.item.count({ where: { userId } }),
-    prisma.item.count({ where: { userId, isFavorite: true } }),
-  ]);
-  return { items, favoriteItems };
-}
+};

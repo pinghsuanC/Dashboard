@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { LogOut, Settings } from "lucide-react";
 
 import { signOutAction } from "@/actions/auth";
+import { useUserSession } from "@/components/session/UserSessionProvider";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
   SidebarMenu,
@@ -9,17 +12,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { getCurrentUser } from "@/lib/db/current-user";
 
 /**
- * Server component. `getCurrentUser()` is cached per request, so this reuses
- * the layout's lookup rather than querying again. The sidebar primitives are
- * client components; they render here as islands with server-built children.
+ * Client component reading the user session, so a local profile change (or a
+ * `resetProfile()`) shows here without a reload. Sign-out is still a server
+ * action: the form posts to it and the server clears the cookie.
  */
-export const SidebarUser = async () => {
-  const user = await getCurrentUser();
-  // The (app) layout has already redirected when there is no user.
-  if (!user) return null;
+export const SidebarUser = () => {
+  const { user } = useUserSession();
 
   // GitHub profiles may have no display name; fall back to the email.
   const displayName = user.name ?? user.email;

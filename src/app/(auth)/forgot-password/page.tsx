@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { requestPasswordResetAction } from "@/actions/auth";
 import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEFAULT_SIGN_IN_REDIRECT, firstParam } from "@/lib/auth-redirect";
-import { getCurrentUser } from "@/lib/db/current-user";
+import { firstParam } from "@/lib/auth-redirect";
+import { redirectIfSignedIn } from "@/lib/db/current-user";
 
 export const metadata: Metadata = { title: "Forgot password · DevStash" };
 
@@ -16,7 +15,7 @@ const linkClass = "text-foreground underline-offset-4 hover:underline";
 
 const ForgotPasswordPage = async ({ searchParams }: PageProps<"/forgot-password">) => {
   // DB-backed for the same reason as on /sign-in: avoids a redirect loop.
-  if (await getCurrentUser()) redirect(DEFAULT_SIGN_IN_REDIRECT);
+  await redirectIfSignedIn();
 
   // Set by the action whether or not the email has an account.
   const sent = firstParam((await searchParams).sent) === "1";

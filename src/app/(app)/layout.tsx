@@ -1,12 +1,11 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { TopBar } from "@/components/layout/TopBar";
+import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { signInHref } from "@/lib/auth-redirect";
-import { getCurrentUser } from "@/lib/db/current-user";
+import { getUserSession } from "@/lib/user-session";
 
 const AppLayout = async ({ children }: LayoutProps<"/">) => {
   // SidebarProvider persists its open state in this cookie. Reading it on the
@@ -15,25 +14,29 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
-  // The proxy already turns away requests without a valid JWT. This catches a
-  // valid token whose user row is gone (e.g. deleted from the DB). Components
-  // that need the profile call `getCurrentUser()` again; it is cached per
-  // request, so that costs no extra query.
-  if (!(await getCurrentUser())) redirect(signInHref());
+  // The one place the user session is loaded. This layout runs on a full page
+  // load (e.g. right after sign-in) and on a reset, not on navigation, and
+  // the provider keeps the session for every page below; pages read it with
+  // `useUserSession()` instead of querying. The proxy already turns away
+  // requests without a valid JWT; the session load redirects a valid token
+  // whose user row is gone (e.g. deleted from the DB).
+  const session = await getUserSession();
 
   return (
-    <TooltipProvider>
-      <SidebarProvider defaultOpen={defaultOpen}>
-        <AppSidebar />
+    <UserSessionProvider session={session}>
+      <TooltipProvider>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <AppSidebar />
 
-        <SidebarInset>
-          <TopBar />
-          {/* A plain div, not <main>: SidebarInset already renders <main>, and
-              nesting a second one is invalid HTML and a duplicate landmark. */}
-          <div className="flex-1 p-6">{children}</div>
-        </SidebarInset>
-      </SidebarProvider>
-    </TooltipProvider>
+          <SidebarInset>
+            <TopBar />
+            {/* A plain div, not <main>: SidebarInset already renders <main>, and
+                nesting a second one is invalid HTML and a duplicate landmark. */}
+            <div className="flex-1 p-6">{children}</div>
+          </SidebarInset>
+        </SidebarProvider>
+      </TooltipProvider>
+    </UserSessionProvider>
   );
 };
 
