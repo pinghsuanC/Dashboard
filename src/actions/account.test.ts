@@ -35,8 +35,11 @@ vi.mock("@/lib/db/current-user", () => ({
   requireCurrentUserId: vi.fn(),
 }));
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
-// Real bcrypt at the lowest cost; the module also pulls in Resend otherwise.
-vi.mock("@/lib/register-user", () => ({ BCRYPT_ROUNDS: 4 }));
+// Real bcrypt at the lowest cost.
+vi.mock("@/lib/constants/security", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/constants/security")>()),
+  BCRYPT_ROUNDS: 4,
+}));
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 const OLD_PASSWORD = "old-password-1";

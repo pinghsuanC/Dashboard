@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { BCRYPT_ROUNDS } from "@/lib/register-user";
+import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { authorizeCredentials } from "./authorize-credentials";

@@ -1,15 +1,11 @@
 import { hash } from "bcryptjs";
 
 import { appOrigin, hashToken, newToken } from "@/lib/auth-tokens";
+import { RESET_RESEND_COOLDOWN_MS, RESET_TOKEN_TTL_MS } from "@/lib/constants/limits";
+import { ROUTES } from "@/lib/constants/routes";
+import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
-import { BCRYPT_ROUNDS } from "@/lib/register-user";
-
-// Short: a reset link grants the account, unlike a verification link.
-const TOKEN_TTL_MS = 60 * 60 * 1000;
-// A fresh link is only issued once the last one is this old, so repeated
-// submits don't flood the inbox.
-const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
 
 /**
  * Mails a reset link if the email belongs to a password user. GitHub-only
@@ -32,8 +28,8 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
       orderBy: { expires: "desc" },
       select: { expires: true },
     });
-    const issuedAt = latest ? latest.expires.getTime() - TOKEN_TTL_MS : 0;
-    if (Date.now() - issuedAt < RESEND_COOLDOWN_MS) return;
+    const issuedAt = latest ? latest.expires.getTime() - RESET_TOKEN_TTL_MS : 0;
+    if (Date.now() - issuedAt < RESET_RESEND_COOLDOWN_MS) return;
 
     const token = newToken();
     await prisma.$transaction([
@@ -42,12 +38,12 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
         data: {
           email: user.email,
           token: hashToken(token),
-          expires: new Date(Date.now() + TOKEN_TTL_MS),
+          expires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
         },
       }),
     ]);
 
-    const link = `${await appOrigin()}/reset-password?${new URLSearchParams({ token })}`;
+    const link = `${await appOrigin()}${ROUTES.resetPassword}?${new URLSearchParams({ token })}`;
     await sendPasswordResetEmail(user.email, link);
   } catch (error) {
     console.error("Sending password reset email failed", error);
@@ -70,12 +66,6 @@ export const checkResetToken = async (token: string): Promise<ResetTokenStatus> 
 };
 
 export type ResetResult = "success" | Exclude<ResetTokenStatus, "valid">;
-
-/** One wording for a bad link, on the page and after a failed submit. */
-export const RESET_TOKEN_ERRORS: Record<Exclude<ResetTokenStatus, "valid">, string> = {
-  expired: "This reset link has expired.",
-  invalid: "This reset link is invalid or was already used.",
-};
 
 /**
  * Sets the new password and deletes every reset token for the email, so each

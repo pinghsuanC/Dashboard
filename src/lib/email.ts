@@ -5,12 +5,8 @@ import {
   type EmailTemplate,
   passwordResetEmail,
   verificationEmail,
-} from "@/lib/email-templates";
-
-// Resend's shared test sender needs no domain setup, but it only delivers to
-// the address that owns the Resend account. Set EMAIL_FROM to an address on a
-// verified domain before real users register.
-const DEFAULT_FROM = "Stashboard <onboarding@resend.dev>";
+} from "@/lib/constants/emails";
+import { DEFAULT_EMAIL_FROM } from "@/lib/constants/env";
 
 let client: Resend | undefined;
 
@@ -23,7 +19,7 @@ const resend = (): Resend => {
 
 const send = async (to: string, template: EmailTemplate): Promise<void> => {
   const { error } = await resend().emails.send({
-    from: process.env.EMAIL_FROM ?? DEFAULT_FROM,
+    from: process.env.EMAIL_FROM ?? DEFAULT_EMAIL_FROM,
     to,
     ...template,
   });

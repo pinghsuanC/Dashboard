@@ -1,8 +1,7 @@
+import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { requireCurrentUserId } from "@/lib/db/current-user";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-
-export const RECENT_ITEM_LIMIT = 10;
 
 /** The slice of an item type an item row needs for its icon and accent. */
 export interface ItemRowType {

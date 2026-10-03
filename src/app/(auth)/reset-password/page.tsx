@@ -7,11 +7,14 @@ import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firstParam } from "@/lib/auth-redirect";
+import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
+import { RESET_TOKEN_ERRORS } from "@/lib/constants/messages/auth";
+import { ROUTES } from "@/lib/constants/routes";
 import { redirectIfSignedIn } from "@/lib/db/current-user";
-import { checkResetToken, RESET_TOKEN_ERRORS } from "@/lib/password-reset";
+import { checkResetToken } from "@/lib/password-reset";
 
 export const metadata: Metadata = {
-  title: "Reset password · DevStash",
+  title: "Reset password",
   // The token is in this page's URL: never send it on as a Referer.
   referrer: "no-referrer",
 };
@@ -43,7 +46,7 @@ const ResetPasswordPage = async ({ searchParams }: PageProps<"/reset-password">)
               label="New password"
               type="password"
               autoComplete="new-password"
-              minLength={8}
+              minLength={PASSWORD_MIN_LENGTH}
               required
             />
             <FormField
@@ -58,11 +61,11 @@ const ResetPasswordPage = async ({ searchParams }: PageProps<"/reset-password">)
           </ActionForm>
         ) : null}
         <p className="text-muted-foreground text-center text-sm">
-          <Link href="/forgot-password" className={linkClass}>
+          <Link href={ROUTES.forgotPassword} className={linkClass}>
             Request a new link
           </Link>
           {" · "}
-          <Link href="/sign-in" className={linkClass}>
+          <Link href={ROUTES.signIn} className={linkClass}>
             Sign in
           </Link>
         </p>

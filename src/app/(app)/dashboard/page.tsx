@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
+import { DASHBOARD_DESCRIPTION } from "@/lib/constants/app";
 import { getRecentItems } from "@/lib/db/items";
 
 export const metadata: Metadata = {
-  title: "Dashboard | DevStash",
-  description: "Your developer knowledge hub.",
+  title: "Dashboard",
+  description: DASHBOARD_DESCRIPTION,
 };
 
 /**

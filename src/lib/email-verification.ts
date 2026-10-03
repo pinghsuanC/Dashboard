@@ -1,4 +1,7 @@
 import { appOrigin, hashToken, newToken } from "@/lib/auth-tokens";
+import { EMAIL_VERIFICATION_OFF } from "@/lib/constants/env";
+import { VERIFICATION_RESEND_COOLDOWN_MS, VERIFICATION_TOKEN_TTL_MS } from "@/lib/constants/limits";
+import { API_ROUTES } from "@/lib/constants/routes";
 import { sendVerificationEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
@@ -10,12 +13,7 @@ import { prisma } from "@/lib/prisma";
  * on blocks their next sign-in and mails them a link.
  */
 export const isEmailVerificationEnabled = (): boolean =>
-  process.env.EMAIL_VERIFICATION?.trim().toLowerCase() !== "off";
-
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
-// A fresh token is only issued once the last one is this old, so repeated
-// sign-in attempts don't flood the inbox.
-const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
+  process.env.EMAIL_VERIFICATION?.trim().toLowerCase() !== EMAIL_VERIFICATION_OFF;
 
 /**
  * Replaces any earlier token for this email and mails a new link. Call it from
@@ -29,12 +27,12 @@ export const sendVerificationLink = async (email: string): Promise<void> => {
       data: {
         identifier: email,
         token: hashToken(token),
-        expires: new Date(Date.now() + TOKEN_TTL_MS),
+        expires: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
       },
     }),
   ]);
 
-  const link = `${await appOrigin()}/api/auth/verify-email?${new URLSearchParams({ token })}`;
+  const link = `${await appOrigin()}${API_ROUTES.verifyEmail}?${new URLSearchParams({ token })}`;
   await sendVerificationEmail(email, link);
 };
 
@@ -46,8 +44,8 @@ export const resendVerificationLink = async (email: string): Promise<void> => {
       orderBy: { expires: "desc" },
       select: { expires: true },
     });
-    const issuedAt = latest ? latest.expires.getTime() - TOKEN_TTL_MS : 0;
-    if (Date.now() - issuedAt < RESEND_COOLDOWN_MS) return;
+    const issuedAt = latest ? latest.expires.getTime() - VERIFICATION_TOKEN_TTL_MS : 0;
+    if (Date.now() - issuedAt < VERIFICATION_RESEND_COOLDOWN_MS) return;
 
     await sendVerificationLink(email);
   } catch (error) {
