@@ -83,8 +83,8 @@ export const RESET_TOKEN_ERRORS: Record<Exclude<ResetTokenStatus, "valid">, stri
  * one-time check: two submits racing on one link both find the row, but only
  * one deletes it. A successful reset also verifies the email: the link was
  * mailed there, which proves the same thing a verification link does.
- * Known limitation: sessions are JWTs, so other devices stay signed in until
- * their cookie expires. Revoking them needs a session version on the user.
+ * Bumps `sessionVersion`, so every session issued before the reset, such as
+ * one stolen by whoever made the reset necessary, is signed out.
  */
 export const resetPassword = async (token: string, password: string): Promise<ResetResult> => {
   const row = await prisma.passwordResetToken.findUnique({ where: { token: hashToken(token) } });
@@ -106,7 +106,7 @@ export const resetPassword = async (token: string, password: string): Promise<Re
 
     const updated = await tx.user.updateMany({
       where: { email: row.email },
-      data: { passwordHash },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
     });
     if (updated.count === 0) return "invalid";
     await tx.user.updateMany({

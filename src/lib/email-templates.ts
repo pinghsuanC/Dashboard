@@ -24,3 +24,15 @@ export const passwordResetEmail = (link: string): EmailTemplate => ({
 <p><a href="${escapeHtml(link)}">Reset password</a></p>
 <p>The link expires in 1 hour. If you didn't ask to reset your password, you can ignore this email.</p>`,
 });
+
+/**
+ * Sent instead of a verification link when someone registers with an email
+ * that already has an account, so the register form never says it's taken.
+ */
+export const accountExistsEmail = (signInLink: string, resetLink: string): EmailTemplate => ({
+  subject: "You already have an account",
+  text: `Someone tried to create an account with this email, but you already have one.\n\nSign in: ${signInLink}\nForgot your password? ${resetLink}\n\nIf this wasn't you, you can ignore this email. Your account hasn't changed.`,
+  html: `<p>Someone tried to create an account with this email, but you already have one.</p>
+<p><a href="${escapeHtml(signInLink)}">Sign in</a> · <a href="${escapeHtml(resetLink)}">Reset your password</a></p>
+<p>If this wasn't you, you can ignore this email. Your account hasn't changed.</p>`,
+});

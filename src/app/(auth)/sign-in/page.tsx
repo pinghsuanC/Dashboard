@@ -11,41 +11,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
 import { redirectIfSignedIn } from "@/lib/db/current-user";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
+import { signInErrorMessage, verifyNotice } from "@/lib/sign-in-notices";
 
 export const metadata: Metadata = { title: "Sign in · DevStash" };
 
-// Auth.js sends its error codes here via `pages.error`.
-const ERROR_MESSAGES: Record<string, string> = {
-  OAuthAccountNotLinked:
-    "An account with this email already exists. Sign in the way you did before.",
-  AccessDenied: "Access was denied.",
-  Configuration: "Sign-in is misconfigured. Please try again later.",
-};
-const DEFAULT_ERROR = "Sign-in failed. Please try again.";
-
-// `/api/auth/verify-email` lands here with `?verify=`.
-const VERIFY_MESSAGES: Record<string, { text: string; ok: boolean }> = {
-  success: { text: "Email verified. You can sign in now.", ok: true },
-  expired: {
-    text: "That verification link expired. Sign in to get a new one.",
-    ok: false,
-  },
-  invalid: {
-    text: "That verification link is invalid or was already used. Try signing in.",
-    ok: false,
-  },
-};
-
 // One-shot flags from the register, reset-password and delete-account actions.
 const signInToast = (params: Record<string, string | string[] | undefined>) => {
+  // Also shown when the email was already taken: register never says so.
+  // With verification on, the inbox holds a verification link or a note that
+  // the account exists, and "Check your email" is true of both.
   if (firstParam(params.registered) === "1") {
-    return {
-      id: "registered",
-      title: "Account created",
-      description: isEmailVerificationEnabled()
-        ? "Check your email for a link to verify your account, then sign in."
-        : "You can sign in now.",
-    };
+    return isEmailVerificationEnabled()
+      ? {
+          id: "registered",
+          title: "Check your email",
+          description: "We sent you a link to finish signing up.",
+        }
+      : { id: "registered", title: "Account created", description: "You can sign in now." };
   }
   if (firstParam(params.reset) === "1") {
     return {
@@ -72,9 +54,8 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
   // gone would bounce between here and the dashboard layout forever.
   await redirectIfSignedIn(callbackUrl);
 
-  const errorCode = firstParam(params.error);
-  const error = errorCode ? (ERROR_MESSAGES[errorCode] ?? DEFAULT_ERROR) : null;
-  const verify = VERIFY_MESSAGES[firstParam(params.verify) ?? ""];
+  const error = signInErrorMessage(firstParam(params.error));
+  const verify = verifyNotice(firstParam(params.verify));
   const toast = signInToast(params);
   const registerHref = `/register?${new URLSearchParams({ callbackUrl })}`;
 

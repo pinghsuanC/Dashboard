@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 
-import { type EmailTemplate, passwordResetEmail, verificationEmail } from "@/lib/email-templates";
+import {
+  accountExistsEmail,
+  type EmailTemplate,
+  passwordResetEmail,
+  verificationEmail,
+} from "@/lib/email-templates";
 
 // Resend's shared test sender needs no domain setup, but it only delivers to
 // the address that owns the Resend account. Set EMAIL_FROM to an address on a
@@ -32,3 +37,10 @@ export const sendVerificationEmail = (to: string, link: string): Promise<void> =
 /** Sends the link to `/reset-password`. Throws when Resend rejects it. */
 export const sendPasswordResetEmail = (to: string, link: string): Promise<void> =>
   send(to, passwordResetEmail(link));
+
+/** Tells an existing user someone registered with their email. Throws when Resend rejects it. */
+export const sendAccountExistsEmail = (
+  to: string,
+  signInLink: string,
+  resetLink: string,
+): Promise<void> => send(to, accountExistsEmail(signInLink, resetLink));

@@ -1,22 +1,30 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 
-import { signOut } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { changePassword, deleteAccount } from "@/lib/account";
+import { signInHref } from "@/lib/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth-schemas";
-import { requireCurrentUserId } from "@/lib/db/current-user";
+import { requireCurrentUser, requireCurrentUserId } from "@/lib/db/current-user";
 import { fieldErrorsOf } from "@/lib/form-errors";
 import type { FormState } from "@/types/forms";
 
 const SOMETHING_WENT_WRONG = "Something went wrong. Please try again.";
 
-/** Back to the profile page with a one-shot flag, which shows a toast. */
+const PASSWORD_CHANGED = "/profile?password=changed";
+
+/**
+ * Back to the profile page with a one-shot flag, which shows a toast. The
+ * change signs out every session, this one included, so it signs this device
+ * back in with the new password: a fresh cookie carrying the new version.
+ */
 export const changePasswordAction = async (
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> => {
-  const userId = await requireCurrentUserId();
+  const { id: userId, email } = await requireCurrentUser();
   const parsed = changePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     password: formData.get("password"),
@@ -31,8 +39,20 @@ export const changePasswordAction = async (
   if (result === "no-password") return { error: "This account signs in with GitHub." };
   if (result === "error") return { error: SOMETHING_WENT_WRONG };
 
-  // Outside any try/catch: redirect() works by throwing.
-  redirect("/profile?password=changed");
+  try {
+    // Throws Next's redirect on success, which must propagate.
+    await signIn("credentials", {
+      email,
+      password: parsed.data.password,
+      redirectTo: PASSWORD_CHANGED,
+    });
+  } catch (error) {
+    if (!(error instanceof AuthError)) throw error;
+    // The password is saved, but `authorize` refused: in practice an account
+    // registered while EMAIL_VERIFICATION was off and still unverified. Its
+    // old session is revoked, so send it to sign in, which mails the link.
+  }
+  redirect(signInHref(PASSWORD_CHANGED));
 };
 
 /**

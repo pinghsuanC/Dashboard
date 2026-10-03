@@ -3,7 +3,6 @@ import { registerPasswordUser } from "@/lib/register-user";
 
 interface RegisterResponse {
   success: boolean;
-  data?: { id: string; email: string };
   error?: string;
 }
 
@@ -11,7 +10,9 @@ const respond = (body: RegisterResponse, status: number) => Response.json(body, 
 
 // Static segment, so it wins over the `[...nextauth]` catch-all next to it.
 // Kept for non-browser clients; the register page uses a server action that
-// shares `registerPasswordUser` with this route.
+// shares `registerPasswordUser` with this route. A taken email gets the same
+// 202 as a new one (no 409, no user id), so the route can't be used to check
+// whether an email has an account.
 export const POST = async (request: Request) => {
   const body: unknown = await request.json().catch(() => null);
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
@@ -27,5 +28,5 @@ export const POST = async (request: Request) => {
   if (!result.success) {
     return respond({ success: false, error: result.error }, result.status);
   }
-  return respond({ success: true, data: result.data }, 201);
+  return respond({ success: true }, 202);
 };

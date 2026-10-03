@@ -1,15 +1,29 @@
 export const DEFAULT_SIGN_IN_REDIRECT = "/dashboard";
 
+// Any origin works as long as it's ours; only whether it changes matters.
+const PROBE_ORIGIN = "http://callback.invalid";
+
 /**
- * Keeps post-sign-in redirects on this site. Only same-origin paths pass;
- * `//evil.com` and `/\evil.com` are protocol-relative to browsers, so they are
- * rejected too. Auth.js's own redirect callback also checks the origin — this
- * just fails closed before the value reaches it.
+ * Keeps post-sign-in redirects on this site. Only same-origin paths pass.
+ * Comparing prefixes isn't enough, because browsers clean a URL up before
+ * following it: they read `\` as `/` and drop tabs and newlines, so
+ * `/\evil.com` and `/<tab>/evil.com` both become the protocol-relative
+ * `//evil.com`. So the value is resolved with the WHATWG URL parser, which
+ * browsers implement and which does the same cleanup, and must stay on our
+ * origin. Auth.js's redirect callback checks the origin too, but
+ * `redirectIfSignedIn` hands the value straight to Next's `redirect()`.
  */
 export const safeCallbackUrl = (value: unknown): string => {
   if (typeof value !== "string" || !value.startsWith("/")) return DEFAULT_SIGN_IN_REDIRECT;
-  if (value.startsWith("//") || value.startsWith("/\\")) return DEFAULT_SIGN_IN_REDIRECT;
-  return value;
+  try {
+    const url = new URL(value, PROBE_ORIGIN);
+    if (url.origin !== PROBE_ORIGIN) return DEFAULT_SIGN_IN_REDIRECT;
+    // The parsed form, not the input: the redirect goes where the check looked.
+    return url.pathname + url.search + url.hash;
+  } catch {
+    // Unparseable, e.g. `//` (an empty host).
+    return DEFAULT_SIGN_IN_REDIRECT;
+  }
 };
 
 /** A search param's first value: Next gives an array when a key repeats. */

@@ -18,6 +18,9 @@ interface UserRow {
   stripeCustomerId?: string | null;
   preferredTheme?: string;
   preferredFontSize?: number;
+  emailVerified?: Date | null;
+  /** Prisma's default is 0; rows that leave it out read back as 0. */
+  sessionVersion?: number;
 }
 interface ItemTypeRow {
   id: string;
@@ -58,6 +61,7 @@ interface VerificationTokenRow {
 interface PasswordResetTokenRow {
   email: string;
   token: string;
+  expires?: Date;
 }
 
 export const db = {
@@ -111,12 +115,65 @@ const compareBy = (orderBy: OrderBy) => (a: object, b: object) => {
 
 const findUser = (id: string) => db.users.find((user) => user.id === id);
 
+// Column defaults the schema fills in, so a row read back looks like Postgres's.
+const withDefaults = (user: UserRow): UserRow => ({ sessionVersion: 0, ...user });
+
+type UserData = { [K in keyof UserRow]?: UserRow[K] | { increment: number } };
+
+// Writes `data` into the row, applying `{ increment }` the way Prisma does.
+const applyUserData = (user: UserRow, data: UserData) => {
+  const row = user as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== null && typeof value === "object" && "increment" in value) {
+      const current = (withDefaults(user) as unknown as Record<string, number>)[key] ?? 0;
+      row[key] = current + value.increment;
+    } else {
+      row[key] = value;
+    }
+  }
+};
+
+// The interactive form gets the fake itself as `tx`. Unlike Prisma, neither
+// form rolls back, so failure tests use `db.down` rather than a mid-transaction error.
+const transaction = (
+  operations: Promise<unknown>[] | ((tx: unknown) => Promise<unknown>),
+): Promise<unknown> =>
+  typeof operations === "function" ? operations(fakePrisma) : Promise.all(operations);
+
 export const fakePrisma = {
   user: {
     findUnique: ({ where, select }: { where: { id: string }; select?: Select }) =>
       query(() => {
         const user = findUser(where.id);
-        return user ? pick(user, select) : null;
+        return user ? pick(withDefaults(user), select) : null;
+      }),
+    // Only the case-insensitive email lookup that register and sign-in use.
+    findFirst: ({
+      where,
+      select,
+    }: {
+      where: { email: { equals: string; mode: "insensitive" } };
+      select?: Select;
+    }) =>
+      query(() => {
+        const email = where.email.equals.toLowerCase();
+        const user = db.users.find((row) => row.email.toLowerCase() === email);
+        return user ? pick(withDefaults(user), select) : null;
+      }),
+    // Like the unique index on email: case-sensitive.
+    create: ({ data, select }: { data: Omit<UserRow, "id" | "createdAt">; select?: Select }) =>
+      query(() => {
+        if (db.users.some((row) => row.email === data.email)) {
+          throw new Error("Unique constraint failed on the fields: (`email`)");
+        }
+        const user: UserRow = {
+          id: `user-${db.users.length + 1}`,
+          createdAt: new Date(),
+          emailVerified: null,
+          ...data,
+        };
+        db.users.push(user);
+        return pick(withDefaults(user), select);
       }),
     findUniqueOrThrow: ({ where, select }: { where: { id: string }; select?: Select }) =>
       query(() => {
@@ -124,12 +181,29 @@ export const fakePrisma = {
         if (!user) throw new Error("No User found");
         return pick(user, select);
       }),
-    update: ({ where, data }: { where: { id: string }; data: Partial<UserRow> }) =>
+    update: ({ where, data }: { where: { id: string }; data: UserData }) =>
       query(() => {
         const user = findUser(where.id);
         if (!user) throw new Error("Record to update not found");
-        Object.assign(user, data);
-        return { ...user };
+        applyUserData(user, data);
+        return withDefaults(user);
+      }),
+    // `where` matches on email, and on `emailVerified: null` when given.
+    updateMany: ({
+      where,
+      data,
+    }: {
+      where: { email: string; emailVerified?: null };
+      data: UserData;
+    }) =>
+      query(() => {
+        const matches = db.users.filter(
+          (row) =>
+            row.email === where.email &&
+            (where.emailVerified === undefined || (row.emailVerified ?? null) === null),
+        );
+        for (const user of matches) applyUserData(user, data);
+        return { count: matches.length };
       }),
     delete: ({ where }: { where: { id: string } }) =>
       query(() => {
@@ -274,16 +348,20 @@ export const fakePrisma = {
       }),
   },
   passwordResetToken: {
-    deleteMany: ({ where }: { where: { email: string } }) =>
+    findUnique: ({ where }: { where: { token: string } }) =>
+      query(() => {
+        const row = db.passwordResetTokens.find((token) => token.token === where.token);
+        return row ? { ...row } : null;
+      }),
+    // By email or by token, whichever `where` names.
+    deleteMany: ({ where }: { where: { email: string } | { token: string } }) =>
       query(() => {
         const before = db.passwordResetTokens.length;
-        db.passwordResetTokens = db.passwordResetTokens.filter(
-          (row) => row.email !== where.email,
+        db.passwordResetTokens = db.passwordResetTokens.filter((row) =>
+          "email" in where ? row.email !== where.email : row.token !== where.token,
         );
         return { count: before - db.passwordResetTokens.length };
       }),
   },
-  // The array form, in order. Unlike Prisma it doesn't roll back, so failure
-  // tests use `db.down` rather than a mid-transaction error.
-  $transaction: (operations: Promise<unknown>[]) => Promise.all(operations),
+  $transaction: transaction,
 };
