@@ -92,6 +92,7 @@ Example v4 configuration:
 ## Testing
 
 - Vitest for unit tests (server actions and utilities only, not components)
+- Tests come first: write them from the requirements and watch them fail before implementing (workflow in `ai-interaction.md`)
 - Test files live next to source files: `feature.test.ts`
 - Run tests: `npm run test` (single run) or `npm run test:watch` (watch mode)
 - Use `vi.mock()` for external dependencies (Prisma, Resend, etc.)
