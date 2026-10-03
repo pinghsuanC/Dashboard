@@ -3,7 +3,6 @@
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
 <!-- Next part of auth: local/prod callback switching (via env settings). -->
-<!-- Later: `sessionVersion` on User so a password change or reset signs out other devices (JWT sessions can't be revoked today). -->
 <!-- Later: Next.js 16.3.5 -> 16.3.8 for the next/og advisory (task chip raised). -->
 
 ---
