@@ -26,7 +26,7 @@ npm run test:watch   # vitest in watch mode
 
 Tests are **Vitest 4** (`vitest.config.ts`), for server actions and utilities only, not components. Test files sit next to their source as `*.test.ts`. Vitest is pinned to `^4`: v5 needs `@types/node` 22+, and this project is on 20.
 
-- Write tests from the feature's requirements, not from the code, and prove each can fail: break the behaviour it covers and check that it goes red.
+- **Tests come before the code.** Write them from the feature's requirements, not from the code, run them and see each fail on its assertion, then implement until they pass. Once green, break the behaviour each covers and check that it goes red. Full workflow: `context/ai-interaction.md`.
 - Database code is tested against `src/test/fake-prisma.ts`, an in-memory stand-in that keeps the cascade and `ON DELETE RESTRICT` rules, so tests assert what is stored rather than which calls were made. Mock `@/lib/prisma` with it; extend it when new code needs more of Prisma.
 - The run's `TZ` is set far from UTC in `vitest.config.ts` so date code that follows the machine zone fails.
 
