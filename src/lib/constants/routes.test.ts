@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { collectionHref, itemTypeHref, ROUTES } from "./routes";
+import { collectionHref, itemTypeHref, itemTypeNameFromSegment, ROUTES } from "./routes";
 
 // Linked from the app before their pages exist. Remove an entry when its page lands.
 const NOT_BUILT_YET = new Set<string>([ROUTES.settings, ROUTES.collections, ROUTES.items]);
@@ -57,5 +57,16 @@ describe("route builders", () => {
 
   it("R5: collection routes are the slug under /collections", () => {
     expect(collectionHref("react-patterns")).toBe("/collections/react-patterns");
+  });
+
+  it("R6: an item type URL segment reads back as the type name it was built from", () => {
+    const segment = itemTypeHref("snippet").split("/").pop()!;
+
+    expect(itemTypeNameFromSegment(segment)).toBe("snippet");
+  });
+
+  it("R7: a segment that is not a plural type route reads as no type", () => {
+    expect(itemTypeNameFromSegment("snippet")).toBeNull();
+    expect(itemTypeNameFromSegment("s")).toBeNull();
   });
 });

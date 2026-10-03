@@ -240,12 +240,25 @@ export const fakePrisma = {
           .sort(compareBy(orderBy))
           .map((row) => pick(row, select)),
       ),
+    findFirst: ({
+      where,
+      select,
+    }: {
+      where: Partial<Pick<ItemTypeRow, "name" | "isSystem" | "userId">>;
+      select?: Select;
+    }) =>
+      query(() => {
+        const row = db.itemTypes.find((type) =>
+          Object.entries(where).every(([key, value]) => type[key as keyof ItemTypeRow] === value),
+        );
+        return row ? pick(row, select) : null;
+      }),
   },
   item: {
     /**
      * Returns rows in the shape the item select asks for: the type and tag
      * relations nested as Prisma nests them. Honours `where` (userId,
-     * isPinned), `orderBy`, `take`, and top-level `select` keys, so a field
+     * isPinned, typeId), `orderBy`, `take`, and top-level `select` keys, so a field
      * the code doesn't select never comes back.
      */
     findMany: ({
@@ -254,7 +267,7 @@ export const fakePrisma = {
       take,
       select,
     }: {
-      where: { userId: string; isPinned?: boolean };
+      where: { userId: string; isPinned?: boolean; typeId?: string };
       orderBy?: OrderBy;
       take?: number;
       select: Select & { tags?: { orderBy?: unknown } };
@@ -264,7 +277,8 @@ export const fakePrisma = {
           .filter(
             (row) =>
               row.userId === where.userId &&
-              (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned),
+              (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned) &&
+              (where.typeId === undefined || row.typeId === where.typeId),
           )
           .sort(compareBy(orderBy))
           .slice(0, take ?? Infinity)

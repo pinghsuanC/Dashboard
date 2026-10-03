@@ -29,3 +29,4 @@
 - **2026-10-01** — User session: profile, item counts, pinned items and collections loaded once in the `(app)` layout with local setters and `resetProfile()`; recent items fetched per visit.
 - **2026-10-03** — Rate limiting: Upstash sliding-window limits on sign-in, register, forgot/reset password and verification resend; fails open; toast in forms, 429 with `Retry-After` from the API. Unknown-email sign-in now costs a bcrypt compare.
 - **2026-10-03** — Constants: user-facing strings and tunable config moved to `src/lib/constants/`; brand is Stashboard with one `Page | Stashboard` title format; email and page expiry text derived from the link lifetimes.
+- **2026-10-03** — Items list view: `/items/[type]` grid of one type's items with type-colored cards, streamed behind a skeleton; mobile drawer closes on navigate.
