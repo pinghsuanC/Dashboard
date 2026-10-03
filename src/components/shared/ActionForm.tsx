@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, startTransition, useActionState, useContext } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect } from "react";
+import { toast } from "sonner";
 
 import type { FormAction, FormState } from "@/types/forms";
 
@@ -29,9 +30,17 @@ interface ActionFormProps {
  * form `action`, because React resets uncontrolled fields after a form
  * action — a failed sign-in would wipe the email. Before hydration the plain
  * `action` attribute still submits, so the form works without JS.
+ *
+ * A `toast` in the result shows as an error toast. The effect runs once per
+ * result, since each submit returns a new state object; the fixed id keeps
+ * Strict Mode's double run to one toast.
  */
 export const ActionForm = ({ action, className, children }: ActionFormProps) => {
   const [state, formAction, pending] = useActionState(action, {});
+
+  useEffect(() => {
+    if (state.toast) toast.error(state.toast, { id: "action-form-toast" });
+  }, [state]);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -4,6 +4,8 @@ export interface FormState {
   error?: string;
   /** One message per field name. */
   fieldErrors?: Record<string, string | undefined>;
+  /** Shown as an error toast instead of inline, e.g. a rate-limit wait. */
+  toast?: string;
 }
 
 export type FormAction = (state: FormState, formData: FormData) => Promise<FormState>;

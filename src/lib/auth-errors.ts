@@ -14,3 +14,17 @@ export class EmailNotVerifiedError extends CredentialsSignin {
     super();
   }
 }
+
+/**
+ * Thrown by `authorize` when the caller is over the sign-in limit. Like
+ * `EmailNotVerifiedError`, the server action gets this instance back and turns
+ * `reset` into a "try again in X minutes" message; a direct POST to the
+ * callback lands on the sign-in page with `code=rate_limited`.
+ */
+export class RateLimitedError extends CredentialsSignin {
+  code = "rate_limited";
+
+  constructor(readonly reset: number) {
+    super();
+  }
+}

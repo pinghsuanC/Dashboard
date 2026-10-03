@@ -1,11 +1,12 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { EmailNotVerifiedError } from "@/lib/auth-errors";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
 import { safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
 import {
   forgotPasswordSchema,
@@ -16,13 +17,24 @@ import {
 import { resendVerificationLink } from "@/lib/email-verification";
 import { fieldErrorsOf } from "@/lib/form-errors";
 import { RESET_TOKEN_ERRORS, requestPasswordReset, resetPassword } from "@/lib/password-reset";
+import { checkRateLimit, rateLimitMessage, type RateLimitPolicy } from "@/lib/rate-limit";
 import { registerPasswordUser } from "@/lib/register-user";
 import type { FormState } from "@/types/forms";
 
 /**
+ * Counts one attempt by this caller's IP; over the limit, the form state that
+ * toasts the wait. Runs after validation, so a typo doesn't use up a try.
+ */
+const rateLimited = async (policy: RateLimitPolicy): Promise<FormState | null> => {
+  const limit = await checkRateLimit(policy, await headers());
+  return limit.success ? null : { toast: rateLimitMessage(limit.reset) };
+};
+
+/**
  * Credentials sign-in. On success `signIn` throws Next's redirect, which must
  * propagate — only AuthError is caught and turned into a message. Wrong
- * password and unknown email share one message on purpose.
+ * password and unknown email share one message on purpose. The sign-in limit
+ * is checked in `authorize`, which throws `RateLimitedError` back to here.
  */
 export const signInWithCredentials = async (
   _prev: FormState,
@@ -40,8 +52,13 @@ export const signInWithCredentials = async (
       redirectTo: safeCallbackUrl(formData.get("callbackUrl")),
     });
   } catch (error) {
+    if (error instanceof RateLimitedError) {
+      return { toast: rateLimitMessage(error.reset) };
+    }
     if (error instanceof EmailNotVerifiedError) {
-      await resendVerificationLink(error.email);
+      // Over the resend limit, the email is skipped but the answer stays the same.
+      const resend = await checkRateLimit("resendVerification", await headers(), error.email);
+      if (resend.success) await resendVerificationLink(error.email);
       return { error: "Verify your email before signing in. Check your inbox for the link." };
     }
     if (error instanceof AuthError) {
@@ -74,6 +91,9 @@ export const registerWithCredentials = async (
   });
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
 
+  const limited = await rateLimited("register");
+  if (limited) return limited;
+
   const result = await registerPasswordUser(parsed.data);
   if (!result.success) return { error: result.error };
 
@@ -93,6 +113,10 @@ export const requestPasswordResetAction = async (
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
 
+  // Keyed by IP only, so being limited says nothing about the email.
+  const limited = await rateLimited("forgotPassword");
+  if (limited) return limited;
+
   after(() => requestPasswordReset(parsed.data.email));
   redirect("/forgot-password?sent=1");
 };
@@ -111,6 +135,9 @@ export const resetPasswordAction = async (
     const fieldErrors = fieldErrorsOf(parsed.error);
     return fieldErrors?.token ? { error: RESET_TOKEN_ERRORS.invalid } : { fieldErrors };
   }
+
+  const limited = await rateLimited("resetPassword");
+  if (limited) return limited;
 
   const result = await resetPassword(parsed.data.token, parsed.data.password);
   if (result !== "success") return { error: RESET_TOKEN_ERRORS[result] };

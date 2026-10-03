@@ -1,26 +1,39 @@
 import { compare } from "bcryptjs";
 
-import { EmailNotVerifiedError } from "@/lib/auth-errors";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
 import { signInSchema } from "@/lib/auth-schemas";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+// A bcrypt hash at the app's cost (`BCRYPT_ROUNDS`) that no password matches.
+// Compared against when there's no password to check, so an unknown email
+// takes as long as a wrong password.
+const DUMMY_HASH = "$2b$12$01sbLIzR8yh5gvtJNJk6HOPIs9YrKtU6F334NaCFfwkYbVt.2d2r.";
 
 /**
  * The Credentials provider's `authorize`, in its own module so it can be
  * tested without building NextAuth. Returning null makes Auth.js answer with
  * a generic CredentialsSignin error, so a wrong password and an unknown email
- * look the same to the caller. Known issue: an unknown email skips bcrypt and
- * returns faster, so response time still shows whether an email is
- * registered. Register no longer does; fixing this needs a compare against a
- * dummy hash (auth audit M4, scheduled with rate limiting).
+ * look the same to the caller. An unknown email still runs bcrypt (against
+ * a dummy hash), so response time doesn't tell them apart either.
+ *
+ * Rate limited per IP + email before anything else, so it also covers a
+ * direct POST to `/api/auth/callback/credentials` that skips the server
+ * action. Auth.js passes the request; from a server action it carries that
+ * request's headers. Over the limit it throws for any email, registered or
+ * not.
  *
  * The returned `sessionVersion` is what the `jwt` callback stamps into the
  * token. Leave it out and every token gets 0, which stops matching the user
  * row after their first password change.
  */
-export const authorizeCredentials = async (input: unknown) => {
+export const authorizeCredentials = async (input: unknown, request?: Request) => {
   const parsed = signInSchema.safeParse(input);
   if (!parsed.success) return null;
+
+  const limit = await checkRateLimit("signIn", request?.headers ?? new Headers(), parsed.data.email);
+  if (!limit.success) throw new RateLimitedError(limit.reset);
 
   // Case-insensitive: GitHub-created rows keep the provider's casing.
   const user = await prisma.user.findFirst({
@@ -35,10 +48,8 @@ export const authorizeCredentials = async (input: unknown) => {
       sessionVersion: true,
     },
   });
-  if (!user?.passwordHash) return null;
-
-  const valid = await compare(parsed.data.password, user.passwordHash);
-  if (!valid) return null;
+  const valid = await compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
+  if (!valid || !user?.passwordHash) return null;
 
   // Checked after the password, so only the account owner learns the email
   // is registered but unverified.
