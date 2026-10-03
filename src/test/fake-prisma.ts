@@ -57,6 +57,7 @@ interface CollectionRow {
 interface VerificationTokenRow {
   identifier: string;
   token: string;
+  expires?: Date;
 }
 interface PasswordResetTokenRow {
   email: string;
@@ -352,11 +353,42 @@ export const fakePrisma = {
       ),
   },
   verificationToken: {
-    deleteMany: ({ where }: { where: { identifier: string } }) =>
+    findUnique: ({ where }: { where: { token: string } }) =>
+      query(() => {
+        const row = db.verificationTokens.find((token) => token.token === where.token);
+        return row ? { ...row } : null;
+      }),
+    // Newest by `expires` when ordered that way, as the resend cooldown asks.
+    findFirst: ({
+      where,
+      orderBy,
+      select,
+    }: {
+      where: { identifier: string };
+      orderBy?: Record<string, "asc" | "desc">;
+      select?: Select;
+    }) =>
+      query(() => {
+        const row = db.verificationTokens
+          .filter((token) => token.identifier === where.identifier)
+          .sort(compareBy(orderBy ? [orderBy] : []))[0];
+        return row ? pick(row, select) : null;
+      }),
+    // Like the unique index on token.
+    create: ({ data }: { data: Required<VerificationTokenRow> }) =>
+      query(() => {
+        if (db.verificationTokens.some((row) => row.token === data.token)) {
+          throw new Error("Unique constraint failed on the fields: (`token`)");
+        }
+        db.verificationTokens.push({ ...data });
+        return { ...data };
+      }),
+    // By identifier or by token, whichever `where` names.
+    deleteMany: ({ where }: { where: { identifier: string } | { token: string } }) =>
       query(() => {
         const before = db.verificationTokens.length;
-        db.verificationTokens = db.verificationTokens.filter(
-          (row) => row.identifier !== where.identifier,
+        db.verificationTokens = db.verificationTokens.filter((row) =>
+          "identifier" in where ? row.identifier !== where.identifier : row.token !== where.token,
         );
         return { count: before - db.verificationTokens.length };
       }),
