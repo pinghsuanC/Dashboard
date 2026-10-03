@@ -1,14 +1,14 @@
 import { createHash, randomBytes } from "node:crypto";
 import { headers } from "next/headers";
 
+import { HOST_PATTERN, LOCAL_HOST_PATTERN, TOKEN_BYTES } from "@/lib/constants/security";
+
 /** The raw token that goes in the emailed link. Never stored. */
-export const newToken = () => randomBytes(32).toString("base64url");
+export const newToken = () => randomBytes(TOKEN_BYTES).toString("base64url");
 
 // Only the hash is stored: a leaked row can't be replayed as a link.
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
-// hostname[:port] only, so a forged header can't smuggle a path or markup.
-const HOST_PATTERN = /^[a-z0-9.-]+(:\d+)?$/i;
 
 /**
  * Where emailed links point. AUTH_URL wins when set; otherwise the request's
@@ -21,6 +21,6 @@ export const appOrigin = async (): Promise<string> => {
   const h = await headers();
   const host = h.get("host") ?? "";
   if (!HOST_PATTERN.test(host)) throw new Error(`Refusing to build a link for host: ${host}`);
-  const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host);
+  const isLocal = LOCAL_HOST_PATTERN.test(host);
   return `${isLocal ? "http" : "https"}://${host}`;
 };

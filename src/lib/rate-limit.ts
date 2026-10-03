@@ -1,18 +1,17 @@
 import "server-only";
 
-import { Ratelimit, type Duration } from "@upstash/ratelimit";
+import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-/** One sliding-window policy per auth flow. */
-export const RATE_LIMITS = {
-  signIn: { limit: 5, window: "15 m" },
-  register: { limit: 3, window: "1 h" },
-  forgotPassword: { limit: 3, window: "1 h" },
-  resetPassword: { limit: 5, window: "15 m" },
-  resendVerification: { limit: 3, window: "15 m" },
-} as const satisfies Record<string, { limit: number; window: Duration }>;
-
-export type RateLimitPolicy = keyof typeof RATE_LIMITS;
+import { tooManyAttempts } from "@/lib/constants/messages/auth";
+import {
+  RATE_LIMIT_KEY_NAMESPACE,
+  RATE_LIMIT_TIMEOUT_MS,
+  RATE_LIMITS,
+  type RateLimitPolicy,
+  UNKNOWN_CLIENT_IP,
+} from "@/lib/constants/rate-limits";
+import { MINUTE_MS, SECOND_MS } from "@/lib/constants/time";
 
 export interface RateLimitResult {
   success: boolean;
@@ -26,13 +25,9 @@ export interface RateLimitResult {
   reset: number;
 }
 
-// How long a check may wait on Upstash before the request goes through
-// anyway. Ratelimit answers `success: true` when it times out.
-const TIMEOUT_MS = 1500;
-
 // Keys are per environment, so dev and prod can't share buckets even if they
 // ever point at the same database.
-const KEY_PREFIX = `devstash:${process.env.VERCEL_ENV ?? process.env.NODE_ENV}:ratelimit`;
+const KEY_PREFIX = `${RATE_LIMIT_KEY_NAMESPACE}:${process.env.VERCEL_ENV ?? process.env.NODE_ENV}:ratelimit`;
 
 // Built lazily, on the first check, so a missing env var only switches
 // limiting off instead of throwing at import (`Redis.fromEnv()` would).
@@ -58,7 +53,7 @@ const getLimiters = () => {
         redis,
         limiter: Ratelimit.slidingWindow(limit, window),
         prefix: `${KEY_PREFIX}:${policy}`,
-        timeout: TIMEOUT_MS,
+        timeout: RATE_LIMIT_TIMEOUT_MS,
       }),
     ]),
   );
@@ -73,7 +68,7 @@ const getLimiters = () => {
 export const clientIp = (headers: Headers): string =>
   headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
   headers.get("x-real-ip")?.trim() ||
-  "unknown";
+  UNKNOWN_CLIENT_IP;
 
 /**
  * Counts one attempt against `policy`, keyed by the caller's IP plus the
@@ -104,12 +99,11 @@ export const checkRateLimit = async (
 
 /** Seconds until `reset`, for a `Retry-After` header. At least 1. */
 export const retryAfterSeconds = (reset: number, now = Date.now()): number =>
-  Math.max(1, Math.ceil((reset - now) / 1000));
+  Math.max(1, Math.ceil((reset - now) / SECOND_MS));
 
 /** "Too many attempts. Please try again in X minutes." Rounds up, at least 1. */
 export const rateLimitMessage = (reset: number, now = Date.now()): string => {
-  const minutes = Math.max(1, Math.ceil((reset - now) / 60_000));
-  return `Too many attempts. Please try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+  return tooManyAttempts(Math.max(1, Math.ceil((reset - now) / MINUTE_MS)));
 };
 
 /** Forgets the built limiters, so tests can change the env between cases. */

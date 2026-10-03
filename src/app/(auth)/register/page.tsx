@@ -7,9 +7,10 @@ import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
 import { redirectIfSignedIn } from "@/lib/db/current-user";
 
-export const metadata: Metadata = { title: "Register · DevStash" };
+export const metadata: Metadata = { title: "Register" };
 
 const RegisterPage = async ({ searchParams }: PageProps<"/register">) => {
   const callbackUrl = safeCallbackUrl(firstParam((await searchParams).callbackUrl));
@@ -35,7 +36,7 @@ const RegisterPage = async ({ searchParams }: PageProps<"/register">) => {
             label="Password"
             type="password"
             autoComplete="new-password"
-            minLength={8}
+            minLength={PASSWORD_MIN_LENGTH}
             required
           />
           <FormField

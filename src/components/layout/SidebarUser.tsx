@@ -12,6 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { ROUTES } from "@/lib/constants/routes";
 
 /**
  * Client component reading the user session, so a local profile change (or a
@@ -28,7 +29,7 @@ export const SidebarUser = () => {
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" tooltip={displayName} asChild>
-          <Link href="/profile">
+          <Link href={ROUTES.profile}>
             <UserAvatar name={user.name} email={user.email} image={user.image} />
             <div className="grid flex-1 text-left leading-tight">
               <span className="truncate text-sm font-medium">
@@ -48,7 +49,7 @@ export const SidebarUser = () => {
           asChild
           className="text-sidebar-foreground/60 size-7 top-1/2! -translate-y-1/2"
         >
-          <Link href="/settings" aria-label="Settings">
+          <Link href={ROUTES.settings} aria-label="Settings">
             <Settings />
           </Link>
         </SidebarMenuAction>

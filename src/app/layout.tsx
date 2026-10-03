@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { APP_DESCRIPTION, APP_TITLE } from "@/lib/constants/app";
+import { HTML_LANG } from "@/lib/constants/locale";
+import { APP_THEME } from "@/lib/constants/ui";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,21 +17,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DevStash",
-  description: "A unified hub for developer knowledge and resources.",
+  // Pages set only their own name; the template adds the brand.
+  title: APP_TITLE,
+  description: APP_DESCRIPTION,
 };
 
 const RootLayout = ({ children }: LayoutProps<"/">) => {
   return (
     <html
-      lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang={HTML_LANG}
+      className={`${APP_THEME} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         {children}
-        {/* Theme pinned to match the always-on `dark` class: without a
-            next-themes provider the Toaster would fall back to "system". */}
-        <Toaster theme="dark" richColors />
+        {/* Same theme as the class on <html>: see APP_THEME. */}
+        <Toaster theme={APP_THEME} richColors />
       </body>
     </html>
   );

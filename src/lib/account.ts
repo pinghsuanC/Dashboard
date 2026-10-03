@@ -1,7 +1,7 @@
 import { compare, hash } from "bcryptjs";
 
 import { prisma } from "@/lib/prisma";
-import { BCRYPT_ROUNDS } from "@/lib/register-user";
+import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 
 export type ChangePasswordResult = "success" | "wrong-password" | "no-password" | "error";
 

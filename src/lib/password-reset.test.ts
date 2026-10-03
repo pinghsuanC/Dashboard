@@ -8,8 +8,11 @@ import { resetPassword } from "./password-reset";
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendPasswordResetEmail: vi.fn() }));
-// Real bcrypt at the lowest cost; the module also pulls in Resend otherwise.
-vi.mock("@/lib/register-user", () => ({ BCRYPT_ROUNDS: 4 }));
+// Real bcrypt at the lowest cost.
+vi.mock("@/lib/constants/security", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/constants/security")>()),
+  BCRYPT_ROUNDS: 4,
+}));
 
 const LINK_TOKEN = "raw-link-token";
 const hour = 60 * 60 * 1000;

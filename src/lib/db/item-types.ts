@@ -1,3 +1,4 @@
+import { itemTypeHref } from "@/lib/constants/routes";
 import { prisma } from "@/lib/prisma";
 
 /** A built-in item type as every screen shows it. The same for every user. */
@@ -25,6 +26,5 @@ export const getSystemItemTypeDefinitions = async (): Promise<ItemTypeDefinition
     select: { id: true, name: true, label: true, icon: true, color: true },
   });
 
-  // Every system type pluralizes with a plain "s" (snippet -> snippets).
-  return types.map((type) => ({ ...type, route: `/items/${type.name}s` }));
+  return types.map((type) => ({ ...type, route: itemTypeHref(type.name) }));
 };

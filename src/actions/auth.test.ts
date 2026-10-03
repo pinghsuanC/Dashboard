@@ -5,7 +5,8 @@ import { signIn } from "@/auth";
 import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
 import { resendVerificationLink } from "@/lib/email-verification";
 import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
-import { checkRateLimit, type RateLimitPolicy } from "@/lib/rate-limit";
+import type { RateLimitPolicy } from "@/lib/constants/rate-limits";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { registerPasswordUser } from "@/lib/register-user";
 
 import {
@@ -35,7 +36,6 @@ vi.mock("next/server", () => ({ after: (run: () => unknown) => run() }));
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/email-verification", () => ({ resendVerificationLink: vi.fn() }));
 vi.mock("@/lib/password-reset", () => ({
-  RESET_TOKEN_ERRORS: { invalid: "invalid", expired: "expired" },
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
 }));

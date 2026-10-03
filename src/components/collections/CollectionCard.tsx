@@ -4,7 +4,7 @@ import { Star } from "lucide-react";
 
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { collectionHref } from "@/lib/routes";
+import { collectionHref } from "@/lib/constants/routes";
 import type { CollectionSummary } from "@/lib/session-selectors";
 
 interface CollectionCardProps {

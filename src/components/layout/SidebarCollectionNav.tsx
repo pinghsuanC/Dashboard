@@ -20,7 +20,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { collectionHref } from "@/lib/routes";
+import { collectionHref, ROUTES } from "@/lib/constants/routes";
 import { selectSidebarCollections } from "@/lib/session-selectors";
 
 /** Derived from the session, so a local collection change shows at once. */
@@ -113,11 +113,11 @@ export const SidebarCollectionNav = () => {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === "/collections"}
+                  isActive={pathname === ROUTES.collections}
                   tooltip="View all collections"
                   className="text-sidebar-foreground/70"
                 >
-                  <Link href="/collections">
+                  <Link href={ROUTES.collections}>
                     <ArrowRight />
                     <span>View all collections</span>
                   </Link>

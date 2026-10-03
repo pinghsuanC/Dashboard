@@ -17,6 +17,8 @@ export const proxy = auth((req) => {
   return NextResponse.redirect(new URL(signInHref(callbackUrl), req.nextUrl.origin));
 });
 
+// Literal on purpose: Next reads `matcher` statically and ignores variables.
+// Keep it in step with the protected pages in `ROUTES` (lib/constants/routes.ts).
 export const config = {
   matcher: ["/dashboard/:path*", "/profile/:path*"],
 };

@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AVATAR_INITIALS_MAX } from "@/lib/constants/ui";
 import { cn } from "@/lib/utils";
 
 interface UserAvatarProps {
@@ -15,7 +16,7 @@ const initials = (name: string | null, email: string) => {
   const letters = (name ?? "")
     .trim()
     .split(/\s+/)
-    .slice(0, 2)
+    .slice(0, AVATAR_INITIALS_MAX)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
   return letters || email[0]?.toUpperCase() || "?";

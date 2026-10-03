@@ -1,3 +1,4 @@
+import { RECENT_COLLECTION_LIMIT, SIDEBAR_RECENT_COLLECTION_LIMIT } from "@/lib/constants/limits";
 import type { SessionCollection } from "@/lib/db/collections";
 import type { ItemCounts, ItemSummary } from "@/lib/db/items";
 
@@ -7,9 +8,6 @@ import type { ItemCounts, ItemSummary } from "@/lib/db/items";
  * the next render with no request. They re-apply the orderings and limits the
  * loaders use, so a list stays right after a local insert or update.
  */
-
-export const RECENT_COLLECTION_LIMIT = 6;
-export const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
 
 export interface ItemStats {
   items: number;

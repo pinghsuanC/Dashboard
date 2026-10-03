@@ -4,12 +4,12 @@ import type { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import type { registerSchema } from "@/lib/auth-schemas";
 import { appOrigin } from "@/lib/auth-tokens";
+import { ROUTES } from "@/lib/constants/routes";
+import { AUTH_MESSAGES } from "@/lib/constants/messages/auth";
+import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 import { sendAccountExistsEmail } from "@/lib/email";
 import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
-
-// Shared with password reset, so both writers of `passwordHash` use one cost.
-export const BCRYPT_ROUNDS = 12;
 
 /**
  * The same for a new email and a taken one, so registering can't be used to
@@ -28,7 +28,7 @@ export type RegisterResult = { success: true } | { success: false; error: string
 const notifyExistingAccount = async (email: string): Promise<void> => {
   if (!isEmailVerificationEnabled()) return;
   const origin = await appOrigin();
-  await sendAccountExistsEmail(email, `${origin}/sign-in`, `${origin}/forgot-password`);
+  await sendAccountExistsEmail(email, `${origin}${ROUTES.signIn}`, `${origin}${ROUTES.forgotPassword}`);
 };
 
 /**
@@ -78,6 +78,6 @@ export const registerPasswordUser = async ({
       return { success: true };
     }
     console.error("Registration failed", error);
-    return { success: false, error: "Registration failed", status: 500 };
+    return { success: false, error: AUTH_MESSAGES.registrationFailed, status: 500 };
   }
 };

@@ -6,10 +6,13 @@ import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam } from "@/lib/auth-redirect";
+import { hasFlag } from "@/lib/auth-redirect";
+import { RESET_TOKEN_TTL_MS } from "@/lib/constants/limits";
+import { FLAGS, ROUTES } from "@/lib/constants/routes";
+import { formatDuration } from "@/lib/format";
 import { redirectIfSignedIn } from "@/lib/db/current-user";
 
-export const metadata: Metadata = { title: "Forgot password · DevStash" };
+export const metadata: Metadata = { title: "Forgot password" };
 
 const linkClass = "text-foreground underline-offset-4 hover:underline";
 
@@ -18,7 +21,7 @@ const ForgotPasswordPage = async ({ searchParams }: PageProps<"/forgot-password"
   await redirectIfSignedIn();
 
   // Set by the action whether or not the email has an account.
-  const sent = firstParam((await searchParams).sent) === "1";
+  const sent = hasFlag(await searchParams, FLAGS.sent);
 
   return (
     <Card>
@@ -26,7 +29,7 @@ const ForgotPasswordPage = async ({ searchParams }: PageProps<"/forgot-password"
         <CardTitle>Forgot password</CardTitle>
         <CardDescription>
           {sent
-            ? "If an account with a password exists for that email, we sent a link to reset it. The link expires in 1 hour."
+            ? `If an account with a password exists for that email, we sent a link to reset it. The link expires in ${formatDuration(RESET_TOKEN_TTL_MS)}.`
             : "Enter your email and we'll send you a link to reset your password."}
         </CardDescription>
       </CardHeader>
@@ -34,7 +37,7 @@ const ForgotPasswordPage = async ({ searchParams }: PageProps<"/forgot-password"
         {sent ? (
           <p className="text-muted-foreground text-sm">
             No email?{" "}
-            <Link href="/forgot-password" className={linkClass}>
+            <Link href={ROUTES.forgotPassword} className={linkClass}>
               Try again
             </Link>{" "}
             in a couple of minutes.
@@ -48,7 +51,7 @@ const ForgotPasswordPage = async ({ searchParams }: PageProps<"/forgot-password"
         )}
         <p className="text-muted-foreground text-center text-sm">
           Remembered it?{" "}
-          <Link href="/sign-in" className={linkClass}>
+          <Link href={ROUTES.signIn} className={linkClass}>
             Sign in
           </Link>
         </p>

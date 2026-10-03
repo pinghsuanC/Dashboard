@@ -2,6 +2,7 @@ import { changePasswordAction } from "@/actions/account";
 import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
+import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
 
 /**
  * Server component: `ActionForm` is the only client boundary. The page only
@@ -22,7 +23,7 @@ export const ChangePasswordForm = () => {
         label="New password"
         type="password"
         autoComplete="new-password"
-        minLength={8}
+        minLength={PASSWORD_MIN_LENGTH}
         required
       />
       <FormField

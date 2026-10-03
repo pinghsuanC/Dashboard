@@ -7,13 +7,14 @@ import { signIn, signOut } from "@/auth";
 import { changePassword, deleteAccount } from "@/lib/account";
 import { signInHref } from "@/lib/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth-schemas";
+import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
+import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import { FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
 import { requireCurrentUser, requireCurrentUserId } from "@/lib/db/current-user";
 import { fieldErrorsOf } from "@/lib/form-errors";
 import type { FormState } from "@/types/forms";
 
-const SOMETHING_WENT_WRONG = "Something went wrong. Please try again.";
-
-const PASSWORD_CHANGED = "/profile?password=changed";
+const PASSWORD_CHANGED = withFlag(ROUTES.profile, FLAGS.passwordChanged);
 
 /**
  * Back to the profile page with a one-shot flag, which shows a toast. The
@@ -34,9 +35,9 @@ export const changePasswordAction = async (
 
   const result = await changePassword(userId, parsed.data.currentPassword, parsed.data.password);
   if (result === "wrong-password") {
-    return { fieldErrors: { currentPassword: "Current password is incorrect" } };
+    return { fieldErrors: { currentPassword: ACCOUNT_MESSAGES.currentPasswordIncorrect } };
   }
-  if (result === "no-password") return { error: "This account signs in with GitHub." };
+  if (result === "no-password") return { error: ACCOUNT_MESSAGES.githubOnlyAccount };
   if (result === "error") return { error: SOMETHING_WENT_WRONG };
 
   try {
@@ -64,6 +65,6 @@ export const deleteAccountAction = async (): Promise<FormState> => {
   const userId = await requireCurrentUserId();
   if (!(await deleteAccount(userId))) return { error: SOMETHING_WENT_WRONG };
 
-  await signOut({ redirectTo: "/sign-in?deleted=1" });
+  await signOut({ redirectTo: withFlag(ROUTES.signIn, FLAGS.deleted) });
   return {};
 };

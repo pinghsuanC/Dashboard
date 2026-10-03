@@ -1,4 +1,5 @@
 import { registerSchema } from "@/lib/auth-schemas";
+import { INVALID_REQUEST_BODY } from "@/lib/constants/messages/common";
 import { checkRateLimit, rateLimitMessage, retryAfterSeconds } from "@/lib/rate-limit";
 import { registerPasswordUser } from "@/lib/register-user";
 
@@ -19,7 +20,7 @@ const respond = (body: RegisterResponse, status: number, headers?: HeadersInit) 
 export const POST = async (request: Request) => {
   const body: unknown = await request.json().catch(() => null);
   if (body === null || typeof body !== "object" || Array.isArray(body)) {
-    return respond({ success: false, error: "Invalid request body" }, 400);
+    return respond({ success: false, error: INVALID_REQUEST_BODY }, 400);
   }
 
   const parsed = registerSchema.safeParse(body);

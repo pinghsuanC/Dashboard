@@ -21,15 +21,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 
-/**
- * Types that need a Pro subscription.
- * KNOWN DEVIATION: the badge shows for every user, Pro included. `isPro` is
- * now in the session (`useUserSession().user.isPro`); hiding the badge for Pro
- * users is a visible behaviour change left for its own feature.
- */
-const PRO_TYPE_NAMES = new Set(["file", "image"]);
+// KNOWN DEVIATION: the PRO badge shows for every user, Pro included. `isPro`
+// is in the session (`useUserSession().user.isPro`); hiding the badge for Pro
+// users is a visible behaviour change left for its own feature.
 
 /**
  * Client component: the active row depends on the current URL, and the types

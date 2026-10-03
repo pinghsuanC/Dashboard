@@ -1,7 +1,5 @@
-export const DEFAULT_SIGN_IN_REDIRECT = "/dashboard";
-
-// Any origin works as long as it's ours; only whether it changes matters.
-const PROBE_ORIGIN = "http://callback.invalid";
+import { DEFAULT_SIGN_IN_REDIRECT, type Flag, ROUTES } from "@/lib/constants/routes";
+import { PROBE_ORIGIN } from "@/lib/constants/security";
 
 /**
  * Keeps post-sign-in redirects on this site. Only same-origin paths pass.
@@ -30,8 +28,14 @@ export const safeCallbackUrl = (value: unknown): string => {
 export const firstParam = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value;
 
+/** Whether a page's search params carry a one-shot flag from `FLAGS`. */
+export const hasFlag = (
+  params: Record<string, string | string[] | undefined>,
+  flag: Flag,
+): boolean => firstParam(params[flag.param]) === flag.value;
+
 /** `/sign-in?callbackUrl=…`, for redirects that send a user to sign in. */
 export const signInHref = (
   callbackUrl: string = DEFAULT_SIGN_IN_REDIRECT,
   extra: Record<string, string> = {},
-): string => `/sign-in?${new URLSearchParams({ callbackUrl, ...extra })}`;
+): string => `${ROUTES.signIn}?${new URLSearchParams({ callbackUrl, ...extra })}`;

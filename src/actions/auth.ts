@@ -14,10 +14,14 @@ import {
   resetPasswordSchema,
   signInSchema,
 } from "@/lib/auth-schemas";
+import { AUTH_MESSAGES, RESET_TOKEN_ERRORS } from "@/lib/constants/messages/auth";
+import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import type { RateLimitPolicy } from "@/lib/constants/rate-limits";
+import { FLAGS, flagParams, ROUTES, withFlag } from "@/lib/constants/routes";
 import { resendVerificationLink } from "@/lib/email-verification";
 import { fieldErrorsOf } from "@/lib/form-errors";
-import { RESET_TOKEN_ERRORS, requestPasswordReset, resetPassword } from "@/lib/password-reset";
-import { checkRateLimit, rateLimitMessage, type RateLimitPolicy } from "@/lib/rate-limit";
+import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
+import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
 import { registerPasswordUser } from "@/lib/register-user";
 import type { FormState } from "@/types/forms";
 
@@ -44,7 +48,7 @@ export const signInWithCredentials = async (
     email: formData.get("email"),
     password: formData.get("password"),
   });
-  if (!parsed.success) return { error: "Invalid email or password" };
+  if (!parsed.success) return { error: AUTH_MESSAGES.invalidCredentials };
 
   try {
     await signIn("credentials", {
@@ -59,14 +63,12 @@ export const signInWithCredentials = async (
       // Over the resend limit, the email is skipped but the answer stays the same.
       const resend = await checkRateLimit("resendVerification", await headers(), error.email);
       if (resend.success) await resendVerificationLink(error.email);
-      return { error: "Verify your email before signing in. Check your inbox for the link." };
+      return { error: AUTH_MESSAGES.verifyEmailFirst };
     }
     if (error instanceof AuthError) {
       return {
         error:
-          error.type === "CredentialsSignin"
-            ? "Invalid email or password"
-            : "Something went wrong. Please try again.",
+          error.type === "CredentialsSignin" ? AUTH_MESSAGES.invalidCredentials : SOMETHING_WENT_WRONG,
       };
     }
     throw error;
@@ -98,7 +100,7 @@ export const registerWithCredentials = async (
   if (!result.success) return { error: result.error };
 
   // Outside any try/catch: redirect() works by throwing.
-  redirect(signInHref(safeCallbackUrl(formData.get("callbackUrl")), { registered: "1" }));
+  redirect(signInHref(safeCallbackUrl(formData.get("callbackUrl")), flagParams(FLAGS.registered)));
 };
 
 /**
@@ -118,7 +120,7 @@ export const requestPasswordResetAction = async (
   if (limited) return limited;
 
   after(() => requestPasswordReset(parsed.data.email));
-  redirect("/forgot-password?sent=1");
+  redirect(withFlag(ROUTES.forgotPassword, FLAGS.sent));
 };
 
 /** Sets the new password, then sends the user to sign in with it. */
@@ -142,7 +144,7 @@ export const resetPasswordAction = async (
   const result = await resetPassword(parsed.data.token, parsed.data.password);
   if (result !== "success") return { error: RESET_TOKEN_ERRORS[result] };
 
-  redirect(signInHref(undefined, { reset: "1" }));
+  redirect(signInHref(undefined, flagParams(FLAGS.reset)));
 };
 
 export const signInWithGitHub = async (formData: FormData) => {
@@ -150,5 +152,5 @@ export const signInWithGitHub = async (formData: FormData) => {
 };
 
 export const signOutAction = async () => {
-  await signOut({ redirectTo: "/sign-in" });
+  await signOut({ redirectTo: ROUTES.signIn });
 };

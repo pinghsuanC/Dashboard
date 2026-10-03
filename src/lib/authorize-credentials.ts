@@ -1,15 +1,11 @@
 import { compare } from "bcryptjs";
 
 import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
+import { DUMMY_HASH } from "@/lib/constants/security";
 import { signInSchema } from "@/lib/auth-schemas";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
-
-// A bcrypt hash at the app's cost (`BCRYPT_ROUNDS`) that no password matches.
-// Compared against when there's no password to check, so an unknown email
-// takes as long as a wrong password.
-const DUMMY_HASH = "$2b$12$01sbLIzR8yh5gvtJNJk6HOPIs9YrKtU6F334NaCFfwkYbVt.2d2r.";
 
 /**
  * The Credentials provider's `authorize`, in its own module so it can be

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { SIGN_IN_ERROR_DEFAULT } from "@/lib/constants/messages/auth";
+
 import { signInErrorMessage, verifyNotice } from "./sign-in-notices";
 
 // Every own and inherited name a plain object answers to.
@@ -16,7 +18,7 @@ describe("sign-in error from ?error=", () => {
   });
 
   it.each(PROTOTYPE_NAMES)("R2: %s gets the generic message as a string, not an object member", (code) => {
-    expect(signInErrorMessage(code)).toBe("Sign-in failed. Please try again.");
+    expect(signInErrorMessage(code)).toBe(SIGN_IN_ERROR_DEFAULT);
   });
 });
 

@@ -8,41 +8,25 @@ import { FlagToast } from "@/components/shared/FlagToast";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { firstParam, hasFlag, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { APP_NAME } from "@/lib/constants/app";
+import { SIGN_IN_TOASTS } from "@/lib/constants/messages/auth";
+import { FLAGS, ROUTES } from "@/lib/constants/routes";
 import { redirectIfSignedIn } from "@/lib/db/current-user";
 import { isEmailVerificationEnabled } from "@/lib/email-verification";
 import { signInErrorMessage, verifyNotice } from "@/lib/sign-in-notices";
 
-export const metadata: Metadata = { title: "Sign in · DevStash" };
+export const metadata: Metadata = { title: "Sign in" };
 
 // One-shot flags from the register, reset-password and delete-account actions.
 const signInToast = (params: Record<string, string | string[] | undefined>) => {
-  // Also shown when the email was already taken: register never says so.
-  // With verification on, the inbox holds a verification link or a note that
-  // the account exists, and "Check your email" is true of both.
-  if (firstParam(params.registered) === "1") {
+  if (hasFlag(params, FLAGS.registered)) {
     return isEmailVerificationEnabled()
-      ? {
-          id: "registered",
-          title: "Check your email",
-          description: "We sent you a link to finish signing up.",
-        }
-      : { id: "registered", title: "Account created", description: "You can sign in now." };
+      ? SIGN_IN_TOASTS.registeredCheckEmail
+      : SIGN_IN_TOASTS.registeredNoVerification;
   }
-  if (firstParam(params.reset) === "1") {
-    return {
-      id: "password-reset",
-      title: "Password updated",
-      description: "Sign in with your new password.",
-    };
-  }
-  if (firstParam(params.deleted) === "1") {
-    return {
-      id: "account-deleted",
-      title: "Account deleted",
-      description: "Your account and everything in it are gone.",
-    };
-  }
+  if (hasFlag(params, FLAGS.reset)) return SIGN_IN_TOASTS.passwordReset;
+  if (hasFlag(params, FLAGS.deleted)) return SIGN_IN_TOASTS.accountDeleted;
   return null;
 };
 
@@ -57,13 +41,13 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
   const error = signInErrorMessage(firstParam(params.error));
   const verify = verifyNotice(firstParam(params.verify));
   const toast = signInToast(params);
-  const registerHref = `/register?${new URLSearchParams({ callbackUrl })}`;
+  const registerHref = `${ROUTES.register}?${new URLSearchParams({ callbackUrl })}`;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
-        <CardDescription>Welcome back to DevStash.</CardDescription>
+        <CardDescription>Welcome back to {APP_NAME}.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
         {toast ? <FlagToast {...toast} href={signInHref(callbackUrl)} /> : null}
@@ -102,7 +86,7 @@ const SignInPage = async ({ searchParams }: PageProps<"/sign-in">) => {
               // Beside the label, it's tabbed to before the password field
               // rather than between it and Sign in.
               <Link
-                href="/forgot-password"
+                href={ROUTES.forgotPassword}
                 className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
               >
                 Forgot password?

@@ -3,7 +3,8 @@ import { cache } from "react";
 
 import { auth } from "@/auth";
 import type { Plan } from "@/generated/prisma/client";
-import { DEFAULT_SIGN_IN_REDIRECT, signInHref } from "@/lib/auth-redirect";
+import { signInHref } from "@/lib/auth-redirect";
+import { DEFAULT_SIGN_IN_REDIRECT } from "@/lib/constants/routes";
 import { prisma } from "@/lib/prisma";
 
 /** The signed-in user's profile, safe to hand to client components. */

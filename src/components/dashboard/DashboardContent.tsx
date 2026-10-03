@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { ItemRow } from "@/components/items/ItemRow";
 import { useUserSession } from "@/components/session/UserSessionProvider";
+import { ROUTES } from "@/lib/constants/routes";
 import type { ItemSummary } from "@/lib/db/items";
 import {
   selectCollectionStats,
@@ -43,7 +44,7 @@ export const DashboardContent = ({ recentItems }: DashboardContentProps) => {
       <StatCards stats={stats} />
 
       <section>
-        <SectionHeader title="Collections" href="/collections" />
+        <SectionHeader title="Collections" href={ROUTES.collections} />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {recentCollections.map((collection) => (
             <CollectionCard key={collection.id} collection={collection} />
@@ -67,7 +68,7 @@ export const DashboardContent = ({ recentItems }: DashboardContentProps) => {
           title={`Recent (${recentItems.length})`}
           icon={Clock}
           size="sm"
-          href="/items"
+          href={ROUTES.items}
         />
         <div className="flex flex-col gap-3">
           {recentItems.map((item) => (
