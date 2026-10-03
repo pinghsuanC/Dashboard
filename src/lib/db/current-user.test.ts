@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
     throw new RedirectError(url);
   },
 }));
-// The JWT: only the user id.
+// The JWT: the user id, plus the session version stamped at sign-in.
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
@@ -167,5 +167,43 @@ describe("auth pages for someone already signed in (A3)", () => {
     withToken("ghost");
 
     expect(await redirectPathOf(() => redirectIfSignedIn())).toBeNull();
+  });
+});
+
+describe("sessions revoked by a password change or reset (M1)", () => {
+  const withVersion = (sessionVersion: number | undefined) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- auth() is overloaded; the session shape is all that matters
+    vi.mocked(auth as any).mockResolvedValue({ user: { id: "ada" }, sessionVersion });
+
+  beforeEach(() => {
+    db.users[0].sessionVersion = 2;
+  });
+
+  it("signs in a session issued at the user's current version", async () => {
+    withVersion(2);
+
+    expect((await getCurrentUser())?.id).toBe("ada");
+  });
+
+  it("signs out a session issued before the last change or reset", async () => {
+    withVersion(1);
+
+    expect(await getCurrentUser()).toBeNull();
+    expect(await redirectPathOf(requireCurrentUserId)).toBe("/sign-in");
+  });
+
+  it("lets a cookie from before versions existed through until the first bump", async () => {
+    withVersion(undefined);
+    db.users[0].sessionVersion = 0;
+    expect((await getCurrentUser())?.id).toBe("ada");
+
+    db.users[0].sessionVersion = 1;
+    expect(await getCurrentUser()).toBeNull();
+  });
+
+  it("keeps the version out of the profile handed to the page", async () => {
+    withVersion(2);
+
+    expect(await getCurrentUser()).not.toHaveProperty("sessionVersion");
   });
 });

@@ -1,8 +1,10 @@
 import { compare, hash } from "bcryptjs";
+import { CredentialsSignin } from "next-auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { signOut } from "@/auth";
-import { requireCurrentUserId } from "@/lib/db/current-user";
+import { signIn, signOut } from "@/auth";
+import { signInHref } from "@/lib/auth-redirect";
+import { requireCurrentUser, requireCurrentUserId } from "@/lib/db/current-user";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { changePasswordAction, deleteAccountAction } from "./account";
@@ -19,12 +21,19 @@ vi.mock("next/navigation", () => ({
     throw new RedirectError(url);
   },
 }));
+// Both redirect on success, as Auth.js does from a server action.
 vi.mock("@/auth", () => ({
+  signIn: vi.fn(async (_provider: string, { redirectTo }: { redirectTo: string }) => {
+    throw new RedirectError(redirectTo);
+  }),
   signOut: vi.fn(async ({ redirectTo }: { redirectTo: string }) => {
     throw new RedirectError(redirectTo);
   }),
 }));
-vi.mock("@/lib/db/current-user", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/lib/db/current-user", () => ({
+  requireCurrentUser: vi.fn(),
+  requireCurrentUserId: vi.fn(),
+}));
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Real bcrypt at the lowest cost; the module also pulls in Resend otherwise.
 vi.mock("@/lib/register-user", () => ({ BCRYPT_ROUNDS: 4 }));
@@ -33,7 +42,27 @@ vi.spyOn(console, "error").mockImplementation(() => {});
 const OLD_PASSWORD = "old-password-1";
 const NEW_PASSWORD = "new-password-2";
 
-const signedInAs = (userId: string) => vi.mocked(requireCurrentUserId).mockResolvedValue(userId);
+const signedInAs = (userId: string) => {
+  vi.mocked(requireCurrentUserId).mockResolvedValue(userId);
+  const user = db.users.find((row) => row.id === userId)!;
+  vi.mocked(requireCurrentUser).mockResolvedValue({
+    ...user,
+    image: null,
+    plan: "FREE",
+    isPro: false,
+    preferredTheme: "dark",
+    preferredFontSize: 14,
+    hasPassword: user.passwordHash !== null,
+  });
+};
+
+const signedOut = () => {
+  const toSignIn = async (): Promise<never> => {
+    throw new RedirectError("/sign-in");
+  };
+  vi.mocked(requireCurrentUserId).mockImplementation(toSignIn);
+  vi.mocked(requireCurrentUser).mockImplementation(toSignIn);
+};
 
 const addUser = async (id: string, password: string | null) => {
   const user = {
@@ -72,10 +101,13 @@ const redirectOf = async (run: () => Promise<unknown>) => {
 };
 
 const storedHash = (id: string) => db.users.find((user) => user.id === id)?.passwordHash;
+const storedVersion = (id: string) => db.users.find((user) => user.id === id)?.sessionVersion ?? 0;
 
 beforeEach(() => {
   resetDb();
   vi.mocked(requireCurrentUserId).mockReset();
+  vi.mocked(requireCurrentUser).mockReset();
+  vi.mocked(signIn).mockClear();
   vi.mocked(signOut).mockClear();
 });
 
@@ -128,9 +160,7 @@ describe("change password", () => {
   });
 
   it("R5: sends a signed-out caller to sign-in and changes nothing", async () => {
-    vi.mocked(requireCurrentUserId).mockImplementation(async () => {
-      throw new RedirectError("/sign-in");
-    });
+    signedOut();
     const before = storedHash("ada");
 
     const url = await redirectOf(() => changePasswordAction({}, passwordForm()));
@@ -145,6 +175,49 @@ describe("change password", () => {
     const state = await changePasswordAction({}, passwordForm());
 
     expect(state.error).toMatch(/something went wrong/i);
+  });
+
+  it("R8: signs out every existing session by bumping the stored session version", async () => {
+    await redirectOf(() => changePasswordAction({}, passwordForm()));
+
+    expect(storedVersion("ada")).toBe(1);
+  });
+
+  it("R8: a wrong current password signs nobody out", async () => {
+    await changePasswordAction({}, passwordForm({ currentPassword: "not-it-123" }));
+
+    expect(storedVersion("ada")).toBe(0);
+  });
+
+  it("R8: keeps this device signed in by signing in again with the new password", async () => {
+    await redirectOf(() => changePasswordAction({}, passwordForm()));
+
+    expect(signIn).toHaveBeenCalledWith("credentials", {
+      email: "ada@example.test",
+      password: NEW_PASSWORD,
+      redirectTo: "/profile?password=changed",
+    });
+  });
+
+  it("R8: when signing back in is refused, sends the user to sign in and back to the profile", async () => {
+    vi.mocked(signIn).mockRejectedValueOnce(new CredentialsSignin());
+
+    const url = await redirectOf(() => changePasswordAction({}, passwordForm()));
+
+    expect(url).toBe(signInHref("/profile?password=changed"));
+    expect(await compare(NEW_PASSWORD, storedHash("ada")!)).toBe(true);
+  });
+
+  it("R9: cancels the user's outstanding reset links, and no one else's", async () => {
+    await addUser("bob", OLD_PASSWORD);
+    db.passwordResetTokens.push(
+      { email: "ada@example.test", token: "r-ada" },
+      { email: "bob@example.test", token: "r-bob" },
+    );
+
+    await redirectOf(() => changePasswordAction({}, passwordForm()));
+
+    expect(db.passwordResetTokens.map((token) => token.token)).toEqual(["r-bob"]);
   });
 });
 
@@ -209,9 +282,7 @@ describe("delete account", () => {
   });
 
   it("R5: sends a signed-out caller to sign-in and deletes nothing", async () => {
-    vi.mocked(requireCurrentUserId).mockImplementation(async () => {
-      throw new RedirectError("/sign-in");
-    });
+    signedOut();
 
     const url = await redirectOf(() => deleteAccountAction());
 

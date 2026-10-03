@@ -23,11 +23,21 @@ export default {
   // Errors (e.g. OAuthAccountNotLinked) land on the sign-in page as `?error=`.
   pages: { signIn: "/sign-in", error: "/sign-in" },
   callbacks: {
+    // `user` is only present at sign-in: `authorize`'s return, or the
+    // adapter's User row for GitHub. The version is stamped then and never
+    // changed after. In particular an `update()` call (trigger "update") must
+    // not refresh it: anyone holding a revoked cookie could call that.
+    jwt: ({ token, user }) => {
+      if (user) token.sessionVersion = user.sessionVersion ?? 0;
+      return token;
+    },
     // With the JWT strategy the token only carries identity: `sub` is the
-    // adapter's User.id. The profile itself is read from the DB per request
-    // by `getCurrentUser()`, so it never goes stale inside the cookie.
+    // adapter's User.id, plus the session version. The profile itself is read
+    // from the DB per request by `getCurrentUser()`, so it never goes stale
+    // inside the cookie. Tokens issued before versions existed count as 0.
     session: ({ session, token }) => {
       if (token.sub) session.user.id = token.sub;
+      session.sessionVersion = token.sessionVersion ?? 0;
       return session;
     },
   },

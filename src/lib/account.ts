@@ -10,7 +10,10 @@ export type ChangePasswordResult = "success" | "wrong-password" | "no-password" 
  * password (GitHub-only) gets "no-password": the profile page hides the form
  * for them, but the action can still be called directly. Never throws: a
  * database failure is "error", so the form can say so instead of crashing.
- * Known limitation: sessions are JWTs, so other devices stay signed in.
+ *
+ * Also bumps `sessionVersion`, which signs out every existing session,
+ * including the caller's (the action signs it back in), and deletes any reset
+ * links still outstanding, so one requested before the change can't undo it.
  */
 export const changePassword = async (
   userId: string,
@@ -20,13 +23,19 @@ export const changePassword = async (
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { passwordHash: true },
+      select: { email: true, passwordHash: true },
     });
     if (!user?.passwordHash) return "no-password";
     if (!(await compare(currentPassword, user.passwordHash))) return "wrong-password";
 
     const passwordHash = await hash(newPassword, BCRYPT_ROUNDS);
-    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash, sessionVersion: { increment: 1 } },
+      }),
+      prisma.passwordResetToken.deleteMany({ where: { email: user.email } }),
+    ]);
     return "success";
   } catch (error) {
     console.error("Changing password failed", error);

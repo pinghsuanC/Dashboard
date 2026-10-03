@@ -28,8 +28,11 @@ export interface CurrentUser {
  * one render shares the single query.
  *
  * Checks the database, not just the JWT: a valid token whose user row is gone
- * (e.g. deleted) returns null. `select` keeps the Stripe ids out, and the
- * password hash is read only to become `hasPassword` (keyed off the hash, not
+ * (e.g. deleted) returns null, and so does one issued before the user's last
+ * password change or reset (its `sessionVersion` is behind the row's). The
+ * proxy only verifies the JWT, so a revoked cookie still gets past it and is
+ * turned away here. `select` keeps the Stripe ids out, and the password hash
+ * is read only to become `hasPassword` (keyed off the hash, not
  * the linked provider, so a GitHub user who later set a password counts).
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
@@ -49,11 +52,13 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       preferredFontSize: true,
       createdAt: true,
       passwordHash: true,
+      sessionVersion: true,
     },
   });
   if (!user) return null;
 
-  const { passwordHash, ...profile } = user;
+  const { passwordHash, sessionVersion, ...profile } = user;
+  if (sessionVersion !== (session.sessionVersion ?? 0)) return null;
   return { ...profile, isPro: profile.plan === "PRO", hasPassword: passwordHash !== null };
 });
 

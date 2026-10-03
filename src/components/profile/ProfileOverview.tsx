@@ -1,19 +1,22 @@
 "use client";
 
-import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
-import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
+import type { ReactNode } from "react";
+
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileStats } from "@/components/profile/ProfileStats";
 import { useUserSession } from "@/components/session/UserSessionProvider";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ProfileOverviewProps {
-  /** Set by the page from `?password=changed`; remounts the form empty. */
-  passwordChanged: boolean;
+  /**
+   * Built by the server page and passed in as a slot. Importing the form here
+   * would turn it into client code; a slot keeps it server-rendered. Shown
+   * only to users with a password, which the session knows.
+   */
+  passwordCard: ReactNode;
 }
 
-/** The profile page body, read from the user session: no query on navigation. */
-export const ProfileOverview = ({ passwordChanged }: ProfileOverviewProps) => {
+/** The session-backed part of the profile page: no query on navigation. */
+export const ProfileOverview = ({ passwordCard }: ProfileOverviewProps) => {
   const { user, itemTypes, itemCounts, collections } = useUserSession();
 
   return (
@@ -32,29 +35,7 @@ export const ProfileOverview = ({ passwordChanged }: ProfileOverviewProps) => {
         itemCounts={itemCounts.byType}
       />
 
-      {user.hasPassword ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Change password</CardTitle>
-            <CardDescription>You&apos;ll stay signed in on this device.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* The action redirects back to this page, which keeps the form
-                mounted with the typed passwords. A new key remounts it empty. */}
-            <ChangePasswordForm key={passwordChanged ? "changed" : "form"} />
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card className="ring-destructive/30">
-        <CardHeader>
-          <CardTitle>Delete account</CardTitle>
-          <CardDescription>Permanently remove your account and everything in it.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DeleteAccountDialog />
-        </CardContent>
-      </Card>
+      {user.hasPassword ? passwordCard : null}
     </>
   );
 };
