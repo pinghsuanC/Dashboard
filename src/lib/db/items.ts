@@ -113,3 +113,17 @@ export const getRecentItems = async (
   });
   return items.map(toItemSummary);
 };
+
+/**
+ * Every item of one type, newest first, for `/items/[type]`. Unbounded for
+ * now, like the pinned list; fetched by the page on each visit.
+ */
+export const getItemsByType = async (typeId: string): Promise<ItemSummary[]> => {
+  const userId = await requireCurrentUserId();
+  const items = await prisma.item.findMany({
+    where: { userId, typeId },
+    orderBy: newestFirst,
+    select: itemSummarySelect,
+  });
+  return items.map(toItemSummary);
+};

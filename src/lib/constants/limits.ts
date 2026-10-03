@@ -25,5 +25,7 @@ export const RESET_RESEND_COOLDOWN_MS = 2 * MINUTE_MS;
 export const RECENT_ITEM_LIMIT = 10;
 /** Collection cards on the dashboard. */
 export const RECENT_COLLECTION_LIMIT = 6;
+/** Placeholder cards an item grid shows while its items load. */
+export const ITEM_SKELETON_COUNT = 6;
 /** Non-favourite collections in the sidebar. */
 export const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;

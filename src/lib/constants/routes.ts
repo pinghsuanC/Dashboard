@@ -34,6 +34,13 @@ export const collectionHref = (slug: string): string => `${ROUTES.collections}/$
 export const itemTypeHref = (typeName: string): string => `${ROUTES.items}/${typeName}s`;
 
 /**
+ * The type name an `/items/[type]` segment was built from by `itemTypeHref()`:
+ * "snippets" -> "snippet". Null when the segment can't be one of its outputs.
+ */
+export const itemTypeNameFromSegment = (segment: string): string | null =>
+  segment.length > 1 && segment.endsWith("s") ? segment.slice(0, -1) : null;
+
+/**
  * One-shot query flags: an action redirects with one and the page it lands on
  * shows a toast or notice, then drops it from the URL.
  */

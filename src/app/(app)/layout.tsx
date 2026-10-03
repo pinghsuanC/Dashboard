@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { CloseSidebarOnNavigate } from "@/components/layout/CloseSidebarOnNavigate";
 import { TopBar } from "@/components/layout/TopBar";
 import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -27,6 +28,7 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
       <TooltipProvider>
         <SidebarProvider defaultOpen={defaultOpen}>
           <AppSidebar />
+          <CloseSidebarOnNavigate />
 
           <SidebarInset>
             <TopBar />
