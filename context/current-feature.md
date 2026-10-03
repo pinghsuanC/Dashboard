@@ -28,3 +28,4 @@
 - **2026-10-01** — Forgot password: emailed 1-hour reset link via `PasswordResetToken`, reset verifies the email, no account enumeration.
 - **2026-10-01** — Profile page: `/profile` in shared `(app)` layout with user info, usage stats, change password and delete account; Vitest set up.
 - **2026-10-01** — User session: profile, item counts, pinned items and collections loaded once in the `(app)` layout with local setters and `resetProfile()`; recent items fetched per visit.
+- **2026-10-03** — Rate limiting: Upstash sliding-window limits on sign-in, register, forgot/reset password and verification resend; fails open; toast in forms, 429 with `Retry-After` from the API. Unknown-email sign-in now costs a bcrypt compare.
