@@ -1,6 +1,9 @@
+"use client";
+
 import type { CSSProperties } from "react";
 import { Pin, Star } from "lucide-react";
 
+import { useItemDrawer } from "@/components/items/ItemDrawerProvider";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,11 +15,12 @@ interface ItemRowProps {
 }
 
 /**
- * KNOWN DEVIATION: the row is not a link. The reference opens an item drawer on
- * click and no `/items/[id]` route exists yet, so linking here would only
- * produce 404s. Wire it up with the item detail view.
+ * An item card. Clicking anywhere on it opens the item drawer: the title is a
+ * button whose `::after` covers the card, since a real `<button>` around the
+ * whole card couldn't hold its heading and blocks.
  */
 export const ItemRow = ({ item }: ItemRowProps) => {
+  const { openItem } = useItemDrawer();
   // The type is a required relation (deletes are Restricted), so every row has
   // one. Set once on the card so the left edge and the icon tint stay in step.
   const { type } = item;
@@ -24,7 +28,7 @@ export const ItemRow = ({ item }: ItemRowProps) => {
   return (
     <Card
       size="sm"
-      className="border-l-4 border-l-(--type-color)"
+      className="hover:bg-muted/40 has-focus-visible:ring-ring/50 relative border-l-4 border-l-(--type-color) transition-colors has-focus-visible:ring-3"
       style={{ "--type-color": type.color } as CSSProperties}
     >
       <CardContent className="flex items-start gap-3">
@@ -34,7 +38,15 @@ export const ItemRow = ({ item }: ItemRowProps) => {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-medium">{item.title}</h3>
+            <h3 className="min-w-0 font-medium">
+              <button
+                type="button"
+                onClick={() => openItem(item)}
+                className="block max-w-full truncate text-left outline-none after:absolute after:inset-0 after:content-['']"
+              >
+                {item.title}
+              </button>
+            </h3>
             {item.isPinned && (
               <Pin className="text-muted-foreground size-3.5 shrink-0" />
             )}

@@ -39,8 +39,14 @@ interface ItemRow {
   title?: string;
   description?: string | null;
   content?: string | null;
+  language?: string | null;
+  url?: string | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
   isPinned?: boolean;
   isFavorite?: boolean;
+  createdAt?: Date;
   updatedAt?: Date;
   tags?: string[];
   collectionIds?: string[];
@@ -132,6 +138,35 @@ const applyUserData = (user: UserRow, data: UserData) => {
       row[key] = value;
     }
   }
+};
+
+type ItemSelect = Select & { tags?: { orderBy?: unknown }; collections?: { orderBy?: unknown } };
+
+/**
+ * One item in the shape the item select asks for: the type, tag and
+ * collection relations nested as Prisma nests them. Collections come from the
+ * item's `collectionIds`.
+ */
+const shapeItem = (row: ItemRow, select: ItemSelect) => {
+  const type = db.itemTypes.find((itemType) => itemType.id === row.typeId);
+  const tags = [...(row.tags ?? [])];
+  if (select.tags?.orderBy) tags.sort();
+  const collections = (row.collectionIds ?? [])
+    .map((id) => db.collections.find((collection) => collection.id === id))
+    .filter((collection) => collection !== undefined)
+    .map(({ id, name }) => ({ collection: { id, name: name ?? null } }));
+  if (select.collections?.orderBy) {
+    collections.sort((a, b) => (a.collection.name ?? "").localeCompare(b.collection.name ?? ""));
+  }
+  return pick(
+    {
+      ...row,
+      type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
+      tags: tags.map((name) => ({ tag: { name } })),
+      collections,
+    },
+    select as Select,
+  );
 };
 
 // The interactive form gets the fake itself as `tx`. Unlike Prisma, neither
@@ -271,7 +306,7 @@ export const fakePrisma = {
       where: { userId: string; isPinned?: boolean; typeId?: string };
       orderBy?: OrderBy;
       take?: number;
-      select: Select & { tags?: { orderBy?: unknown } };
+      select: ItemSelect;
     }) =>
       query(() =>
         db.items
@@ -283,20 +318,14 @@ export const fakePrisma = {
           )
           .sort(compareBy(orderBy))
           .slice(0, take ?? Infinity)
-          .map((row) => {
-            const type = db.itemTypes.find((itemType) => itemType.id === row.typeId);
-            const tags = [...(row.tags ?? [])];
-            if (select.tags?.orderBy) tags.sort();
-            return pick(
-              {
-                ...row,
-                type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
-                tags: tags.map((name) => ({ tag: { name } })),
-              },
-              select as Select,
-            );
-          }),
+          .map((row) => shapeItem(row, select)),
       ),
+    // Only the owner-scoped lookup by id the detail view uses.
+    findFirst: ({ where, select }: { where: { id: string; userId: string }; select: ItemSelect }) =>
+      query(() => {
+        const row = db.items.find((item) => item.id === where.id && item.userId === where.userId);
+        return row ? shapeItem(row, select) : null;
+      }),
     groupBy: ({ where }: { by: ["typeId"]; where: { userId: string } }) =>
       query(() => {
         const counts = new Map<string, number>();
