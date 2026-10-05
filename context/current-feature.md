@@ -31,3 +31,4 @@
 - **2026-10-03** — Constants: user-facing strings and tunable config moved to `src/lib/constants/`; brand is Stashboard with one `Page | Stashboard` title format; email and page expiry text derived from the link lifetimes.
 - **2026-10-03** — Items list view: `/items/[type]` grid of one type's items with type-colored cards, streamed behind a skeleton; mobile drawer closes on navigate.
 - **2026-10-03** — Test coverage: unit tests for email verification, email sending, form errors and the register and verify-email routes.
+- **2026-10-04** — Item drawer: right-side detail sheet opened from item cards, item body loaded on click from `/api/items/[id]`; a missing or another user's item signs out.

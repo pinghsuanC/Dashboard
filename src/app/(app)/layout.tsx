@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { ItemDrawerProvider } from "@/components/items/ItemDrawerProvider";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CloseSidebarOnNavigate } from "@/components/layout/CloseSidebarOnNavigate";
 import { TopBar } from "@/components/layout/TopBar";
@@ -26,17 +27,21 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
   return (
     <UserSessionProvider session={session}>
       <TooltipProvider>
-        <SidebarProvider defaultOpen={defaultOpen}>
-          <AppSidebar />
-          <CloseSidebarOnNavigate />
+        {/* Above the sidebar and top bar, not just the page, so anything in
+            the shell (e.g. search results) can open the item drawer too. */}
+        <ItemDrawerProvider>
+          <SidebarProvider defaultOpen={defaultOpen}>
+            <AppSidebar />
+            <CloseSidebarOnNavigate />
 
-          <SidebarInset>
-            <TopBar />
-            {/* A plain div, not <main>: SidebarInset already renders <main>, and
-                nesting a second one is invalid HTML and a duplicate landmark. */}
-            <div className="flex-1 p-6">{children}</div>
-          </SidebarInset>
-        </SidebarProvider>
+            <SidebarInset>
+              <TopBar />
+              {/* A plain div, not <main>: SidebarInset already renders <main>, and
+                  nesting a second one is invalid HTML and a duplicate landmark. */}
+              <div className="flex-1 p-6">{children}</div>
+            </SidebarInset>
+          </SidebarProvider>
+        </ItemDrawerProvider>
       </TooltipProvider>
     </UserSessionProvider>
   );

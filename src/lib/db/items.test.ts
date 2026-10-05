@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCurrentUserId } from "@/lib/db/current-user";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { getItemsByType, getRecentItems } from "./items";
+import { getItemDetail, getItemsByType, getRecentItems } from "./items";
 
 vi.mock("@/lib/db/current-user", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -110,5 +110,82 @@ describe("items list view by type (/items/[type])", () => {
 
     expect(item.type).toEqual({ id: "t-note", label: "Notes", icon: "StickyNote", color: "#fde047" });
     expect(JSON.stringify(item)).not.toContain("secret body");
+  });
+});
+
+describe("item drawer detail, loaded on click (getItemDetail)", () => {
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-react", userId: "ada", name: "React Patterns" },
+      { id: "c-auth", userId: "ada", name: "Auth" },
+    );
+  });
+
+  it("R1: returns the owner's item with its body, collections and dates", async () => {
+    db.items.push({
+      id: "hook",
+      userId: "ada",
+      typeId: "t-snippet",
+      title: "useAuth Hook",
+      description: "Custom auth hook",
+      content: "export function useAuth() {}",
+      language: "typescript",
+      isPinned: true,
+      isFavorite: true,
+      createdAt: day(1),
+      updatedAt: day(2),
+      tags: ["react", "auth", "hooks"],
+      collectionIds: ["c-react", "c-auth"],
+    });
+
+    expect(await getItemDetail("hook")).toEqual({
+      id: "hook",
+      title: "useAuth Hook",
+      description: "Custom auth hook",
+      content: "export function useAuth() {}",
+      language: "typescript",
+      url: null,
+      fileName: null,
+      fileSize: null,
+      mimeType: null,
+      isPinned: true,
+      isFavorite: true,
+      createdAt: day(1),
+      updatedAt: day(2),
+      tags: ["auth", "hooks", "react"],
+      type: { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+      collections: [
+        { id: "c-auth", name: "Auth" },
+        { id: "c-react", name: "React Patterns" },
+      ],
+    });
+  });
+
+  it("R1: carries the link and file fields for those item kinds", async () => {
+    db.items.push(
+      { id: "link", userId: "ada", typeId: "t-snippet", title: "Docs", url: "https://example.com", updatedAt: day(1) },
+      { id: "file", userId: "ada", typeId: "t-snippet", title: "Spec", fileName: "spec.pdf", fileSize: 2048, mimeType: "application/pdf", updatedAt: day(1) },
+    );
+
+    expect(await getItemDetail("link")).toMatchObject({ url: "https://example.com", content: null });
+    expect(await getItemDetail("file")).toMatchObject({ fileName: "spec.pdf", fileSize: 2048, mimeType: "application/pdf" });
+  });
+
+  it("R1: an item in no collection has an empty collection list", async () => {
+    db.items.push({ id: "loose", userId: "ada", typeId: "t-snippet", title: "Loose", updatedAt: day(1) });
+
+    expect((await getItemDetail("loose"))?.collections).toEqual([]);
+  });
+
+  it("R2: returns null for another user's item, even with its exact id", async () => {
+    db.items.push({ id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", content: "bob's secret", updatedAt: day(1) });
+
+    expect(await getItemDetail("bobs")).toBeNull();
+  });
+
+  it("R3: returns null for an id that doesn't exist", async () => {
+    db.items.push({ id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1) });
+
+    expect(await getItemDetail("no-such-item")).toBeNull();
   });
 });

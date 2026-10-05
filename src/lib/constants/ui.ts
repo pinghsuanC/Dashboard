@@ -13,5 +13,8 @@ export const APP_THEME = "dark";
  */
 export const ACTION_FORM_TOAST_ID = "action-form-toast";
 
+/** Toast id for the item drawer's Copy: repeat clicks update one toast. */
+export const ITEM_COPY_TOAST_ID = "item-copy-toast";
+
 /** Letters in an avatar's initials: "Ada Byron King" -> "AB". */
 export const AVATAR_INITIALS_MAX = 2;

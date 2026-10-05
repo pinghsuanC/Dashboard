@@ -16,10 +16,14 @@ export const ROUTES = {
   items: "/items",
 } as const;
 
-/** Route handlers whose URLs leave the app, e.g. in emails. */
+/** Route handlers: linked from emails, or fetched by the app's own client code. */
 export const API_ROUTES = {
   verifyEmail: "/api/auth/verify-email",
+  items: "/api/items",
 } as const;
+
+/** `/api/items/<id>`, the item drawer's fetch. Encoded: the id comes from data. */
+export const itemApiHref = (id: string): string => `${API_ROUTES.items}/${encodeURIComponent(id)}`;
 
 /** Where sign-in lands when no safe `callbackUrl` was given. */
 export const DEFAULT_SIGN_IN_REDIRECT = ROUTES.dashboard;

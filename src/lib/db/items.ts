@@ -127,3 +127,55 @@ export const getItemsByType = async (typeId: string): Promise<ItemSummary[]> => 
   });
   return items.map(toItemSummary);
 };
+
+/** A collection an item belongs to, as the detail view links it. */
+export interface ItemCollectionRef {
+  id: string;
+  name: string;
+}
+
+/** An item with its body, for the item drawer. Loaded on demand by id. */
+export interface ItemDetail extends ItemSummary {
+  content: string | null;
+  language: string | null;
+  url: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
+  createdAt: Date;
+  /** By name: the join table records no order of its own. */
+  collections: ItemCollectionRef[];
+}
+
+const itemDetailSelect = {
+  ...itemSummarySelect,
+  content: true,
+  language: true,
+  url: true,
+  fileName: true,
+  fileSize: true,
+  mimeType: true,
+  createdAt: true,
+  collections: {
+    select: { collection: { select: { id: true, name: true } } },
+    orderBy: { collection: { name: "asc" } },
+  },
+} satisfies Prisma.ItemSelect;
+
+/**
+ * One item with its body, for the item drawer. Scoped to the signed-in user in
+ * the query itself, so another user's id finds nothing: `null` means missing
+ * or not theirs, and callers can't tell which.
+ */
+export const getItemDetail = async (id: string): Promise<ItemDetail | null> => {
+  const userId = await requireCurrentUserId();
+  const item = await prisma.item.findFirst({ where: { id, userId }, select: itemDetailSelect });
+  if (!item) return null;
+
+  const { tags, collections, ...rest } = item;
+  return {
+    ...rest,
+    tags: tags.map(({ tag }) => tag.name),
+    collections: collections.map(({ collection }) => collection),
+  };
+};
