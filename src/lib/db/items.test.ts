@@ -353,20 +353,90 @@ describe("item delete, scoped to the user (deleteItem, R1)", () => {
 
 // The fake keeps tag and collection links on the item row, so their removal
 // can't be asserted here; the cascade itself is `onDelete: Cascade` in the schema.
-describe("item delete, tags and collections stay (deleteItem, R2)", () => {
-  it("keeps the user's tags and collections", async () => {
-    db.tags.push({ id: "tag-react", userId: "ada", name: "react", slug: "react" });
+describe("item delete, collections stay (deleteItem, R6)", () => {
+  it("keeps the user's collections", async () => {
     db.collections.push({ id: "c-ui", userId: "ada", name: "UI", slug: "ui" });
-    db.items.push({
-      id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1),
-      tags: ["react"], collectionIds: ["c-ui"],
-    });
+    db.items.push({ id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1), collectionIds: ["c-ui"] });
 
     await deleteItem("mine");
 
     expect(db.items.some((item) => item.id === "mine")).toBe(false);
-    expect(db.tags.map((tag) => tag.id)).toEqual(["tag-react"]);
     expect(db.collections.map((collection) => collection.id)).toEqual(["c-ui"]);
+  });
+});
+
+describe("unused tags are deleted with the item or tag edit that left them", () => {
+  const tagIds = () => db.tags.map((tag) => tag.id).sort();
+
+  beforeEach(() => {
+    db.tags.push(
+      { id: "tag-react", userId: "ada", name: "react", slug: "react" },
+      { id: "tag-hooks", userId: "ada", name: "hooks", slug: "hooks" },
+      { id: "tag-bob-old", userId: "bob", name: "old", slug: "old" },
+    );
+    db.items.push(
+      { id: "hook", userId: "ada", typeId: "t-snippet", title: "Hook", updatedAt: day(1), tags: ["react", "hooks"] },
+      { id: "other", userId: "ada", typeId: "t-snippet", title: "Other", updatedAt: day(1), tags: ["react"] },
+      { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", updatedAt: day(1), tags: [] },
+    );
+  });
+
+  it("R1: deleting an item deletes the tags no item uses any more", async () => {
+    await deleteItem("hook");
+
+    expect(tagIds()).not.toContain("tag-hooks");
+  });
+
+  it("R2: an edit that sends tags deletes the tags it left unused", async () => {
+    await updateItem("hook", { title: "Hook", tags: ["react"] });
+
+    expect(tagIds()).not.toContain("tag-hooks");
+  });
+
+  it("R2: the tags the edit links are kept", async () => {
+    await updateItem("hook", { title: "Hook", tags: ["state"] });
+
+    expect(db.tags.filter((tag) => tag.userId === "ada").map((tag) => tag.slug).sort()).toEqual(["react", "state"]);
+  });
+
+  it("R3: a tag another of the user's items still uses stays", async () => {
+    await deleteItem("hook");
+
+    expect(tagIds()).toContain("tag-react");
+  });
+
+  it("R4: another user's unused tags are never deleted", async () => {
+    await deleteItem("hook");
+    await updateItem("other", { title: "Other", tags: [] });
+
+    expect(tagIds()).toContain("tag-bob-old");
+  });
+
+  it("R5: deleting another user's item or a missing id deletes no tags", async () => {
+    db.tags.push({ id: "tag-ada-unused", userId: "ada", name: "unused", slug: "unused" });
+
+    await deleteItem("bobs");
+    await deleteItem("no-such-item");
+
+    expect(tagIds()).toContain("tag-ada-unused");
+    expect(tagIds()).toContain("tag-bob-old");
+  });
+
+  it("R5: an edit to another user's item or a missing id deletes no tags", async () => {
+    db.tags.push({ id: "tag-ada-unused", userId: "ada", name: "unused", slug: "unused" });
+
+    await updateItem("bobs", { title: "Hijacked", tags: [] });
+    await updateItem("no-such-item", { title: "Ghost", tags: [] });
+
+    expect(tagIds()).toContain("tag-ada-unused");
+  });
+
+  it("R5: an edit that sends no tags deletes no tags", async () => {
+    db.tags.push({ id: "tag-ada-unused", userId: "ada", name: "unused", slug: "unused" });
+
+    await updateItem("hook", { title: "Renamed" });
+
+    expect(tagIds()).toContain("tag-ada-unused");
   });
 });
 
