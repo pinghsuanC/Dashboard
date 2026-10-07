@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { deleteItem, getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
+import { createItem, deleteItem, getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -367,5 +367,106 @@ describe("item delete, tags and collections stay (deleteItem, R2)", () => {
     expect(db.items.some((item) => item.id === "mine")).toBe(false);
     expect(db.tags.map((tag) => tag.id)).toEqual(["tag-react"]);
     expect(db.collections.map((collection) => collection.id)).toEqual(["c-ui"]);
+  });
+});
+
+describe("item create, saved for the session user (createItem)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(day(20));
+    return () => vi.useRealTimers();
+  });
+
+  it("R3: writes a new item owned by the session user", async () => {
+    await createItem("snippet", { title: "useAuth Hook", content: "body", language: "ts" });
+
+    expect(db.items).toEqual([
+      expect.objectContaining({ userId: "ada", typeId: "t-snippet", title: "useAuth Hook", content: "body", language: "ts" }),
+    ]);
+  });
+
+  it("R3: returns the new item as the drawer shows it, unpinned and not a favorite", async () => {
+    const created = await createItem("snippet", { title: "useAuth Hook", description: "Hook", tags: ["auth"] });
+
+    expect(created).toEqual({
+      id: expect.any(String),
+      title: "useAuth Hook",
+      description: "Hook",
+      content: null,
+      language: null,
+      url: null,
+      fileName: null,
+      fileSize: null,
+      mimeType: null,
+      isPinned: false,
+      isFavorite: false,
+      createdAt: day(20),
+      updatedAt: day(20),
+      tags: ["auth"],
+      type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+      collections: [],
+    });
+    expect(db.items[0].id).toBe(created?.id);
+  });
+
+  it("R3: shows up in the user's lists, and never in another user's", async () => {
+    await createItem("snippet", { title: "Mine" });
+
+    expect((await getRecentItems()).map((item) => item.title)).toEqual(["Mine"]);
+    vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
+    expect(await getRecentItems()).toEqual([]);
+  });
+
+  it("R4: reuses the user's tag with the same slug and keeps its stored name", async () => {
+    db.tags.push({ id: "tag-react", userId: "ada", name: "React", slug: "react" });
+
+    const created = await createItem("snippet", { title: "T", tags: ["react"] });
+
+    expect(created?.tags).toEqual(["React"]);
+    expect(db.tags).toHaveLength(1);
+  });
+
+  it("R4: creates a tag the user doesn't have, with its slug", async () => {
+    await createItem("snippet", { title: "T", tags: ["Next.js"] });
+
+    expect(db.tags).toEqual([expect.objectContaining({ userId: "ada", name: "Next.js", slug: "next-js" })]);
+  });
+
+  it("R4: never links another user's tag, even with the same slug", async () => {
+    db.tags.push({ id: "tag-bob-react", userId: "bob", name: "REACT", slug: "react" });
+
+    const created = await createItem("snippet", { title: "T", tags: ["react"] });
+
+    expect(created?.tags).toEqual(["react"]);
+    expect(db.tags.map((tag) => tag.userId).sort()).toEqual(["ada", "bob"]);
+  });
+
+  it("R5: returns null and writes nothing for a type name with no system type", async () => {
+    expect(await createItem("no-such-type", { title: "T" })).toBeNull();
+    expect(db.items).toEqual([]);
+  });
+
+  it("R5: never uses another user's custom type, even with a system type's name", async () => {
+    db.itemTypes.unshift({ id: "t-bob-snippet", name: "snippet", label: "Bob's", color: "#000", isSystem: false, userId: "bob" });
+
+    await createItem("snippet", { title: "T" });
+
+    expect(db.items[0].typeId).toBe("t-snippet");
+  });
+
+  it("R5: never uses a type that isn't flagged as a system type", async () => {
+    db.itemTypes.length = 0;
+    db.itemTypes.push({ id: "t-loose", name: "snippet", label: "Loose", color: "#000", isSystem: false, userId: null });
+
+    expect(await createItem("snippet", { title: "T" })).toBeNull();
+    expect(db.items).toEqual([]);
+  });
+
+  it("R5: never uses a user-owned row flagged as a system type", async () => {
+    db.itemTypes.length = 0;
+    db.itemTypes.push({ id: "t-bob-snippet", name: "snippet", label: "Bob's", color: "#000", isSystem: true, userId: "bob" });
+
+    expect(await createItem("snippet", { title: "T" })).toBeNull();
+    expect(db.items).toEqual([]);
   });
 });

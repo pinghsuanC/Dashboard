@@ -3,7 +3,7 @@ import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-import type { ItemCounts, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
+import type { ItemCounts, ItemCreate, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
 
 const itemSummarySelect = {
   id: true,
@@ -138,6 +138,21 @@ export const getItemTypeName = async (id: string): Promise<string | null> => {
   return item?.type.name ?? null;
 };
 
+// One tag link per name, to the user's tag with its slug, creating the tags
+// they don't have yet. Another user's tag with the same slug is never used.
+const tagLinks = (userId: string, names: string[]) =>
+  names.map((name) => {
+    const slug = slugify(name);
+    return {
+      tag: {
+        connectOrCreate: {
+          where: { userId_slug: { userId, slug } },
+          create: { userId, name, slug },
+        },
+      },
+    };
+  });
+
 /**
  * Saves an edit to one of the signed-in user's items and returns it as the
  * drawer shows it. `null` when the item is missing or not theirs: the user
@@ -153,22 +168,8 @@ export const updateItem = async (
       where: { id, userId },
       data: {
         ...fields,
-        // Drop every link, then link each name to the user's tag with its
-        // slug, creating the tags they don't have yet.
-        tags: tags && {
-          deleteMany: {},
-          create: tags.map((name) => {
-            const slug = slugify(name);
-            return {
-              tag: {
-                connectOrCreate: {
-                  where: { userId_slug: { userId, slug } },
-                  create: { userId, name, slug },
-                },
-              },
-            };
-          }),
-        },
+        // Drop every link, then link the new names.
+        tags: tags && { deleteMany: {}, create: tagLinks(userId, tags) },
       },
       select: itemDetailSelect,
     });
@@ -194,4 +195,33 @@ export const deleteItem = async (id: string): Promise<boolean> => {
   // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
   const { count } = await prisma.item.deleteMany({ where: { id, userId } });
   return count > 0;
+};
+
+/**
+ * Creates an item of a built-in type for the signed-in user and returns it as
+ * the drawer shows it. The owner comes from the session, never the input.
+ * `null` when no built-in type has that name: a user-owned type, even one
+ * named like a built-in, is never used.
+ */
+export const createItem = async (
+  typeName: string,
+  { tags, ...fields }: ItemCreate,
+): Promise<ItemDetail | null> => {
+  const userId = await requireCurrentUserId();
+  const type = await prisma.itemType.findFirst({
+    where: { name: typeName, isSystem: true, userId: null },
+    select: { id: true },
+  });
+  if (!type) return null;
+
+  const item = await prisma.item.create({
+    data: {
+      ...fields,
+      userId,
+      typeId: type.id,
+      tags: tags && { create: tagLinks(userId, tags) },
+    },
+    select: itemDetailSelect,
+  });
+  return toItemDetail(item);
 };

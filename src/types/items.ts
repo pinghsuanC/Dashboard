@@ -71,6 +71,25 @@ export interface ItemUpdate {
   tags?: string[];
 }
 
+/**
+ * A new item's fields, already validated: the same fields and per-type rules
+ * as an edit. The item's type is passed alongside, not inside.
+ */
+export type ItemCreate = ItemUpdate;
+
+/**
+ * An item form's inputs as typed, before the server trims and validates
+ * them. `tags` is the comma-separated text.
+ */
+export interface ItemDraft {
+  title: string;
+  description: string;
+  content: string;
+  language: string;
+  url: string;
+  tags: string;
+}
+
 /** What the item drawer does next depends on which of these comes back. */
 export type ItemDetailResult =
   | { status: "ok"; item: ItemDetail }

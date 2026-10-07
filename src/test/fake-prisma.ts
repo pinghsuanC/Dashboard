@@ -404,6 +404,46 @@ export const fakePrisma = {
         row.updatedAt = new Date();
         return shapeItem(row, select);
       }),
+    // The item create's write: scalar fields plus tags as
+    // `{ create: [{ tag: { connectOrCreate } }] }`. Defaults and timestamps
+    // are filled in as the schema does, and `typeId` must name an existing
+    // type, as the foreign key requires.
+    create: ({
+      data,
+      select,
+    }: {
+      data: Omit<ItemUpdateData, "tags"> & {
+        userId: string;
+        typeId: string;
+        title: string;
+        tags?: { create: { tag: { connectOrCreate: TagConnectOrCreate } }[] };
+      };
+      select: ItemSelect;
+    }) =>
+      query(() => {
+        if (!db.itemTypes.some((type) => type.id === data.typeId)) {
+          throw new Error('violates foreign key constraint "Item_typeId_fkey"');
+        }
+        const { tags, ...fields } = data;
+        const now = new Date();
+        const row: ItemRow = {
+          id: `item-${db.items.length + 1}`,
+          description: null,
+          content: null,
+          language: null,
+          url: null,
+          isPinned: false,
+          isFavorite: false,
+          createdAt: now,
+          updatedAt: now,
+          ...Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)),
+          userId: data.userId,
+          typeId: data.typeId,
+          tags: [...new Set(tags?.create.map(({ tag }) => connectOrCreateTag(tag.connectOrCreate)) ?? [])],
+        };
+        db.items.push(row);
+        return shapeItem(row, select);
+      }),
     groupBy: ({ where }: { by: ["typeId"]; where: { userId: string } }) =>
       query(() => {
         const counts = new Map<string, number>();

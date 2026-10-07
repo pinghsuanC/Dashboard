@@ -16,7 +16,7 @@ import {
 } from "@/lib/constants/messages/items";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 
-import { itemUpdateSchemaFor } from "./item-schemas";
+import { itemCreateSchemaFor, itemUpdateSchemaFor } from "./item-schemas";
 
 const parse = (typeName: string, input: unknown) => {
   const result = itemUpdateSchemaFor(typeName).safeParse(input);
@@ -148,5 +148,53 @@ describe("item edit validation: tags (V5)", () => {
   it("rejects tags that aren't a list of strings", () => {
     expect(errorsFor("note", { title: "T", tags: "react, hooks" })).toHaveProperty("tags");
     expect(errorsFor("note", { title: "T", tags: [1, 2] })).toHaveProperty("tags");
+  });
+});
+
+describe("item create validation: same rules as an edit, per type (R2)", () => {
+  const create = (typeName: string, input: unknown) => itemCreateSchemaFor(typeName).safeParse(input);
+
+  it("needs a title", () => {
+    const result = create("note", { title: "  " });
+
+    expect(result.success || fieldErrorsOf(result.error)).toEqual({ title: ITEM_TITLE_REQUIRED });
+  });
+
+  it("trims the fields and turns blanks into null", () => {
+    expect(create("snippet", { title: " Hook ", description: "  ", content: " code ", language: " ts " }).data).toEqual({
+      title: "Hook",
+      description: null,
+      content: "code",
+      language: "ts",
+    });
+  });
+
+  it("keeps a snippet's or command's content and language", () => {
+    expect(create("command", { title: "T", content: "ls", language: "bash" }).data).toMatchObject({
+      content: "ls",
+      language: "bash",
+    });
+  });
+
+  it("drops fields the type doesn't use", () => {
+    const data = create("note", { title: "T", content: "body", language: "ts", url: "https://x.dev" }).data;
+
+    expect(data).toEqual({ title: "T", content: "body" });
+  });
+
+  it("a link needs a URL", () => {
+    const result = create("link", { title: "Docs" });
+
+    expect(result.success || fieldErrorsOf(result.error)).toEqual({ url: ITEM_URL_REQUIRED });
+  });
+
+  it("a link's URL must be http or https", () => {
+    const result = create("link", { title: "Docs", url: "javascript:alert(1)" });
+
+    expect(result.success || fieldErrorsOf(result.error)).toEqual({ url: ITEM_URL_INVALID });
+  });
+
+  it("tags are trimmed, blanks dropped and one kept per slug", () => {
+    expect(create("note", { title: "T", tags: [" React ", "", "react", "hooks"] }).data?.tags).toEqual(["React", "hooks"]);
   });
 });

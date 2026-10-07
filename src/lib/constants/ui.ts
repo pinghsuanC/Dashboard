@@ -24,3 +24,6 @@ export const ITEM_DELETE_TOAST_ID = "item-delete-toast";
 
 /** Letters in an avatar's initials: "Ada Byron King" -> "AB". */
 export const AVATAR_INITIALS_MAX = 2;
+
+/** Toast id for the New Item dialog's Create: a repeat create updates one toast. */
+export const ITEM_CREATE_TOAST_ID = "item-create-toast";

@@ -16,7 +16,7 @@ import {
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
 import { slugify } from "@/lib/helpers/slugify";
-import type { ItemUpdate } from "@/types/items";
+import type { ItemCreate, ItemUpdate } from "@/types/items";
 
 const title = z
   .string({ error: ITEM_TITLE_REQUIRED })
@@ -82,3 +82,10 @@ export const itemUpdateSchemaFor = (typeName: string): z.ZodType<ItemUpdate> => 
     url: fields.includes("url") ? requiredUrl : ignored,
   });
 };
+
+/**
+ * The New Item payload for one item type. The same fields and per-type rules
+ * as an edit, so a link needs its URL and other types' fields are dropped.
+ */
+export const itemCreateSchemaFor = (typeName: string): z.ZodType<ItemCreate> =>
+  itemUpdateSchemaFor(typeName);

@@ -1,10 +1,11 @@
-import { FolderPlus, Plus, Search } from "lucide-react";
+import { FolderPlus, Search } from "lucide-react";
 
+import { ItemCreateDialog } from "@/components/items/ItemCreateDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-/** Search and the action buttons are display only; the trigger is live. */
+/** Search and New Collection are display only; the trigger and New Item are live. */
 export const TopBar = () => {
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
@@ -28,10 +29,7 @@ export const TopBar = () => {
           <FolderPlus />
           New Collection
         </Button>
-        <Button>
-          <Plus />
-          New Item
-        </Button>
+        <ItemCreateDialog />
       </div>
     </header>
   );

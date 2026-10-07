@@ -25,3 +25,7 @@ export const ITEM_NOT_FOUND = "This item no longer exists";
 
 /** Item delete: outcome. Not found reuses `ITEM_NOT_FOUND`. */
 export const ITEM_DELETED = "Item deleted";
+
+/** Item create: outcome. Invalid fields reuse `ITEM_SAVE_INVALID`. */
+export const ITEM_CREATED = "Item created";
+export const ITEM_TYPE_INVALID = "Choose one of the listed item types";
