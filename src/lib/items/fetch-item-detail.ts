@@ -1,10 +1,7 @@
 import { itemApiHref } from "@/lib/constants/routes";
+import { reviveDates } from "@/lib/helpers/revive-dates";
 import type { ItemDetail, ItemDetailResult } from "@/types/items";
-
-type ItemDetailJson = Omit<ItemDetail, "createdAt" | "updatedAt"> & {
-  createdAt: string;
-  updatedAt: string;
-};
+import type { Jsonified } from "@/types/json";
 
 /**
  * Loads one item for the drawer from `GET /api/items/[id]`. Never throws.
@@ -20,11 +17,8 @@ export const fetchItemDetail = async (id: string): Promise<ItemDetailResult> => 
     if (response.status === 404) return { status: "not-found" };
     if (!response.ok) return { status: "error" };
 
-    const item = (await response.json()) as ItemDetailJson;
-    return {
-      status: "ok",
-      item: { ...item, createdAt: new Date(item.createdAt), updatedAt: new Date(item.updatedAt) },
-    };
+    const item = (await response.json()) as Jsonified<ItemDetail>;
+    return { status: "ok", item: reviveDates<ItemDetail>(item, { createdAt: true, updatedAt: true }) };
   } catch {
     return { status: "error" };
   }
