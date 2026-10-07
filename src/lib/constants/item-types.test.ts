@@ -5,6 +5,7 @@ import {
   editableFieldsFor,
   isCodeItemType,
   isCreatableItemType,
+  isMarkdownItemType,
 } from "./item-types";
 
 describe("editable body fields per item type (E1)", () => {
@@ -82,5 +83,33 @@ describe("types whose content opens in the code editor (CE1)", () => {
   it("a type named like an object or set property is not code", () => {
     expect(isCodeItemType("constructor")).toBe(false);
     expect(isCodeItemType("size")).toBe(false);
+  });
+});
+
+describe("types whose content opens in the Markdown editor (MD4)", () => {
+  it("notes and prompts are Markdown", () => {
+    expect(isMarkdownItemType("note")).toBe(true);
+    expect(isMarkdownItemType("prompt")).toBe(true);
+  });
+
+  it("snippets, commands, links, files, images and custom types are not", () => {
+    for (const name of ["snippet", "command", "link", "file", "image", "my-custom-type"]) {
+      expect(isMarkdownItemType(name)).toBe(false);
+    }
+  });
+
+  it("no type opens in both the code and the Markdown editor", () => {
+    for (const name of ["snippet", "command", "prompt", "note", "link", "file", "image"]) {
+      expect(isCodeItemType(name) && isMarkdownItemType(name)).toBe(false);
+    }
+  });
+
+  it("matches on the type name, not the display label", () => {
+    expect(isMarkdownItemType("Note")).toBe(false);
+  });
+
+  it("a type named like an object or set property is not Markdown", () => {
+    expect(isMarkdownItemType("constructor")).toBe(false);
+    expect(isMarkdownItemType("size")).toBe(false);
   });
 });

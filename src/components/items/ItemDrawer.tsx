@@ -6,6 +6,7 @@ import { Calendar, Copy, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
 import { CodeEditor } from "@/components/items/CodeEditor";
 import { ItemDeleteDialog } from "@/components/items/ItemDeleteDialog";
 import { ItemEditForm } from "@/components/items/ItemEditForm";
+import { MarkdownEditor } from "@/components/items/MarkdownEditor";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { ItemContentSkeleton, ItemMetaSkeleton } from "@/components/skeleton/ItemDrawerSkeleton";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { isCodeItemType } from "@/lib/constants/item-types";
+import { isCodeItemType, isMarkdownItemType } from "@/lib/constants/item-types";
 import { ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
 import { formatLongDate } from "@/lib/helpers/format";
 import { copyToClipboard } from "@/lib/items/copy-to-clipboard";
@@ -216,6 +217,8 @@ export const ItemDrawer = ({
                 <Section title="Content">
                   {isCodeItemType(type.name) ? (
                     <CodeEditor value={detail.content} language={detail.language} readOnly />
+                  ) : isMarkdownItemType(type.name) ? (
+                    <MarkdownEditor value={detail.content} readOnly />
                   ) : (
                     <pre className="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs leading-relaxed">
                       <code>{detail.content}</code>

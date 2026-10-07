@@ -38,3 +38,4 @@
 - **2026-10-07** — Pointer cursor: one base rule in `globals.css` gives enabled buttons and `role="button"` elements the pointer that Tailwind v4 dropped; disabled controls and the sidebar rail keep their own cursors.
 - **2026-10-07** — Unused tags: deleting an item or editing its tags deletes the user's tags no item uses, in the same transaction.
 - **2026-10-07** — Code editor: snippet and command content shown and edited in a bundled Monaco editor with a macOS-style header (window dots, language, copy), height up to 400px then scrolls; free-text language mapped to Monaco ids; autocomplete off; `dompurify` overridden to a patched version.
+- **2026-10-07** — Markdown editor: note and prompt content written in a Write tab and shown rendered in Preview (GFM, newlines kept, no raw HTML), styled like the code editor with copy and a 400px max height; read-only Preview in the drawer.

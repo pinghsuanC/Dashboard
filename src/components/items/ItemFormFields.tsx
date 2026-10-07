@@ -1,10 +1,11 @@
 import type { ReactNode, Ref } from "react";
 
 import { CodeEditor } from "@/components/items/CodeEditor";
+import { MarkdownEditor } from "@/components/items/MarkdownEditor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { isCodeItemType } from "@/lib/constants/item-types";
+import { isCodeItemType, isMarkdownItemType } from "@/lib/constants/item-types";
 import {
   ITEM_CONTENT_MAX_LENGTH,
   ITEM_DESCRIPTION_MAX_LENGTH,
@@ -16,14 +17,17 @@ import type { EditableItemField, ItemDraft } from "@/types/items";
 interface ItemFormFieldsProps {
   /** Prefixes the input ids, so the drawer and the dialog never share one. */
   idPrefix: string;
-  /** The item type's name: snippet and command content opens in the code editor. */
+  /**
+   * The item type's name: snippet and command content opens in the code
+   * editor, note and prompt content in the Markdown editor.
+   */
   typeName: string;
   /** Body fields the item's type uses (`editableFieldsFor`). */
   fields: readonly EditableItemField[];
   draft: ItemDraft;
   onChange: (key: keyof ItemDraft, value: string) => void;
   fieldErrors: FieldErrors;
-  /** Lines in the content box or code editor: tall in the drawer, shorter in the dialog. */
+  /** Lines in the content box or editor: tall in the drawer, shorter in the dialog. */
   contentRows?: number;
   /** For a parent that focuses the title, e.g. when the dialog opens. */
   titleRef?: Ref<HTMLInputElement>;
@@ -117,6 +121,16 @@ export const ItemFormFields = ({
                 value={draft.content}
                 onChange={(value) => onChange("content", value)}
                 language={draft.language}
+                minLines={contentRows}
+                ariaLabel="Content"
+                ariaDescribedBy={describedBy}
+                ariaInvalid={Boolean(fieldErrors.content)}
+              />
+            ) : isMarkdownItemType(typeName) ? (
+              <MarkdownEditor
+                id={`${idPrefix}-content`}
+                value={draft.content}
+                onChange={(value) => onChange("content", value)}
                 minLines={contentRows}
                 ariaLabel="Content"
                 ariaDescribedBy={describedBy}

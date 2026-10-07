@@ -35,3 +35,11 @@ export const isCreatableItemType = (name: string): boolean => CREATABLE_ITEM_TYP
 export const CODE_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["snippet", "command"]);
 
 export const isCodeItemType = (name: string): boolean => CODE_ITEM_TYPE_NAMES.has(name);
+
+/**
+ * Types whose content is Markdown: written in the Markdown editor's Write tab
+ * and shown rendered. Keyed by name, like the maps above.
+ */
+export const MARKDOWN_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["note", "prompt"]);
+
+export const isMarkdownItemType = (name: string): boolean => MARKDOWN_ITEM_TYPE_NAMES.has(name);
