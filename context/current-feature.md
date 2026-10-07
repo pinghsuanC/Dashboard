@@ -2,9 +2,6 @@
 
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
-<!-- Next part of auth: local/prod callback switching (via env settings). -->
-<!-- Later: Next.js 16.3.5 -> 16.3.8 for the next/og advisory (task chip raised). -->
-
 ---
 
 ## History
