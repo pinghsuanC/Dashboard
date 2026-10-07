@@ -4,11 +4,12 @@ import { unstable_rethrow } from "next/navigation";
 
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { ITEM_NOT_FOUND, ITEM_SAVE_INVALID } from "@/lib/constants/messages/items";
-import { type ItemDetail, getItemTypeName, updateItem as saveItem } from "@/lib/db/items";
+import { getItemTypeName, updateItem as saveItem } from "@/lib/db/items";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemUpdateSchemaFor } from "@/lib/items/item-schemas";
 import { resetProfile } from "@/lib/session/user-session";
 import type { ActionResult } from "@/types/forms";
+import type { ItemDetail } from "@/types/items";
 
 const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } } as const;
 

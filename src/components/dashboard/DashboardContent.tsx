@@ -9,13 +9,13 @@ import { StatCards } from "@/components/dashboard/StatCards";
 import { ItemRow } from "@/components/items/ItemRow";
 import { useUserSession } from "@/components/session/UserSessionProvider";
 import { ROUTES } from "@/lib/constants/routes";
-import type { ItemSummary } from "@/lib/db/items";
 import {
   selectCollectionStats,
   selectItemStats,
   selectPinnedItems,
   selectRecentCollections,
 } from "@/lib/session/session-selectors";
+import type { ItemSummary } from "@/types/items";
 
 interface DashboardContentProps {
   /** Fetched by the page on every visit; not kept in the session. */

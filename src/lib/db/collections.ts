@@ -1,23 +1,7 @@
-import type { ItemRowType } from "@/lib/db/items";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-
-/**
- * A collection as the session holds it, with its item count and types
- * worked out at load time: the session doesn't hold every item, so they
- * can't be derived on the client.
- */
-export interface SessionCollection {
-  id: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  isFavorite: boolean;
-  updatedAt: Date;
-  itemCount: number;
-  /** Every type in the collection, most-used first: `types[0]` tints the card. */
-  types: ItemRowType[];
-}
+import type { SessionCollection } from "@/types/collections";
+import type { ItemRowType } from "@/types/items";
 
 /** Distinct types, most frequent first; ties keep first-seen order. */
 const rankTypesByUse = (types: ItemRowType[]): ItemRowType[] => {

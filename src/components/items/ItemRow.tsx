@@ -7,8 +7,8 @@ import { useItemDrawer } from "@/components/items/ItemDrawerProvider";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { ItemSummary } from "@/lib/db/items";
 import { formatShortDate } from "@/lib/helpers/format";
+import type { ItemSummary } from "@/types/items";
 
 interface ItemRowProps {
   item: ItemSummary;

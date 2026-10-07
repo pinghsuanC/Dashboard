@@ -2,8 +2,8 @@ import {
   SIGN_IN_ERROR_DEFAULT,
   SIGN_IN_ERRORS,
   VERIFY_NOTICES,
-  type VerifyNotice,
 } from "@/lib/constants/messages/auth";
+import type { VerifyNotice } from "@/types/auth";
 
 // Auth.js sends its error codes to the sign-in page via `pages.error`, and
 // `/api/auth/verify-email` lands there with `?verify=`. Both codes come

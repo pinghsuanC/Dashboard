@@ -18,18 +18,9 @@ import {
 } from "@/components/ui/sheet";
 import { ITEM_COPIED, ITEM_COPY_FAILED, ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
 import { ITEM_COPY_TOAST_ID } from "@/lib/constants/ui";
-import type { ItemDetail, ItemSummary } from "@/lib/db/items";
 import { formatLongDate } from "@/lib/helpers/format";
-import type { ItemDetailResult } from "@/lib/items/fetch-item-detail";
 import { cn } from "@/lib/utils";
-
-/**
- * The fetched half of the drawer: still loading, or the fetch's loaded or
- * failed result. Not-found and signed-out never reach it; they navigate away.
- */
-export type ItemDrawerLoad =
-  | { status: "loading" }
-  | Extract<ItemDetailResult, { status: "ok" | "error" }>;
+import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
 
 interface ItemDrawerProps {
   open: boolean;

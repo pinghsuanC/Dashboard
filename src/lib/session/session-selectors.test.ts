@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { SessionCollection } from "@/lib/db/collections";
-import type { ItemRowType, ItemSummary } from "@/lib/db/items";
+import type { SessionCollection } from "@/types/collections";
+import type { ItemRowType, ItemSummary } from "@/types/items";
 
 import {
   selectCollectionStats,

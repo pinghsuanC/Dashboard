@@ -3,8 +3,7 @@ import { compare, hash } from "bcryptjs";
 import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { findPasswordById, setPassword } from "@/services/auth/users";
-
-export type ChangePasswordResult = "success" | "wrong-password" | "no-password" | "error";
+import type { ChangePasswordResult } from "@/types/auth";
 
 /**
  * Checks the signed-in user's current password, then stores the new one. The

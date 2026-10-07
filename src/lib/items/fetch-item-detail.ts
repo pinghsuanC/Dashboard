@@ -1,14 +1,5 @@
 import { itemApiHref } from "@/lib/constants/routes";
-import type { ItemDetail } from "@/lib/db/items";
-
-/** What the item drawer does next depends on which of these comes back. */
-export type ItemDetailResult =
-  | { status: "ok"; item: ItemDetail }
-  /** Missing, or not the signed-in user's: the route answers both the same. */
-  | { status: "not-found" }
-  /** The route redirected to sign-in; `url` is where it pointed. */
-  | { status: "signed-out"; url: string }
-  | { status: "error" };
+import type { ItemDetail, ItemDetailResult } from "@/types/items";
 
 type ItemDetailJson = Omit<ItemDetail, "createdAt" | "updatedAt"> & {
   createdAt: string;

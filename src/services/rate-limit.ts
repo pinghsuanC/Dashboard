@@ -10,23 +10,12 @@ import {
   type RateLimitPolicy,
   UNKNOWN_CLIENT_IP,
 } from "@/lib/constants/rate-limits";
+import type { RateLimitResult } from "@/types/auth";
 
 // The rate limit service: the only module that talks to Upstash. It owns the
 // connection and its failure policy (fail open when unset, down or slow);
 // the limits per flow live in `@/lib/constants/rate-limits`, and the wording
 // for a blocked caller in `@/lib/auth/rate-limit-messages`.
-
-export interface RateLimitResult {
-  success: boolean;
-  remaining: number;
-  /**
-   * When the window frees up again, in epoch milliseconds. Known issue: Upstash's
-   * sliding window reports the end of its current fixed sub-window, so with
-   * attempts spread over two sub-windows a caller can still be blocked for a
-   * while after it, and "try again in X minutes" is a lower bound.
-   */
-  reset: number;
-}
 
 // Keys are per environment, so dev and prod can't share buckets even if they
 // ever point at the same database.

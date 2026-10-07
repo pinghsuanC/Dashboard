@@ -18,8 +18,8 @@ import {
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { ITEM_SAVED } from "@/lib/constants/messages/items";
 import { ITEM_SAVE_TOAST_ID } from "@/lib/constants/ui";
-import type { ItemDetail } from "@/lib/db/items";
 import type { FieldErrors } from "@/types/forms";
+import type { ItemDetail } from "@/types/items";
 
 interface ItemEditFormProps {
   item: ItemDetail;

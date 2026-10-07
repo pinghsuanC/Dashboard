@@ -1,6 +1,13 @@
 import { RECENT_COLLECTION_LIMIT, SIDEBAR_RECENT_COLLECTION_LIMIT } from "@/lib/constants/limits";
-import type { SessionCollection } from "@/lib/db/collections";
-import type { ItemCounts, ItemSummary } from "@/lib/db/items";
+import type {
+  CollectionStats,
+  CollectionSummary,
+  SessionCollection,
+  SidebarCollection,
+  SidebarCollections,
+} from "@/types/collections";
+import type { ItemCounts, ItemSummary } from "@/types/items";
+import type { ItemStats } from "@/types/session";
 
 /**
  * Display shapes derived from the user session. Pure functions, so a local
@@ -8,35 +15,6 @@ import type { ItemCounts, ItemSummary } from "@/lib/db/items";
  * the next render with no request. They re-apply the orderings and limits the
  * loaders use, so a list stays right after a local insert or update.
  */
-
-export interface ItemStats {
-  items: number;
-  favoriteItems: number;
-}
-
-export interface CollectionStats {
-  collections: number;
-  favoriteCollections: number;
-}
-
-/** What a collection card shows. */
-export type CollectionSummary = Omit<SessionCollection, "updatedAt">;
-
-/** What a sidebar collection row shows. */
-export interface SidebarCollection {
-  id: string;
-  name: string;
-  slug: string;
-  itemCount: number;
-  /** Colour of the most-used item type; null for an empty collection. */
-  color: string | null;
-}
-
-export interface SidebarCollections {
-  favorites: SidebarCollection[];
-  /** Non-favorites only, so no collection is listed twice. */
-  recents: SidebarCollection[];
-}
 
 // Newest first; title, then name, break `updatedAt` ties so the order is
 // stable between renders (seeded rows share timestamps to the millisecond).

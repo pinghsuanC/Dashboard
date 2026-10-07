@@ -13,6 +13,7 @@ import {
 } from "@/services/auth/tokens";
 import { findPasswordUserEmail } from "@/services/auth/users";
 import { sendPasswordResetEmail } from "@/services/email";
+import type { ResetResult, ResetTokenStatus } from "@/types/auth";
 
 /**
  * Mails a reset link if the email belongs to a password user. GitHub-only
@@ -41,8 +42,6 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   }
 };
 
-export type ResetTokenStatus = "valid" | "expired" | "invalid";
-
 /**
  * Read-only check for rendering `/reset-password`. Opening the link uses
  * nothing up, so mail scanners that prefetch it can't burn the token.
@@ -52,8 +51,6 @@ export const checkResetToken = async (token: string): Promise<ResetTokenStatus> 
   if (!row) return "invalid";
   return row.expires < new Date() ? "expired" : "valid";
 };
-
-export type ResetResult = "success" | Exclude<ResetTokenStatus, "valid">;
 
 /**
  * Sets the new password and deletes every reset token for the email, so each

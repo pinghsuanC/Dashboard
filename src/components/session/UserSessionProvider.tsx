@@ -11,7 +11,7 @@ import {
   useTransition,
 } from "react";
 
-import type { UserSession } from "@/lib/session/user-session";
+import type { UserSession } from "@/types/session";
 
 type Setter<T> = (action: SetStateAction<T>) => void;
 

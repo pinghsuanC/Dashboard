@@ -1,4 +1,5 @@
 import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
+import type { VerifyNotice } from "@/types/auth";
 
 /** Form and action messages for sign-in, register and password reset. */
 export const AUTH_MESSAGES = {
@@ -35,11 +36,6 @@ export const SIGN_IN_ERRORS: Record<string, string> = {
 
 /** For any `?error=` code without its own message. */
 export const SIGN_IN_ERROR_DEFAULT = "Sign-in failed. Please try again.";
-
-export interface VerifyNotice {
-  text: string;
-  ok: boolean;
-}
 
 /** `/api/auth/verify-email` outcomes, shown on `/sign-in?verify=`. */
 export const VERIFY_NOTICES: Record<string, VerifyNotice> = {

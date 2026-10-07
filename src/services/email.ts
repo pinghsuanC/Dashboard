@@ -4,11 +4,11 @@ import { Resend } from "resend";
 
 import {
   accountExistsEmail,
-  type EmailTemplate,
   passwordResetEmail,
   verificationEmail,
 } from "@/lib/constants/emails";
 import { DEFAULT_EMAIL_FROM } from "@/lib/constants/env";
+import type { EmailTemplate } from "@/types/email";
 
 // The email service: the only module that talks to Resend. Callers ask for a
 // kind of email; which provider sends it, and from which address, stays here.

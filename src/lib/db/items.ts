@@ -3,47 +3,7 @@ import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-
-/** The slice of an item type an item row needs for its icon and accent. */
-export interface ItemRowType {
-  id: string;
-  /** Stable key ("snippet", "link"): what per-type rules check. `label` is display text. */
-  name: string;
-  label: string;
-  icon: string | null;
-  color: string;
-}
-
-/**
- * An item as list rows show it, without the body (content, url, file
- * fields). The detail view loads those on demand.
- */
-export interface ItemSummary {
-  id: string;
-  title: string;
-  description: string | null;
-  isPinned: boolean;
-  isFavorite: boolean;
-  updatedAt: Date;
-  /** Tag names, alphabetical: the join table records no order of its own. */
-  tags: string[];
-  /**
-   * Embedded rather than looked up in the session's type list: that list is
-   * the system types, and a Pro user's items can use their own types.
-   */
-  type: ItemRowType;
-}
-
-/**
- * The user's item numbers, for display without loading the items: stat
- * cards, sidebar badges, profile usage.
- */
-export interface ItemCounts {
-  total: number;
-  favorites: number;
-  /** Item count per type id. Types with no items are absent; read with `?? 0`. */
-  byType: Record<string, number>;
-}
+import type { ItemCounts, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
 
 const itemSummarySelect = {
   id: true,
@@ -131,25 +91,6 @@ export const getItemsByType = async (typeId: string): Promise<ItemSummary[]> => 
   return items.map(toItemSummary);
 };
 
-/** A collection an item belongs to, as the detail view links it. */
-export interface ItemCollectionRef {
-  id: string;
-  name: string;
-}
-
-/** An item with its body, for the item drawer. Loaded on demand by id. */
-export interface ItemDetail extends ItemSummary {
-  content: string | null;
-  language: string | null;
-  url: string | null;
-  fileName: string | null;
-  fileSize: number | null;
-  mimeType: string | null;
-  createdAt: Date;
-  /** By name: the join table records no order of its own. */
-  collections: ItemCollectionRef[];
-}
-
 const itemDetailSelect = {
   ...itemSummarySelect,
   content: true,
@@ -196,19 +137,6 @@ export const getItemTypeName = async (id: string): Promise<string | null> => {
   });
   return item?.type.name ?? null;
 };
-
-/**
- * An item edit, already validated. A field left `undefined` is not written;
- * `null` clears it. `tags` replaces the item's tags by name.
- */
-export interface ItemUpdate {
-  title: string;
-  description?: string | null;
-  content?: string | null;
-  language?: string | null;
-  url?: string | null;
-  tags?: string[];
-}
 
 /**
  * Saves an edit to one of the signed-in user's items and returns it as the

@@ -2,8 +2,7 @@ import { FileStack, Folder } from "lucide-react";
 
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ItemTypeDefinition } from "@/lib/db/item-types";
-import type { ItemCounts } from "@/lib/db/items";
+import type { ItemCounts, ItemTypeDefinition } from "@/types/items";
 
 interface ProfileStatsProps {
   items: number;

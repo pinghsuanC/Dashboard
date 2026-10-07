@@ -10,13 +10,7 @@ import { ROUTES } from "@/lib/constants/routes";
 import { BCRYPT_ROUNDS } from "@/lib/constants/security";
 import { createPasswordUser, findUserEmail } from "@/services/auth/users";
 import { sendAccountExistsEmail } from "@/services/email";
-
-/**
- * The same for a new email and a taken one, so registering can't be used to
- * check whether someone has an account. No user id either: it would only
- * exist in one of the two cases.
- */
-export type RegisterResult = { success: true } | { success: false; error: string; status: 500 };
+import type { RegisterResult } from "@/types/auth";
 
 /**
  * Tells the owner of a taken email that someone tried to register with it.

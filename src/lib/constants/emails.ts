@@ -1,11 +1,6 @@
 import { RESET_TOKEN_TTL_MS, VERIFICATION_TOKEN_TTL_MS } from "@/lib/constants/limits";
 import { formatDuration } from "@/lib/helpers/format";
-
-export interface EmailTemplate {
-  subject: string;
-  text: string;
-  html: string;
-}
+import type { EmailTemplate } from "@/types/email";
 
 const escapeHtml = (value: string) =>
   value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");

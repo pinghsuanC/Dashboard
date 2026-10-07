@@ -2,18 +2,7 @@ import { cache } from "react";
 
 import { itemTypeHref } from "@/lib/constants/routes";
 import { prisma } from "@/services/prisma";
-
-/** A built-in item type as every screen shows it. The same for every user. */
-export interface ItemTypeDefinition {
-  id: string;
-  /** Slug: "snippet", "file", ... */
-  name: string;
-  label: string;
-  icon: string | null;
-  color: string;
-  /** `/items/snippets`: routes are plural, the stored type `name` is not. */
-  route: string;
-}
+import type { ItemTypeDefinition } from "@/types/items";
 
 const itemTypeSelect = { id: true, name: true, label: true, icon: true, color: true } as const;
 
