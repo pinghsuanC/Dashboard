@@ -127,4 +127,13 @@
   html {
     @apply font-sans;
     }
+  /* Tailwind v4's preflight gives buttons the default arrow (v3 used the
+     pointer), and shadcn's Button adds no cursor class. Base layer, so a
+     utility like the sidebar rail's cursor-w-resize still wins. :disabled
+     only matches form controls, so a role="button" element is checked for
+     aria-disabled instead. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+    }
 }

@@ -17,6 +17,7 @@ Load-bearing; do not drop or soften. Other sections point here instead of repeat
 - If a task seems to need production (for example comparing schemas), stop and ask. Continue only if production is named explicitly in the request.
 - Schema changes only through `npm run db:migrate` on the dev branch, never `run_sql` DDL or `prepare_database_migration`, so Prisma's migration history stays the source of truth.
 - Ask before destructive SQL (`DELETE`, `UPDATE`, `DROP`, `TRUNCATE`), even on `development`.
+- For browser checks on the local dev server, sign in with the test login in `.env.example` (`TEST_USER_EMAIL` / `TEST_USER_PASSWORD`; gitignored, local only). Its data on the dev branch may be changed freely through the app. Never write the password into a tracked file.
 
 ## Security and auth
 
