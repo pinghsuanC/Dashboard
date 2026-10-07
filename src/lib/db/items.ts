@@ -182,3 +182,16 @@ export const updateItem = async (
 // Prisma's answer when an update's `where` matches no row.
 const isRecordNotFound = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
+
+/**
+ * Deletes one of the signed-in user's items. `false` when it is missing or
+ * not theirs: the user scope is part of the delete itself, so another user's
+ * id deletes nothing. Its tag and collection links go with it (cascade); the
+ * tags and collections stay.
+ */
+export const deleteItem = async (id: string): Promise<boolean> => {
+  const userId = await requireCurrentUserId();
+  // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
+  const { count } = await prisma.item.deleteMany({ where: { id, userId } });
+  return count > 0;
+};

@@ -19,5 +19,8 @@ export const ITEM_COPY_TOAST_ID = "item-copy-toast";
 /** Toast id for the item drawer's Save: a repeat save updates one toast. */
 export const ITEM_SAVE_TOAST_ID = "item-save-toast";
 
+/** Toast id for the item drawer's Delete: a repeat delete updates one toast. */
+export const ITEM_DELETE_TOAST_ID = "item-delete-toast";
+
 /** Letters in an avatar's initials: "Ada Byron King" -> "AB". */
 export const AVATAR_INITIALS_MAX = 2;

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
+import { deleteItem, getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -323,5 +323,49 @@ describe("item edit, saved (updateItem)", () => {
 
     expect(saved?.tags).toEqual(["react"]);
     expect(db.tags.filter((tag) => tag.slug === "react").map((tag) => tag.userId).sort()).toEqual(["ada", "bob"]);
+  });
+});
+
+describe("item delete, scoped to the user (deleteItem, R1)", () => {
+  beforeEach(() => {
+    db.items.push(
+      { id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1) },
+      { id: "other", userId: "ada", typeId: "t-snippet", title: "Other", updatedAt: day(1) },
+      { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", updatedAt: day(1) },
+    );
+  });
+
+  it("deletes the user's item and answers true", async () => {
+    expect(await deleteItem("mine")).toBe(true);
+    expect(db.items.map((item) => item.id)).toEqual(["other", "bobs"]);
+  });
+
+  it("another user's item is left alone and answers false", async () => {
+    expect(await deleteItem("bobs")).toBe(false);
+    expect(db.items.map((item) => item.id)).toContain("bobs");
+  });
+
+  it("a missing id deletes nothing and answers false", async () => {
+    expect(await deleteItem("no-such-item")).toBe(false);
+    expect(db.items).toHaveLength(3);
+  });
+});
+
+// The fake keeps tag and collection links on the item row, so their removal
+// can't be asserted here; the cascade itself is `onDelete: Cascade` in the schema.
+describe("item delete, tags and collections stay (deleteItem, R2)", () => {
+  it("keeps the user's tags and collections", async () => {
+    db.tags.push({ id: "tag-react", userId: "ada", name: "react", slug: "react" });
+    db.collections.push({ id: "c-ui", userId: "ada", name: "UI", slug: "ui" });
+    db.items.push({
+      id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1),
+      tags: ["react"], collectionIds: ["c-ui"],
+    });
+
+    await deleteItem("mine");
+
+    expect(db.items.some((item) => item.id === "mine")).toBe(false);
+    expect(db.tags.map((tag) => tag.id)).toEqual(["tag-react"]);
+    expect(db.collections.map((collection) => collection.id)).toEqual(["c-ui"]);
   });
 });

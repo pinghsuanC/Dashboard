@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { ITEM_NOT_FOUND, ITEM_SAVE_INVALID } from "@/lib/constants/messages/items";
-import { getItemTypeName, updateItem as saveItem } from "@/lib/db/items";
+import { deleteItem as removeItem, getItemTypeName, updateItem as saveItem } from "@/lib/db/items";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemUpdateSchemaFor } from "@/lib/items/item-schemas";
 import { resetProfile } from "@/lib/session/user-session";
@@ -49,6 +49,26 @@ export const updateItem = async (
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
     console.error("Item update failed:", error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/**
+ * Deletes one of the session user's items, after the drawer's confirm. A
+ * missing item and another user's answer alike, as in `updateItem`. Both
+ * success and not-found refresh the page and session, so counts, pinned
+ * items and card lists drop it.
+ */
+export const deleteItem = async (itemId: string): Promise<ActionResult<null>> => {
+  if (typeof itemId !== "string") return NOT_FOUND;
+  try {
+    const deleted = await removeItem(itemId);
+    resetProfile();
+    return deleted ? { success: true, data: null } : NOT_FOUND;
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    console.error("Item delete failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }
 };

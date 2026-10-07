@@ -423,10 +423,25 @@ export const fakePrisma = {
               (where.isFavorite === undefined || Boolean(row.isFavorite) === where.isFavorite),
           ).length,
       ),
-    deleteMany: ({ where }: { where: { userId: string } }) =>
+    // All of a user's items (account delete), or one by `{ id, userId }`
+    // (item delete). Tag and collection links live on the row, so they go
+    // with it, as the cascade drops them; the tags and collections stay.
+    // Like Prisma, a filter left out matches every row, so a delete that
+    // drops its user scope deletes other users' items here too.
+    deleteMany: ({ where }: { where: { userId?: string; id?: string } }) =>
       query(() => {
+        // Prisma rejects a non-string id before querying.
+        if ("id" in where && typeof where.id !== "string") {
+          throw new Error("Argument `id`: Expected String");
+        }
         const before = db.items.length;
-        db.items = db.items.filter((row) => row.userId !== where.userId);
+        db.items = db.items.filter(
+          (row) =>
+            !(
+              (where.userId === undefined || row.userId === where.userId) &&
+              (where.id === undefined || row.id === where.id)
+            ),
+        );
         return { count: before - db.items.length };
       }),
   },
