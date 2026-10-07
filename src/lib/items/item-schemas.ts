@@ -15,8 +15,8 @@ import {
   ITEM_URL_INVALID,
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
-import type { ItemUpdate } from "@/lib/db/items";
 import { slugify } from "@/lib/helpers/slugify";
+import type { ItemUpdate } from "@/types/items";
 
 const title = z
   .string({ error: ITEM_TITLE_REQUIRED })

@@ -4,10 +4,10 @@ import { usePathname } from "next/navigation";
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 import { signOutAction } from "@/actions/auth";
-import { ItemDrawer, type ItemDrawerLoad } from "@/components/items/ItemDrawer";
+import { ItemDrawer } from "@/components/items/ItemDrawer";
 import { ROUTES } from "@/lib/constants/routes";
-import type { ItemDetail, ItemSummary } from "@/lib/db/items";
 import { fetchItemDetail } from "@/lib/items/fetch-item-detail";
+import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
 
 interface ItemDrawerContextValue {
   /** Opens the drawer on this item at once, then loads its body. */

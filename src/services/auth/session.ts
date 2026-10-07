@@ -4,25 +4,10 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 
 import { auth } from "@/auth";
-import type { Plan } from "@/generated/prisma/client";
 import { signInHref } from "@/lib/auth/auth-redirect";
 import { DEFAULT_SIGN_IN_REDIRECT } from "@/lib/constants/routes";
 import { prisma } from "@/services/prisma";
-
-/** The signed-in user's profile, safe to hand to client components. */
-export interface CurrentUser {
-  id: string;
-  name: string | null;
-  email: string;
-  image: string | null;
-  plan: Plan;
-  isPro: boolean;
-  preferredTheme: string;
-  preferredFontSize: number;
-  createdAt: Date;
-  /** Whether the user can sign in with a password. Never the hash itself. */
-  hasPassword: boolean;
-}
+import type { CurrentUser } from "@/types/session";
 
 /**
  * Who is signed in, and their profile, in one read of the user row. It does

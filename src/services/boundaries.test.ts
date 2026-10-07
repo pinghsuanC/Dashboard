@@ -25,6 +25,10 @@ const files = sourceFiles(SRC).map((path) => ({
 const importing = (specifier: string) =>
   files.filter(({ text }) => text.includes(`from "${specifier}"`)).map(({ path }) => path);
 
+// Files importing any module under `prefix`.
+const importingPrefix = (prefix: string) =>
+  files.filter(({ text }) => text.includes(`from "${prefix}`)).map(({ path }) => path);
+
 // As `importing`, minus `import type` lines: those vanish at runtime.
 const importingAtRuntime = (specifier: string) =>
   files
@@ -110,5 +114,55 @@ describe("service boundaries", () => {
   it("B4: only the session service imports Auth.js's @/auth among services", () => {
     const authImporters = importing("@/auth").filter((path) => path.startsWith("services/"));
     expect(authImporters).toEqual(["services/auth/session.ts"]);
+  });
+});
+
+// Types live in `types/`, one file per area. Two types are calculated from a
+// constant's value, so they stay beside it.
+const TYPES_KEPT_BESIDE_THEIR_CONSTANT = [
+  "lib/constants/rate-limits.ts RateLimitPolicy",
+  "lib/constants/routes.ts Flag",
+];
+
+describe("type boundaries", () => {
+  it("T1: types/ files are declarations only; they import types from types/ and generated code, nothing else", () => {
+    // Whole statements, not lines: a multi-line `import type { ... }` puts
+    // its `from` on a later line.
+    const offending = files
+      .filter(({ path }) => path.startsWith("types/"))
+      .flatMap(({ path, text }) =>
+        [...text.matchAll(/^import\s+(type\s+)?(?:[^;]*?\s+from\s+)?"([^"]+)";/gm)]
+          .filter(([, typeOnly, specifier]) => {
+            if (!typeOnly) return true;
+            return specifier.startsWith("@/") && !/^@\/(types|generated)\//.test(specifier);
+          })
+          .map(([statement]) => `${path}: ${statement.replace(/\s+/g, " ")}`),
+      );
+    expect(offending).toEqual([]);
+  });
+
+  it("T2: no file outside types/ exports a type, except the ones calculated from a constant", () => {
+    // Declarations, plus re-exports (`export type { X }`, `export { type X }`),
+    // so no file can keep a second home for a type.
+    const exportedNames = (text: string) => [
+      ...[...text.matchAll(/^export (?:interface|type) (\w+)/gm)].map(([, name]) => name),
+      ...[...text.matchAll(/^export type \{([^}]*)\}/gm)].flatMap(([, names]) => names.split(",")),
+      ...[...text.matchAll(/^export \{([^}]*)\}/gm)].flatMap(([, names]) =>
+        names.split(",").filter((name) => name.trim().startsWith("type ")),
+      ),
+    ];
+    const exported = files
+      .filter(({ path }) => !path.startsWith("types/"))
+      .flatMap(({ path, text }) =>
+        exportedNames(text)
+          .map((name) => name.replace(/^\s*type\s+/, "").split(" as ")[0].trim())
+          .filter(Boolean)
+          .map((name) => `${path} ${name}`),
+      );
+    expect(exported).toEqual(TYPES_KEPT_BESIDE_THEIR_CONSTANT);
+  });
+
+  it("T3: components never import from lib/db; shapes come from types/", () => {
+    expect(importingPrefix("@/lib/db/").filter((path) => path.startsWith("components/"))).toEqual([]);
   });
 });

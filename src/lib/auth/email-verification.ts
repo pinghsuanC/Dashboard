@@ -10,6 +10,7 @@ import {
   replaceVerificationToken,
 } from "@/services/auth/tokens";
 import { sendVerificationEmail } from "@/services/email";
+import type { VerifyResult } from "@/types/auth";
 
 /**
  * `EMAIL_VERIFICATION=off` lets password users register and sign in without
@@ -49,8 +50,6 @@ export const resendVerificationLink = async (email: string): Promise<void> => {
     console.error("Resending verification email failed", error);
   }
 };
-
-export type VerifyResult = "success" | "expired" | "invalid";
 
 /**
  * Marks the email verified and deletes the token, so each link works once.

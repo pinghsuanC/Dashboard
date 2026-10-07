@@ -31,3 +31,4 @@
 - **2026-10-04** — Item drawer: right-side detail sheet opened from item cards, item body loaded on click from `/api/items/[id]`; a missing or another user's item signs out.
 - **2026-10-06** — Item edit: drawer edit mode with per-type fields from a constants map, `updateItem` action with Zod validation, tags matched by slug; lists and session refresh on save.
 - **2026-10-06** — Service refactor: `services/` owns every outside connection (Prisma, Resend, Upstash) and the auth service; `lib/db` stays the interface with the profile check; `lib/` grouped by area; a boundary test enforces the layers.
+- **2026-10-06** — Refactored types into `src/types/`.

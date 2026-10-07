@@ -1,8 +1,6 @@
+import type { EditableItemField } from "@/types/items";
 /** System item types that need a Pro subscription. */
 export const PRO_TYPE_NAMES: ReadonlySet<string> = new Set(["file", "image"]);
-
-/** Body fields an item type can edit, beyond the title, description and tags every type has. */
-export type EditableItemField = "content" | "language" | "url";
 
 /**
  * Which body fields each system type edits, keyed by type name (never id:

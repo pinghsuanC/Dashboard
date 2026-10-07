@@ -6,8 +6,9 @@ import { ItemRow } from "@/components/items/ItemRow";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { ItemGridSkeleton } from "@/components/skeleton/ItemGridSkeleton";
 import { itemTypeNameFromSegment } from "@/lib/constants/routes";
-import { getSystemItemTypeByName, type ItemTypeDefinition } from "@/lib/db/item-types";
+import { getSystemItemTypeByName } from "@/lib/db/item-types";
 import { getItemsByType } from "@/lib/db/items";
+import type { ItemTypeDefinition } from "@/types/items";
 
 /** The type the URL names, or null for a segment no type route produces. */
 const resolveType = async (params: PageProps<"/items/[type]">["params"]) => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getItemDetail, type ItemDetail } from "@/lib/db/items";
+import { getItemDetail } from "@/lib/db/items";
+import type { ItemDetail } from "@/types/items";
 
 import { GET } from "./route";
 

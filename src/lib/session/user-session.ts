@@ -3,34 +3,11 @@ import "server-only";
 import { refresh } from "next/cache";
 import { cache } from "react";
 
-import { type SessionCollection, getSessionCollections } from "@/lib/db/collections";
-import { type ItemTypeDefinition, getSystemItemTypeDefinitions } from "@/lib/db/item-types";
-import {
-  type ItemCounts,
-  type ItemSummary,
-  getItemCounts,
-  getPinnedItems,
-} from "@/lib/db/items";
-import { type CurrentUser, requireCurrentUser } from "@/services/auth/session";
-
-/**
- * What the signed-in user's screens show, loaded once and held on the client
- * by `UserSessionProvider`. Items are deliberately not all here: only their
- * counts and the pinned list. Recent items are fetched by the dashboard on
- * every visit, and "view all", editing and creating load what they need.
- * Collections are few, so all of them are here. Display shapes derive from
- * it in `session-selectors.ts`.
- */
-export interface UserSession {
-  user: CurrentUser;
-  itemTypes: ItemTypeDefinition[];
-  /** Numbers only: total, favorites, per type. */
-  itemCounts: ItemCounts;
-  /** Every pinned item, newest first. */
-  pinnedItems: ItemSummary[];
-  /** Every collection, with its item count and types. */
-  collections: SessionCollection[];
-}
+import { getSessionCollections } from "@/lib/db/collections";
+import { getSystemItemTypeDefinitions } from "@/lib/db/item-types";
+import { getItemCounts, getPinnedItems } from "@/lib/db/items";
+import { requireCurrentUser } from "@/services/auth/session";
+import type { UserSession } from "@/types/session";
 
 /**
  * Loads the session. Called by the `(app)` layout only, which runs on a full
