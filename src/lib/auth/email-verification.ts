@@ -1,9 +1,15 @@
-import { appOrigin, hashToken, newToken } from "@/lib/auth-tokens";
+import { appOrigin, hashToken, newToken } from "@/lib/auth/auth-tokens";
 import { EMAIL_VERIFICATION_OFF } from "@/lib/constants/env";
 import { VERIFICATION_RESEND_COOLDOWN_MS, VERIFICATION_TOKEN_TTL_MS } from "@/lib/constants/limits";
 import { API_ROUTES } from "@/lib/constants/routes";
-import { sendVerificationEmail } from "@/lib/email";
-import { prisma } from "@/lib/prisma";
+import {
+  consumeVerificationToken,
+  deleteVerificationToken,
+  findVerificationToken,
+  latestVerificationExpiry,
+  replaceVerificationToken,
+} from "@/services/auth/tokens";
+import { sendVerificationEmail } from "@/services/email";
 
 /**
  * `EMAIL_VERIFICATION=off` lets password users register and sign in without
@@ -21,16 +27,11 @@ export const isEmailVerificationEnabled = (): boolean =>
  */
 export const sendVerificationLink = async (email: string): Promise<void> => {
   const token = newToken();
-  await prisma.$transaction([
-    prisma.verificationToken.deleteMany({ where: { identifier: email } }),
-    prisma.verificationToken.create({
-      data: {
-        identifier: email,
-        token: hashToken(token),
-        expires: new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
-      },
-    }),
-  ]);
+  await replaceVerificationToken(
+    email,
+    hashToken(token),
+    new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+  );
 
   const link = `${await appOrigin()}${API_ROUTES.verifyEmail}?${new URLSearchParams({ token })}`;
   await sendVerificationEmail(email, link);
@@ -39,12 +40,8 @@ export const sendVerificationLink = async (email: string): Promise<void> => {
 /** Sends a new link unless one went out within the cooldown. Never throws. */
 export const resendVerificationLink = async (email: string): Promise<void> => {
   try {
-    const latest = await prisma.verificationToken.findFirst({
-      where: { identifier: email },
-      orderBy: { expires: "desc" },
-      select: { expires: true },
-    });
-    const issuedAt = latest ? latest.expires.getTime() - VERIFICATION_TOKEN_TTL_MS : 0;
+    const latest = await latestVerificationExpiry(email);
+    const issuedAt = latest ? latest.getTime() - VERIFICATION_TOKEN_TTL_MS : 0;
     if (Date.now() - issuedAt < VERIFICATION_RESEND_COOLDOWN_MS) return;
 
     await sendVerificationLink(email);
@@ -64,23 +61,13 @@ export type VerifyResult = "success" | "expired" | "invalid";
  * same; the user just sees "invalid" and can sign in anyway.
  */
 export const verifyEmailToken = async (token: string): Promise<VerifyResult> => {
-  const row = await prisma.verificationToken.findUnique({
-    where: { token: hashToken(token) },
-  });
+  const row = await findVerificationToken(hashToken(token));
   if (!row) return "invalid";
 
   if (row.expires < new Date()) {
-    await prisma.verificationToken.deleteMany({ where: { token: row.token } });
+    await deleteVerificationToken(row.token);
     return "expired";
   }
 
-  return prisma.$transaction(async (tx) => {
-    const { count } = await tx.verificationToken.deleteMany({ where: { token: row.token } });
-    if (count === 0) return "invalid";
-    await tx.user.updateMany({
-      where: { email: row.identifier, emailVerified: null },
-      data: { emailVerified: new Date() },
-    });
-    return "success";
-  });
+  return (await consumeVerificationToken(row.token, row.identifier)) ? "success" : "invalid";
 };

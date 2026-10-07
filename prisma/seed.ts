@@ -1,21 +1,20 @@
 import "dotenv/config";
-import { prisma } from "../src/lib/prisma";
-import { slugify } from "../src/lib/slugify";
+import { prisma } from "../src/services/prisma";
+import { slugify } from "../src/lib/helpers/slugify";
 import {
   MOCK_COLLECTIONS,
   MOCK_ITEM_TYPES,
   MOCK_ITEMS,
   MOCK_USER,
-} from "../src/lib/mock-data";
+} from "./seed-data";
 
-// Seeds the 7 system item types plus a demo user whose content mirrors
-// src/lib/mock-data.ts. Ids are UUIDs from the schema default; mock ids
+// Seeds the 7 system item types plus a demo user from ./seed-data.ts. Ids
+// are UUIDs from the schema default; the data file's ids
 // (type_snippet, col_react_patterns, ...) are only used to wire mock rows to
 // each other and never reach the database.
 //
 // Safe to re-run: rows are matched on natural keys (email, type name, slug,
 // item title) and updated in place instead of duplicated.
-// When mock-data.ts is retired, move this data in here.
 
 const MIME_TYPES: Record<string, string> = {
   md: "text/markdown",

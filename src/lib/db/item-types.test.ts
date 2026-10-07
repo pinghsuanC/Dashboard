@@ -4,7 +4,7 @@ import { db, resetDb } from "@/test/fake-prisma";
 
 import { getSystemItemTypeByName } from "./item-types";
 
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 beforeEach(() => {
   resetDb();

@@ -1,11 +1,11 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { verifyEmailToken } from "@/lib/email-verification";
+import { verifyEmailToken } from "@/lib/auth/email-verification";
 
 import { GET } from "./route";
 
-vi.mock("@/lib/email-verification", () => ({ verifyEmailToken: vi.fn() }));
+vi.mock("@/lib/auth/email-verification", () => ({ verifyEmailToken: vi.fn() }));
 
 const visit = async (query: string) => {
   const response = await GET(new NextRequest(`https://app.test/api/auth/verify-email${query}`));

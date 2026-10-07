@@ -1,3 +1,5 @@
+import "server-only";
+
 import { Resend } from "resend";
 
 import {
@@ -7,6 +9,10 @@ import {
   verificationEmail,
 } from "@/lib/constants/emails";
 import { DEFAULT_EMAIL_FROM } from "@/lib/constants/env";
+
+// The email service: the only module that talks to Resend. Callers ask for a
+// kind of email; which provider sends it, and from which address, stays here.
+// Templates live in `@/lib/constants/emails`.
 
 let client: Resend | undefined;
 

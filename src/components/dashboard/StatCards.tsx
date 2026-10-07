@@ -1,7 +1,7 @@
 import { FileStack, Folder, FolderHeart, Star, type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import type { CollectionStats, ItemStats } from "@/lib/session-selectors";
+import type { CollectionStats, ItemStats } from "@/lib/session/session-selectors";
 
 type DashboardStats = ItemStats & CollectionStats;
 

@@ -3,8 +3,8 @@ import { CredentialsSignin } from "next-auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { signIn, signOut } from "@/auth";
-import { signInHref } from "@/lib/auth-redirect";
-import { requireCurrentUser, requireCurrentUserId } from "@/lib/db/current-user";
+import { signInHref } from "@/lib/auth/auth-redirect";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { changePasswordAction, deleteAccountAction } from "./account";
@@ -30,11 +30,11 @@ vi.mock("@/auth", () => ({
     throw new RedirectError(redirectTo);
   }),
 }));
-vi.mock("@/lib/db/current-user", () => ({
+vi.mock("@/services/auth/session", () => ({
   requireCurrentUser: vi.fn(),
   requireCurrentUserId: vi.fn(),
 }));
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Real bcrypt at the lowest cost.
 vi.mock("@/lib/constants/security", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/constants/security")>()),

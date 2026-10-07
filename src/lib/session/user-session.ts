@@ -4,7 +4,6 @@ import { refresh } from "next/cache";
 import { cache } from "react";
 
 import { type SessionCollection, getSessionCollections } from "@/lib/db/collections";
-import { type CurrentUser, requireCurrentUser } from "@/lib/db/current-user";
 import { type ItemTypeDefinition, getSystemItemTypeDefinitions } from "@/lib/db/item-types";
 import {
   type ItemCounts,
@@ -12,6 +11,7 @@ import {
   getItemCounts,
   getPinnedItems,
 } from "@/lib/db/items";
+import { type CurrentUser, requireCurrentUser } from "@/services/auth/session";
 
 /**
  * What the signed-in user's screens show, loaded once and held on the client

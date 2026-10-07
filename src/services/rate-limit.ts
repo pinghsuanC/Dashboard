@@ -3,7 +3,6 @@ import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-import { tooManyAttempts } from "@/lib/constants/messages/auth";
 import {
   RATE_LIMIT_KEY_NAMESPACE,
   RATE_LIMIT_TIMEOUT_MS,
@@ -11,7 +10,11 @@ import {
   type RateLimitPolicy,
   UNKNOWN_CLIENT_IP,
 } from "@/lib/constants/rate-limits";
-import { MINUTE_MS, SECOND_MS } from "@/lib/constants/time";
+
+// The rate limit service: the only module that talks to Upstash. It owns the
+// connection and its failure policy (fail open when unset, down or slow);
+// the limits per flow live in `@/lib/constants/rate-limits`, and the wording
+// for a blocked caller in `@/lib/auth/rate-limit-messages`.
 
 export interface RateLimitResult {
   success: boolean;
@@ -95,15 +98,6 @@ export const checkRateLimit = async (
     console.error(`Rate limit check failed (${policy}); allowing the request`, error);
     return allowed;
   }
-};
-
-/** Seconds until `reset`, for a `Retry-After` header. At least 1. */
-export const retryAfterSeconds = (reset: number, now = Date.now()): number =>
-  Math.max(1, Math.ceil((reset - now) / SECOND_MS));
-
-/** "Too many attempts. Please try again in X minutes." Rounds up, at least 1. */
-export const rateLimitMessage = (reset: number, now = Date.now()): string => {
-  return tooManyAttempts(Math.max(1, Math.ceil((reset - now) / MINUTE_MS)));
 };
 
 /** Forgets the built limiters, so tests can change the env between cases. */

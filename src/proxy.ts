@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 
 import authConfig from "@/auth.config";
-import { signInHref } from "@/lib/auth-redirect";
+import { signInHref } from "@/lib/auth/auth-redirect";
 
 // Built from the edge-safe config only: importing `@/auth` here would pull
 // Prisma into the proxy. Verifying the JWT cookie needs no database.

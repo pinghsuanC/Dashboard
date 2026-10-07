@@ -4,14 +4,15 @@ import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { changePassword, deleteAccount } from "@/lib/account";
-import { signInHref } from "@/lib/auth-redirect";
-import { changePasswordSchema } from "@/lib/auth-schemas";
+import { changePassword } from "@/lib/auth/account";
+import { signInHref } from "@/lib/auth/auth-redirect";
+import { changePasswordSchema } from "@/lib/auth/auth-schemas";
 import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
-import { requireCurrentUser, requireCurrentUserId } from "@/lib/db/current-user";
-import { fieldErrorsOf } from "@/lib/form-errors";
+import { deleteAccount } from "@/lib/db/users";
+import { fieldErrorsOf } from "@/lib/helpers/form-errors";
+import { requireCurrentUser } from "@/services/auth/session";
 import type { FormState } from "@/types/forms";
 
 const PASSWORD_CHANGED = withFlag(ROUTES.profile, FLAGS.passwordChanged);
@@ -25,7 +26,7 @@ export const changePasswordAction = async (
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> => {
-  const { id: userId, email } = await requireCurrentUser();
+  const { email } = await requireCurrentUser();
   const parsed = changePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     password: formData.get("password"),
@@ -33,7 +34,7 @@ export const changePasswordAction = async (
   });
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
 
-  const result = await changePassword(userId, parsed.data.currentPassword, parsed.data.password);
+  const result = await changePassword(parsed.data.currentPassword, parsed.data.password);
   if (result === "wrong-password") {
     return { fieldErrors: { currentPassword: ACCOUNT_MESSAGES.currentPasswordIncorrect } };
   }
@@ -57,13 +58,12 @@ export const changePasswordAction = async (
 };
 
 /**
- * The session id, never a submitted one: a user can only delete themselves.
- * Signs out only once the delete succeeded; a failure keeps the user signed
- * in, on the dialog, with a message.
+ * `deleteAccount` takes the user from the session, never a submitted id: a
+ * user can only delete themselves. Signs out only once the delete succeeded;
+ * a failure keeps the user signed in, on the dialog, with a message.
  */
 export const deleteAccountAction = async (): Promise<FormState> => {
-  const userId = await requireCurrentUserId();
-  if (!(await deleteAccount(userId))) return { error: SOMETHING_WENT_WRONG };
+  if (!(await deleteAccount())) return { error: SOMETHING_WENT_WRONG };
 
   await signOut({ redirectTo: withFlag(ROUTES.signIn, FLAGS.deleted) });
   return {};

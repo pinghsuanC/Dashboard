@@ -14,7 +14,7 @@ import {
   ITEM_URL_INVALID,
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
-import { fieldErrorsOf } from "@/lib/form-errors";
+import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 
 import { itemUpdateSchemaFor } from "./item-schemas";
 

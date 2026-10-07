@@ -21,7 +21,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { collectionHref, ROUTES } from "@/lib/constants/routes";
-import { selectSidebarCollections } from "@/lib/session-selectors";
+import { selectSidebarCollections } from "@/lib/session/session-selectors";
 
 /** Derived from the session, so a local collection change shows at once. */
 export const SidebarCollectionNav = () => {

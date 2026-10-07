@@ -1,11 +1,11 @@
 import { compare } from "bcryptjs";
 
-import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/auth-errors";
+import { signInSchema } from "@/lib/auth/auth-schemas";
+import { isEmailVerificationEnabled } from "@/lib/auth/email-verification";
 import { DUMMY_HASH } from "@/lib/constants/security";
-import { signInSchema } from "@/lib/auth-schemas";
-import { isEmailVerificationEnabled } from "@/lib/email-verification";
-import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { findCredentialUser } from "@/services/auth/users";
+import { checkRateLimit } from "@/services/rate-limit";
 
 /**
  * The Credentials provider's `authorize`, in its own module so it can be
@@ -31,19 +31,7 @@ export const authorizeCredentials = async (input: unknown, request?: Request) =>
   const limit = await checkRateLimit("signIn", request?.headers ?? new Headers(), parsed.data.email);
   if (!limit.success) throw new RateLimitedError(limit.reset);
 
-  // Case-insensitive: GitHub-created rows keep the provider's casing.
-  const user = await prisma.user.findFirst({
-    where: { email: { equals: parsed.data.email, mode: "insensitive" } },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      passwordHash: true,
-      emailVerified: true,
-      sessionVersion: true,
-    },
-  });
+  const user = await findCredentialUser(parsed.data.email);
   const valid = await compare(parsed.data.password, user?.passwordHash ?? DUMMY_HASH);
   if (!valid || !user?.passwordHash) return null;
 

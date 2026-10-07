@@ -1,12 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  checkRateLimit,
-  clientIp,
-  rateLimitMessage,
-  resetRateLimitersForTests,
-  retryAfterSeconds,
-} from "./rate-limit";
+import { checkRateLimit, clientIp, resetRateLimitersForTests } from "./rate-limit";
 
 // An in-memory sliding window in place of Upstash: each key keeps the times of
 // its allowed hits, and a hit is allowed while fewer than `limit` fall inside
@@ -142,22 +136,5 @@ describe("failing open", () => {
     vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
 
     expect(await attempts(10, () => checkRateLimit("register", fromIp("1.1.1.1")))).toBe(10);
-  });
-});
-
-describe("telling the user", () => {
-  const now = Date.parse("2026-10-03T12:00:00Z");
-
-  it("R10: the message rounds the wait up to whole minutes, at least one", () => {
-    expect(rateLimitMessage(now + 14 * 60_000 + 1, now)).toBe(
-      "Too many attempts. Please try again in 15 minutes.",
-    );
-    expect(rateLimitMessage(now + 5_000, now)).toBe("Too many attempts. Please try again in 1 minute.");
-    expect(rateLimitMessage(now - 5_000, now)).toBe("Too many attempts. Please try again in 1 minute.");
-  });
-
-  it("R11: Retry-After is the wait in whole seconds, rounded up, at least one", () => {
-    expect(retryAfterSeconds(now + 90_500, now)).toBe(91);
-    expect(retryAfterSeconds(now, now)).toBe(1);
   });
 });

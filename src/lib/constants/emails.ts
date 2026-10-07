@@ -1,5 +1,5 @@
 import { RESET_TOKEN_TTL_MS, VERIFICATION_TOKEN_TTL_MS } from "@/lib/constants/limits";
-import { formatDuration } from "@/lib/format";
+import { formatDuration } from "@/lib/helpers/format";
 
 export interface EmailTemplate {
   subject: string;

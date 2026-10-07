@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 // The JWT: only the user id. Everything else is read from the database.
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 const signedInAs = (userId: string | null) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- auth() is overloaded; the session shape is all that matters

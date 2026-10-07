@@ -5,7 +5,7 @@ import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { ProfileOverview } from "@/components/profile/ProfileOverview";
 import { FlagToast } from "@/components/shared/FlagToast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { hasFlag } from "@/lib/auth-redirect";
+import { hasFlag } from "@/lib/auth/auth-redirect";
 import { APP_NAME } from "@/lib/constants/app";
 import { PASSWORD_CHANGED_TOAST } from "@/lib/constants/messages/account";
 import { FLAGS, ROUTES } from "@/lib/constants/routes";

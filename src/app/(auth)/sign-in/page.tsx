@@ -8,13 +8,13 @@ import { FlagToast } from "@/components/shared/FlagToast";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam, hasFlag, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { firstParam, hasFlag, safeCallbackUrl, signInHref } from "@/lib/auth/auth-redirect";
+import { isEmailVerificationEnabled } from "@/lib/auth/email-verification";
+import { signInErrorMessage, verifyNotice } from "@/lib/auth/sign-in-notices";
 import { APP_NAME } from "@/lib/constants/app";
 import { SIGN_IN_TOASTS } from "@/lib/constants/messages/auth";
 import { FLAGS, ROUTES } from "@/lib/constants/routes";
-import { redirectIfSignedIn } from "@/lib/db/current-user";
-import { isEmailVerificationEnabled } from "@/lib/email-verification";
-import { signInErrorMessage, verifyNotice } from "@/lib/sign-in-notices";
+import { redirectIfSignedIn } from "@/services/auth/session";
 
 export const metadata: Metadata = { title: "Sign in" };
 

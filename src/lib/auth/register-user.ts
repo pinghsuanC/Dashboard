@@ -2,14 +2,14 @@ import { hash } from "bcryptjs";
 import type { z } from "zod";
 
 import { Prisma } from "@/generated/prisma/client";
-import type { registerSchema } from "@/lib/auth-schemas";
-import { appOrigin } from "@/lib/auth-tokens";
-import { ROUTES } from "@/lib/constants/routes";
+import type { registerSchema } from "@/lib/auth/auth-schemas";
+import { appOrigin } from "@/lib/auth/auth-tokens";
+import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/auth/email-verification";
 import { AUTH_MESSAGES } from "@/lib/constants/messages/auth";
+import { ROUTES } from "@/lib/constants/routes";
 import { BCRYPT_ROUNDS } from "@/lib/constants/security";
-import { sendAccountExistsEmail } from "@/lib/email";
-import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/email-verification";
-import { prisma } from "@/lib/prisma";
+import { createPasswordUser, findUserEmail } from "@/services/auth/users";
+import { sendAccountExistsEmail } from "@/services/email";
 
 /**
  * The same for a new email and a taken one, so registering can't be used to
@@ -47,12 +47,7 @@ export const registerPasswordUser = async ({
   try {
     const passwordHash = await hash(password, BCRYPT_ROUNDS);
 
-    // Case-insensitive: the unique index is not, and GitHub-created rows keep
-    // the provider's casing.
-    const existing = await prisma.user.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-      select: { email: true },
-    });
+    const existing = await findUserEmail(email);
     if (existing) {
       await notifyExistingAccount(existing.email).catch((error: unknown) =>
         console.error("Sending account-exists email failed", error),
@@ -60,10 +55,7 @@ export const registerPasswordUser = async ({
       return { success: true };
     }
 
-    const user = await prisma.user.create({
-      data: { name, email, passwordHash },
-      select: { email: true },
-    });
+    const user = await createPasswordUser({ name, email, passwordHash });
     // A failed send doesn't undo the account: signing in with the right
     // password mails a fresh link.
     if (isEmailVerificationEnabled()) {

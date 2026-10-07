@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HOUR_MS, MINUTE_MS } from "@/lib/constants/time";
-import { sendVerificationEmail } from "@/lib/email";
+import { sendVerificationEmail } from "@/services/email";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { hashToken } from "./auth-tokens";
@@ -12,10 +12,10 @@ import {
   verifyEmailToken,
 } from "./email-verification";
 
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
-vi.mock("@/lib/email", () => ({ sendVerificationEmail: vi.fn() }));
-vi.mock("@/lib/auth-tokens", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/auth-tokens")>()),
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/email", () => ({ sendVerificationEmail: vi.fn() }));
+vi.mock("@/lib/auth/auth-tokens", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth/auth-tokens")>()),
   appOrigin: async () => "https://app.test",
 }));
 

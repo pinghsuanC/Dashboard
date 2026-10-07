@@ -1,11 +1,10 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import authConfig, { credentialFields } from "@/auth.config";
-import { authorizeCredentials } from "@/lib/authorize-credentials";
-import { prisma } from "@/lib/prisma";
+import { authorizeCredentials } from "@/lib/auth/authorize-credentials";
+import { authAdapter } from "@/services/auth/adapter";
 
 // Replaces the placeholder in `auth.config.ts`; the check itself is in
 // `authorize-credentials.ts`.
@@ -21,7 +20,7 @@ const credentials = Credentials({
 // the token's `sub`. The provider list mirrors `auth.config.ts` with the real
 // Credentials swapped in — add new providers to both.
 export const { auth, handlers, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: authAdapter,
   session: { strategy: "jwt" },
   ...authConfig,
   providers: [GitHub, credentials],

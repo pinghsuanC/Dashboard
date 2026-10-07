@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { requireCurrentUserId } from "@/lib/db/current-user";
+import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
 
-vi.mock("@/lib/db/current-user", () => ({ requireCurrentUserId: vi.fn() }));
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 
