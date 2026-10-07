@@ -22,3 +22,6 @@ export const ITEM_TAG_INVALID = "Each tag needs at least one letter or number";
 export const ITEM_SAVED = "Item saved";
 export const ITEM_SAVE_INVALID = "Check the highlighted fields";
 export const ITEM_NOT_FOUND = "This item no longer exists";
+
+/** Item delete: outcome. Not found reuses `ITEM_NOT_FOUND`. */
+export const ITEM_DELETED = "Item deleted";

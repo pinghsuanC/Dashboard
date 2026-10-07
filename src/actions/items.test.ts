@@ -12,7 +12,7 @@ import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { updateItem } from "./items";
+import { deleteItem, updateItem } from "./items";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -131,5 +131,66 @@ describe("updateItem action: failures (A5)", () => {
     await expect(updateItem("note", { title: "Retro" })).rejects.toMatchObject({
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
+  });
+});
+
+describe("deleteItem action: success (R3)", () => {
+  it("deletes the item and answers success", async () => {
+    expect(await deleteItem("note")).toEqual({ success: true, data: null });
+    expect(db.items.map((item) => item.id)).toEqual(["link"]);
+  });
+
+  it("refreshes the page and session so counts, pinned items and lists drop it", async () => {
+    await deleteItem("note");
+
+    expect(resetProfile).toHaveBeenCalledOnce();
+  });
+});
+
+describe("deleteItem action: not found (R3)", () => {
+  const notFound = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } };
+
+  it("another user's item answers not-found and stays", async () => {
+    db.items.push({ id: "bobs", userId: "bob", typeId: "t-note", title: "Bob's", updatedAt: day(1) });
+
+    expect(await deleteItem("bobs")).toEqual(notFound);
+    expect(itemRow("bobs")).toBeDefined();
+  });
+
+  it("a missing id answers the same", async () => {
+    expect(await deleteItem("no-such-item")).toEqual(notFound);
+    expect(db.items).toHaveLength(2);
+  });
+
+  it("an id that isn't a string answers the same and deletes nothing", async () => {
+    expect(await deleteItem({ not: "an id" } as unknown as string)).toEqual(notFound);
+    expect(db.items).toHaveLength(2);
+  });
+
+  it("refreshes, so lists drop an item that was deleted elsewhere", async () => {
+    await deleteItem("no-such-item");
+
+    expect(resetProfile).toHaveBeenCalledOnce();
+  });
+});
+
+describe("deleteItem action: failures (R3)", () => {
+  it("a database error answers with a retry message and doesn't refresh", async () => {
+    db.down = true;
+
+    expect(await deleteItem("note")).toEqual({
+      success: false,
+      error: { message: SOMETHING_WENT_WRONG },
+    });
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("a signed-out user is still redirected to sign in", async () => {
+    vi.mocked(requireCurrentUserId).mockImplementation(() => redirect("/sign-in"));
+
+    await expect(deleteItem("note")).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    expect(itemRow("note")).toBeDefined();
   });
 });

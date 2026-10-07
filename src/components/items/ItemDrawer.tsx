@@ -1,9 +1,10 @@
 "use client";
 
 import { type CSSProperties, type ReactNode, useState } from "react";
-import { Calendar, Copy, Folder, Pencil, Pin, Star, Tag, Trash2 } from "lucide-react";
+import { Calendar, Copy, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
 import { toast } from "sonner";
 
+import { ItemDeleteDialog } from "@/components/items/ItemDeleteDialog";
 import { ItemEditForm } from "@/components/items/ItemEditForm";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { ItemContentSkeleton, ItemMetaSkeleton } from "@/components/skeleton/ItemDrawerSkeleton";
@@ -30,7 +31,10 @@ interface ItemDrawerProps {
   load: ItemDrawerLoad;
   /** A save succeeded: show this copy from now on. */
   onSaved: (item: ItemDetail) => void;
-  /** A save found this item gone: close the drawer if it still shows it. */
+  /**
+   * A delete removed this item, or a save or delete found it gone: close the
+   * drawer if it still shows it.
+   */
   onGone: (id: string) => void;
 }
 
@@ -96,8 +100,9 @@ const ItemMeta = ({ detail }: { detail: ItemDetail }) => (
  * The item detail view: a right-hand sheet. The card's summary fills the
  * header, actions, description and tags immediately; content, collections and
  * dates wait for `load`. Edit, once the body has loaded, swaps the action bar
- * and body for `ItemEditForm`. Favorite, Pin and Delete show the item's state
- * but stay disabled until the CRUD feature wires them.
+ * and body for `ItemEditForm`. Delete asks first (`ItemDeleteDialog`).
+ * Favorite and Pin show the item's state but stay disabled until the CRUD
+ * feature wires them.
  *
  * Edit mode lives here, so the provider remounts the drawer (by `key`) for
  * each opened item: a new item, or the same one reopened, starts in view mode.
@@ -187,15 +192,11 @@ export const ItemDrawer = ({
                 <Pencil />
                 Edit
               </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled
-                aria-label="Delete"
-                className="text-destructive"
-              >
-                <Trash2 />
-              </Button>
+              <ItemDeleteDialog
+                itemId={item.id}
+                title={item.title}
+                onGone={() => onGone(item.id)}
+              />
             </div>
 
             <div
