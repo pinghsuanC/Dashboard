@@ -27,3 +27,9 @@ export const AVATAR_INITIALS_MAX = 2;
 
 /** Toast id for the New Item dialog's Create: a repeat create updates one toast. */
 export const ITEM_CREATE_TOAST_ID = "item-create-toast";
+
+/** The code editor grows with its content up to this height, then scrolls. */
+export const CODE_EDITOR_MAX_HEIGHT_PX = 400;
+
+/** The code editor header's language when an item has none. */
+export const CODE_LANGUAGE_FALLBACK_LABEL = "plain text";

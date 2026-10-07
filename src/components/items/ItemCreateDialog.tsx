@@ -143,6 +143,7 @@ export const ItemCreateDialog = () => {
 
           <ItemFormFields
             idPrefix="item-create"
+            typeName={typeName}
             fields={fields}
             draft={draft}
             onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}

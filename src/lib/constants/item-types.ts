@@ -27,3 +27,11 @@ export const editableFieldsFor = (typeName: string): readonly EditableItemField[
 export const CREATABLE_ITEM_TYPE_NAMES: readonly string[] = ["snippet", "prompt", "command", "note", "link"];
 
 export const isCreatableItemType = (name: string): boolean => CREATABLE_ITEM_TYPE_NAMES.includes(name);
+
+/**
+ * Types whose content is code: shown and edited in the Monaco code editor
+ * rather than a plain text box. Keyed by name, like the maps above.
+ */
+export const CODE_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["snippet", "command"]);
+
+export const isCodeItemType = (name: string): boolean => CODE_ITEM_TYPE_NAMES.has(name);
