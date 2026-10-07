@@ -7,7 +7,7 @@ import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CODE_EDITOR_MAX_HEIGHT_PX } from "@/lib/constants/ui";
+import { EDITOR_MAX_HEIGHT_PX } from "@/lib/constants/ui";
 import { codeLanguageLabel, monacoLanguageFor } from "@/lib/items/code-language";
 import { copyToClipboard } from "@/lib/items/copy-to-clipboard";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ const defineTheme: BeforeMount = (monaco) => {
 
 /** Height for `lines` lines of code, capped like the editor itself. */
 const heightForLines = (lines: number) =>
-  Math.min(lines * LINE_HEIGHT + PADDING_Y * 2, CODE_EDITOR_MAX_HEIGHT_PX);
+  Math.min(lines * LINE_HEIGHT + PADDING_Y * 2, EDITOR_MAX_HEIGHT_PX);
 
 interface CodeEditorProps {
   value: string;
@@ -74,7 +74,7 @@ interface CodeEditorProps {
 /**
  * Monaco in a macOS-style window: traffic-light dots, the language and a copy
  * button in the header. Grows with its content up to
- * `CODE_EDITOR_MAX_HEIGHT_PX`, then scrolls inside. For snippet and command
+ * `EDITOR_MAX_HEIGHT_PX`, then scrolls inside. For snippet and command
  * content (`isCodeItemType`); other types keep plain text.
  *
  * No `maxLength`: Monaco has none, and cutting off a paste silently would lose
@@ -94,7 +94,7 @@ export const CodeEditor = ({
   const minHeight = heightForLines(minLines);
   // Until Monaco reports its real content height, estimate from the lines.
   const [contentHeight, setContentHeight] = useState(() => heightForLines(value.split("\n").length));
-  const height = Math.max(Math.min(contentHeight, CODE_EDITOR_MAX_HEIGHT_PX), minHeight);
+  const height = Math.max(Math.min(contentHeight, EDITOR_MAX_HEIGHT_PX), minHeight);
   const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLElement | null>(null);
 
