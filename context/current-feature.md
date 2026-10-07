@@ -2,6 +2,45 @@
 
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
+## Item Create
+
+Add new items from a modal dialog opened by the top bar's "New Item" button. Spec: `context/features/5.pageDetails/4.item-creation.md`.
+
+### Status
+
+In Progress
+
+### Goals
+
+- The "New Item" button in `TopBar` opens a shadcn `Dialog` with a create form.
+- The user picks a type (snippet, prompt, command, note, link) and the form shows that type's fields.
+- Saving creates the item for the session user, shows a success toast, closes the dialog and refreshes lists and session counts.
+
+### Requirements
+
+- **Dialog:** add shadcn `dialog` (`src/components/ui/` has none yet). Create form lives in `src/components/items/`.
+- **Type selector:** snippet, prompt, command, note, link only (no file/image, no custom types). Options come from the session's `itemTypes`, filtered by name.
+- **Fields by type:**
+  - All types: title (required), description, tags.
+  - snippet/command: content, language.
+  - prompt/note: content.
+  - link: URL (required, http/https only).
+- **Validation:** Zod create schema per type, reusing the edit schema's field rules (`title`, `optionalText`, `requiredUrl`, `tags` in `src/lib/items/item-schemas.ts`) and the per-type field map `editableFieldsFor()`. Fields the type doesn't use are dropped, not written. Field errors shown inline.
+- **Server action `createItem`** in `src/actions/items.ts`: takes the type and typed input, resolves the type by name to a system type, validates, saves, calls `resetProfile()`; returns `ActionResult<ItemDetail>`. `unstable_rethrow` keeps the sign-in redirect; unexpected errors return `SOMETHING_WENT_WRONG`.
+- **Query `createItem`** in `src/lib/db/items.ts`: calls `requireCurrentUserId()` (outside any `try`), writes `userId` from the session, links tags by slug with `connectOrCreate` on `userId_slug` as `updateItem` does, returns `ItemDetail`.
+- **Unknown or disallowed type** (bad name, file/image, a custom type) is rejected with a message, never written.
+- **On success:** toast, close and reset the dialog, refresh so card lists, counts and the sidebar show the new item.
+- **Tests first** (Vitest + `fake-prisma`): create schema per type, the `createItem` action (valid, invalid, wrong type, signed-out redirect) and the `lib/db` query (scoped to the session user, tags reused by slug).
+
+### Notes
+
+- Reuse over copy: the edit form (`ItemEditForm.tsx`) already renders per-type fields from `editableFieldsFor()`; share field rendering with the dialog where it stays simple.
+- The create schema differs from the update schema mainly in needing a type; consider one schema builder taking a mode rather than a second copy.
+- Item types are system rows (`isSystem`, `userId` null) with random UUIDs: resolve by `name`, never a hard-coded id.
+- New user-facing strings go in `src/lib/constants/messages/items.ts`; button and label copy stays inline in JSX.
+- Pinned/favorite default to false; file fields stay null. No collection assignment in this feature.
+- Only the "New Item" button goes live; "New Collection" and search stay display-only.
+
 ---
 
 ## History

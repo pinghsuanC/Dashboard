@@ -14,8 +14,8 @@ export type FormAction = (state: FormState, formData: FormData) => Promise<FormS
 
 /**
  * What a server action called directly from client code returns, for
- * controlled-input forms that need the saved record back (item edit; later
- * create and delete). `success` narrows it: `data` only exists on success.
+ * controlled-input forms that need the saved record back (item edit, create
+ * and delete). `success` narrows it: `data` only exists on success.
  */
 export type ActionResult<T> =
   | { success: true; data: T }
