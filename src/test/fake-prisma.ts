@@ -1,3 +1,5 @@
+import { Prisma } from "@/generated/prisma/client";
+
 /**
  * An in-memory stand-in for the slice of Prisma the account code uses, so
  * tests check what ends up stored rather than which calls were made. It keeps
@@ -5,6 +7,8 @@
  * - `User` deletes cascade to the user's items, collections and custom types.
  * - `Item.typeId` is ON DELETE RESTRICT, checked immediately: deleting a user
  *   whose custom types still have items fails, as it can in Postgres.
+ * Items hold their tags by name; `db.tags` holds the `Tag` rows an item edit
+ * connects or creates, unique on `[userId, slug]` as in the schema.
  */
 
 interface UserRow {
@@ -51,6 +55,12 @@ interface ItemRow {
   tags?: string[];
   collectionIds?: string[];
 }
+interface TagRow {
+  id: string;
+  userId: string;
+  name: string;
+  slug: string;
+}
 interface CollectionRow {
   id: string;
   userId: string;
@@ -76,6 +86,7 @@ export const db = {
   itemTypes: [] as ItemTypeRow[],
   items: [] as ItemRow[],
   collections: [] as CollectionRow[],
+  tags: [] as TagRow[],
   verificationTokens: [] as VerificationTokenRow[],
   passwordResetTokens: [] as PasswordResetTokenRow[],
   /** When set, every query rejects, like an unreachable database. */
@@ -87,6 +98,7 @@ export const resetDb = () => {
   db.itemTypes = [];
   db.items = [];
   db.collections = [];
+  db.tags = [];
   db.verificationTokens = [];
   db.passwordResetTokens = [];
   db.down = false;
@@ -140,6 +152,9 @@ const applyUserData = (user: UserRow, data: UserData) => {
   }
 };
 
+// The type slice items carry, as the item and collection selects nest it.
+const rowType = ({ id, name, label, icon, color }: ItemTypeRow) => ({ id, name, label, icon, color });
+
 type ItemSelect = Select & { tags?: { orderBy?: unknown }; collections?: { orderBy?: unknown } };
 
 /**
@@ -161,12 +176,46 @@ const shapeItem = (row: ItemRow, select: ItemSelect) => {
   return pick(
     {
       ...row,
-      type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
+      type: type && rowType(type),
       tags: tags.map((name) => ({ tag: { name } })),
       collections,
     },
     select as Select,
   );
+};
+
+// Prisma's error for a write whose `where` matched nothing.
+const recordNotFound = () =>
+  new Prisma.PrismaClientKnownRequestError("No record was found for an update.", {
+    code: "P2025",
+    clientVersion: "fake",
+  });
+
+type TagConnectOrCreate = {
+  where: { userId_slug: { userId: string; slug: string } };
+  create: { userId: string; name: string; slug: string };
+};
+
+/**
+ * The item edit's write: scalar fields, and tags replaced through
+ * `{ deleteMany: {}, create: [{ tag: { connectOrCreate } }] }`, the only
+ * nested tag write the code makes.
+ */
+type ItemUpdateData = {
+  [K in "title" | "description" | "content" | "language" | "url"]?: ItemRow[K];
+} & {
+  tags?: { deleteMany?: Record<string, never>; create: { tag: { connectOrCreate: TagConnectOrCreate } }[] };
+};
+
+// The user's tag with that slug, created if there is none; returns its name.
+const connectOrCreateTag = ({ where, create }: TagConnectOrCreate) => {
+  const { userId, slug } = where.userId_slug;
+  let tag = db.tags.find((row) => row.userId === userId && row.slug === slug);
+  if (!tag) {
+    tag = { id: `tag-${db.tags.length + 1}`, ...create };
+    db.tags.push(tag);
+  }
+  return tag.name;
 };
 
 // The interactive form gets the fake itself as `tx`. Unlike Prisma, neither
@@ -323,8 +372,37 @@ export const fakePrisma = {
     // Only the owner-scoped lookup by id the detail view uses.
     findFirst: ({ where, select }: { where: { id: string; userId: string }; select: ItemSelect }) =>
       query(() => {
+        // Prisma rejects a non-string id before querying.
+        if (typeof where.id !== "string") throw new Error("Argument `id`: Expected String");
         const row = db.items.find((item) => item.id === where.id && item.userId === where.userId);
         return row ? shapeItem(row, select) : null;
+      }),
+    // Scoped by `{ id, userId }`, as the edit writes it. Like Prisma, an
+    // `undefined` field is left alone, and `@updatedAt` moves.
+    update: ({
+      where,
+      data,
+      select,
+    }: {
+      where: { id: string; userId: string };
+      data: ItemUpdateData;
+      select: ItemSelect;
+    }) =>
+      query(() => {
+        const row = db.items.find((item) => item.id === where.id && item.userId === where.userId);
+        if (!row) throw recordNotFound();
+        const { tags, ...fields } = data;
+        for (const [key, value] of Object.entries(fields)) {
+          if (value !== undefined) (row as unknown as Record<string, unknown>)[key] = value;
+        }
+        if (tags) {
+          // Without `deleteMany`, Prisma adds links alongside the old ones.
+          const kept = tags.deleteMany ? [] : (row.tags ?? []);
+          const added = tags.create.map(({ tag }) => connectOrCreateTag(tag.connectOrCreate));
+          row.tags = [...new Set([...kept, ...added])];
+        }
+        row.updatedAt = new Date();
+        return shapeItem(row, select);
       }),
     groupBy: ({ where }: { by: ["typeId"]; where: { userId: string } }) =>
       query(() => {
@@ -371,7 +449,7 @@ export const fakePrisma = {
                     const type = db.itemTypes.find((itemType) => itemType.id === item.typeId);
                     return {
                       item: {
-                        type: type && { id: type.id, label: type.label, icon: type.icon, color: type.color },
+                        type: type && rowType(type),
                       },
                     };
                   }),

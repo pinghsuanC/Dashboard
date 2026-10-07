@@ -218,7 +218,7 @@ describe("user session: item counts, pinned items and collections (S3)", () => {
       isFavorite: true,
       updatedAt: day(5),
       tags: ["auth", "hooks", "react"],
-      type: { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+      type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
     });
   });
 
@@ -253,9 +253,9 @@ describe("user session: item counts, pinned items and collections (S3)", () => {
       updatedAt: day(6),
       itemCount: 4,
       types: [
-        { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
-        { id: "t-note", label: "Note", icon: "StickyNote", color: "#fde047" },
-        { id: "t-link", label: "Link", icon: "Link", color: "#10b981" },
+        { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+        { id: "t-note", name: "note", label: "Note", icon: "StickyNote", color: "#fde047" },
+        { id: "t-link", name: "link", label: "Link", icon: "Link", color: "#10b981" },
       ],
     });
     expect(collections.find((collection) => collection.id === "c-empty")).toMatchObject({

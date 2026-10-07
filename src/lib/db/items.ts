@@ -1,11 +1,14 @@
 import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { requireCurrentUserId } from "@/lib/db/current-user";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma/client";
+import { slugify } from "@/lib/slugify";
+import { Prisma } from "@/generated/prisma/client";
 
 /** The slice of an item type an item row needs for its icon and accent. */
 export interface ItemRowType {
   id: string;
+  /** Stable key ("snippet", "link"): what per-type rules check. `label` is display text. */
+  name: string;
   label: string;
   icon: string | null;
   color: string;
@@ -49,7 +52,7 @@ const itemSummarySelect = {
   isPinned: true,
   isFavorite: true,
   updatedAt: true,
-  type: { select: { id: true, label: true, icon: true, color: true } },
+  type: { select: { id: true, name: true, label: true, icon: true, color: true } },
   tags: {
     select: { tag: { select: { name: true } } },
     orderBy: { tag: { name: "asc" } },
@@ -162,6 +165,14 @@ const itemDetailSelect = {
   },
 } satisfies Prisma.ItemSelect;
 
+type ItemDetailRow = Prisma.ItemGetPayload<{ select: typeof itemDetailSelect }>;
+
+const toItemDetail = ({ tags, collections, ...item }: ItemDetailRow): ItemDetail => ({
+  ...item,
+  tags: tags.map(({ tag }) => tag.name),
+  collections: collections.map(({ collection }) => collection),
+});
+
 /**
  * One item with its body, for the item drawer. Scoped to the signed-in user in
  * the query itself, so another user's id finds nothing: `null` means missing
@@ -170,12 +181,76 @@ const itemDetailSelect = {
 export const getItemDetail = async (id: string): Promise<ItemDetail | null> => {
   const userId = await requireCurrentUserId();
   const item = await prisma.item.findFirst({ where: { id, userId }, select: itemDetailSelect });
-  if (!item) return null;
-
-  const { tags, collections, ...rest } = item;
-  return {
-    ...rest,
-    tags: tags.map(({ tag }) => tag.name),
-    collections: collections.map(({ collection }) => collection),
-  };
+  return item && toItemDetail(item);
 };
+
+/**
+ * The type name of one of the signed-in user's items, for the per-type edit
+ * rules; `null` when it is missing or not theirs.
+ */
+export const getItemTypeName = async (id: string): Promise<string | null> => {
+  const userId = await requireCurrentUserId();
+  const item = await prisma.item.findFirst({
+    where: { id, userId },
+    select: { type: { select: { name: true } } },
+  });
+  return item?.type.name ?? null;
+};
+
+/**
+ * An item edit, already validated. A field left `undefined` is not written;
+ * `null` clears it. `tags` replaces the item's tags by name.
+ */
+export interface ItemUpdate {
+  title: string;
+  description?: string | null;
+  content?: string | null;
+  language?: string | null;
+  url?: string | null;
+  tags?: string[];
+}
+
+/**
+ * Saves an edit to one of the signed-in user's items and returns it as the
+ * drawer shows it. `null` when the item is missing or not theirs: the user
+ * scope is part of the write itself, so another user's id changes nothing.
+ */
+export const updateItem = async (
+  id: string,
+  { tags, ...fields }: ItemUpdate,
+): Promise<ItemDetail | null> => {
+  const userId = await requireCurrentUserId();
+  try {
+    const item = await prisma.item.update({
+      where: { id, userId },
+      data: {
+        ...fields,
+        // Drop every link, then link each name to the user's tag with its
+        // slug, creating the tags they don't have yet.
+        tags: tags && {
+          deleteMany: {},
+          create: tags.map((name) => {
+            const slug = slugify(name);
+            return {
+              tag: {
+                connectOrCreate: {
+                  where: { userId_slug: { userId, slug } },
+                  create: { userId, name, slug },
+                },
+              },
+            };
+          }),
+        },
+      },
+      select: itemDetailSelect,
+    });
+    return toItemDetail(item);
+  } catch (error) {
+    if (isRecordNotFound(error)) return null;
+    throw error;
+  }
+};
+
+// Prisma's answer when an update's `where` matches no row.
+const isRecordNotFound = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";

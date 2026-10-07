@@ -6,7 +6,7 @@ import { type ReactNode, createContext, useCallback, useContext, useMemo, useRef
 import { signOutAction } from "@/actions/auth";
 import { ItemDrawer, type ItemDrawerLoad } from "@/components/items/ItemDrawer";
 import { ROUTES } from "@/lib/constants/routes";
-import type { ItemSummary } from "@/lib/db/items";
+import type { ItemDetail, ItemSummary } from "@/lib/db/items";
 import { fetchItemDetail } from "@/lib/fetch-item-detail";
 
 interface ItemDrawerContextValue {
@@ -17,6 +17,8 @@ interface ItemDrawerContextValue {
 const ItemDrawerContext = createContext<ItemDrawerContextValue | null>(null);
 
 interface DrawerState {
+  /** Which open this is: the drawer's `key`, so each open starts in view mode. */
+  request: number;
   summary: ItemSummary;
   load: ItemDrawerLoad;
   open: boolean;
@@ -45,7 +47,7 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
   const openItem = useCallback(
     (summary: ItemSummary) => {
       const request = ++latestRequest.current;
-      setState({ summary, load: { status: "loading" }, open: true });
+      setState({ request, summary, load: { status: "loading" }, open: true });
 
       void fetchItemDetail(summary.id).then((result) => {
         if (request !== latestRequest.current) return;
@@ -75,6 +77,22 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
     setState((current) => current && { ...current, open });
   }, []);
 
+  // The saved copy replaces both halves, so the header shows it too. Card
+  // lists and the session refresh from the action's own `resetProfile()`.
+  // A save outlives its form: closed mid-save and another item opened, its
+  // result must not land on that item, so both check the id first.
+  const handleSaved = useCallback((item: ItemDetail) => {
+    setState((current) =>
+      current?.summary.id === item.id
+        ? { ...current, summary: item, load: { status: "ok", item } }
+        : current,
+    );
+  }, []);
+
+  const handleGone = useCallback((id: string) => {
+    setState((current) => (current?.summary.id === id ? { ...current, open: false } : current));
+  }, []);
+
   const value = useMemo(() => ({ openItem }), [openItem]);
 
   return (
@@ -82,10 +100,13 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
       {children}
       {state && (
         <ItemDrawer
+          key={state.request}
           open={state.open}
           onOpenChange={handleOpenChange}
           summary={state.summary}
           load={state.load}
+          onSaved={handleSaved}
+          onGone={handleGone}
         />
       )}
     </ItemDrawerContext.Provider>
