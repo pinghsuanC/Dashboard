@@ -485,6 +485,23 @@ export const fakePrisma = {
         return { count: before - db.items.length };
       }),
   },
+  tag: {
+    // The cleanup's `{ userId, items: { none: {} } }` deletes the tags no item
+    // links. Links live on the item rows by tag name, so a tag is in use when
+    // one of its user's items names it. Like Prisma, a filter left out matches
+    // every row: without `userId` every user's tags go, without `items` used
+    // tags go too.
+    deleteMany: ({ where }: { where: { userId?: string; items?: { none: Record<string, never> } } }) =>
+      query(() => {
+        const inUse = (tag: TagRow) =>
+          db.items.some((item) => item.userId === tag.userId && item.tags?.includes(tag.name));
+        const matches = (tag: TagRow) =>
+          (where.userId === undefined || tag.userId === where.userId) && (where.items === undefined || !inUse(tag));
+        const before = db.tags.length;
+        db.tags = db.tags.filter((tag) => !matches(tag));
+        return { count: before - db.tags.length };
+      }),
+  },
   collection: {
     /**
      * Membership comes from the fake items' `collectionIds`; `items` returns

@@ -157,6 +157,7 @@ const tagLinks = (userId: string, names: string[]) =>
  * Saves an edit to one of the signed-in user's items and returns it as the
  * drawer shows it. `null` when the item is missing or not theirs: the user
  * scope is part of the write itself, so another user's id changes nothing.
+ * An edit that sends tags also deletes the tags it left unused.
  */
 export const updateItem = async (
   id: string,
@@ -164,14 +165,18 @@ export const updateItem = async (
 ): Promise<ItemDetail | null> => {
   const userId = await requireCurrentUserId();
   try {
-    const item = await prisma.item.update({
-      where: { id, userId },
-      data: {
-        ...fields,
-        // Drop every link, then link the new names.
-        tags: tags && { deleteMany: {}, create: tagLinks(userId, tags) },
-      },
-      select: itemDetailSelect,
+    const item = await prisma.$transaction(async (tx) => {
+      const saved = await tx.item.update({
+        where: { id, userId },
+        data: {
+          ...fields,
+          // Drop every link, then link the new names.
+          tags: tags && { deleteMany: {}, create: tagLinks(userId, tags) },
+        },
+        select: itemDetailSelect,
+      });
+      if (tags) await deleteUnusedTags(tx, userId);
+      return saved;
     });
     return toItemDetail(item);
   } catch (error) {
@@ -185,16 +190,33 @@ const isRecordNotFound = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 
 /**
+ * Deletes the user's tags that no item links any more, so they don't pile up
+ * or decide a later tag's spelling (tags are matched by slug). Every unused
+ * tag of the user goes, not only the item's old ones, so leftovers from
+ * before this cleanup existed go too. Runs inside the write's transaction.
+ *
+ * Known gap: the same user saving in two tabs at once could have one write
+ * link a tag that the other's cleanup has just found unused. The link then
+ * goes with the tag (cascade), and the item silently loses that tag.
+ */
+const deleteUnusedTags = (tx: Prisma.TransactionClient, userId: string) =>
+  tx.tag.deleteMany({ where: { userId, items: { none: {} } } });
+
+/**
  * Deletes one of the signed-in user's items. `false` when it is missing or
  * not theirs: the user scope is part of the delete itself, so another user's
  * id deletes nothing. Its tag and collection links go with it (cascade); the
- * tags and collections stay.
+ * collections stay, and tags no other item uses are deleted.
  */
 export const deleteItem = async (id: string): Promise<boolean> => {
   const userId = await requireCurrentUserId();
-  // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
-  const { count } = await prisma.item.deleteMany({ where: { id, userId } });
-  return count > 0;
+  return prisma.$transaction(async (tx) => {
+    // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
+    const { count } = await tx.item.deleteMany({ where: { id, userId } });
+    if (count === 0) return false;
+    await deleteUnusedTags(tx, userId);
+    return true;
+  });
 };
 
 /**
