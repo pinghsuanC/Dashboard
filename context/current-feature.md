@@ -35,3 +35,4 @@
 - **2026-10-06** — Item delete: drawer Trash button opens a confirm dialog naming the item; owner-scoped `deleteItem` action, success toast, lists and session refresh.
 - **2026-10-07** — Item create: New Item dialog with a type picker and per-type fields shared with the edit drawer; `createItem` action with Zod validation, tags matched by slug; lists and session refresh.
 - **2026-10-07** — Fix: item drawer dates revived from JSON by `reviveDates()`, whose field list must name every top-level `Date` field.
+- **2026-10-07** — Pointer cursor: one base rule in `globals.css` gives enabled buttons and `role="button"` elements the pointer that Tailwind v4 dropped; disabled controls and the sidebar rail keep their own cursors.
