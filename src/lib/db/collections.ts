@@ -53,7 +53,7 @@ export const getSessionCollections = async (): Promise<SessionCollection[]> => {
       items: {
         select: {
           item: {
-            select: { type: { select: { id: true, label: true, icon: true, color: true } } },
+            select: { type: { select: { id: true, name: true, label: true, icon: true, color: true } } },
           },
         },
       },

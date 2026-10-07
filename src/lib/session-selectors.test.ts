@@ -11,8 +11,8 @@ import {
   selectSidebarCollections,
 } from "./session-selectors";
 
-const SNIPPET: ItemRowType = { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" };
-const NOTE: ItemRowType = { id: "t-note", label: "Note", icon: "StickyNote", color: "#fde047" };
+const SNIPPET: ItemRowType = { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" };
+const NOTE: ItemRowType = { id: "t-note", name: "note", label: "Note", icon: "StickyNote", color: "#fde047" };
 
 const at = (day: number) => new Date(Date.UTC(2026, 0, day));
 

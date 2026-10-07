@@ -24,7 +24,7 @@ const detail: ItemDetail = {
   createdAt: new Date(Date.UTC(2026, 0, 1)),
   updatedAt: new Date(Date.UTC(2026, 0, 2)),
   tags: ["react"],
-  type: { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+  type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
   collections: [{ id: "c-react", name: "React Patterns" }],
 };
 

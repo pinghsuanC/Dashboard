@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
+import { slugify } from "../src/lib/slugify";
 import {
   MOCK_COLLECTIONS,
   MOCK_ITEM_TYPES,
@@ -15,12 +16,6 @@ import {
 // Safe to re-run: rows are matched on natural keys (email, type name, slug,
 // item title) and updated in place instead of duplicated.
 // When mock-data.ts is retired, move this data in here.
-
-const slugify = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 
 const MIME_TYPES: Record<string, string> = {
   md: "text/markdown",

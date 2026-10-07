@@ -30,7 +30,7 @@ const body = {
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-02T00:00:00.000Z",
   tags: ["react"],
-  type: { id: "t-snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
+  type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
   collections: [{ id: "c-react", name: "React Patterns" }],
 };
 
