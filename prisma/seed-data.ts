@@ -1,12 +1,8 @@
 /**
- * Mock data for the dashboard UI.
- *
- * Single source of truth for UI work until Prisma/Neon is wired up.
- * Shapes mirror the planned schema (see context/item-types.md) so that
- * swapping these arrays for real queries is a drop-in change.
- *
- * Import directly — no helpers, no lookups:
- *   import { MOCK_ITEMS, MOCK_COLLECTIONS } from '@/lib/mock-data';
+ * The demo content `prisma/seed.ts` writes: the system item types plus a
+ * demo user with collections and items. Seed-only; the app reads the
+ * database. Ids here only wire rows to each other and never reach the
+ * database.
  */
 
 // ─────────────────────────────  Types  ─────────────────────────────

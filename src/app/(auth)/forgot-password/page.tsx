@@ -6,11 +6,11 @@ import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { hasFlag } from "@/lib/auth-redirect";
+import { hasFlag } from "@/lib/auth/auth-redirect";
 import { RESET_TOKEN_TTL_MS } from "@/lib/constants/limits";
 import { FLAGS, ROUTES } from "@/lib/constants/routes";
-import { formatDuration } from "@/lib/format";
-import { redirectIfSignedIn } from "@/lib/db/current-user";
+import { formatDuration } from "@/lib/helpers/format";
+import { redirectIfSignedIn } from "@/services/auth/session";
 
 export const metadata: Metadata = { title: "Forgot password" };
 

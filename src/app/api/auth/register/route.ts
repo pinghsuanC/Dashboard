@@ -1,7 +1,8 @@
-import { registerSchema } from "@/lib/auth-schemas";
+import { registerSchema } from "@/lib/auth/auth-schemas";
+import { rateLimitMessage, retryAfterSeconds } from "@/lib/auth/rate-limit-messages";
+import { registerPasswordUser } from "@/lib/auth/register-user";
 import { INVALID_REQUEST_BODY } from "@/lib/constants/messages/common";
-import { checkRateLimit, rateLimitMessage, retryAfterSeconds } from "@/lib/rate-limit";
-import { registerPasswordUser } from "@/lib/register-user";
+import { checkRateLimit } from "@/services/rate-limit";
 
 interface RegisterResponse {
   success: boolean;

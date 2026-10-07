@@ -22,7 +22,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
-import { getItemTypeIcon } from "@/lib/item-type-icons";
+import { getItemTypeIcon } from "@/lib/items/item-type-icons";
 
 // KNOWN DEVIATION: the PRO badge shows for every user, Pro included. `isPro`
 // is in the session (`useUserSession().user.isPro`); hiding the badge for Pro

@@ -1,6 +1,6 @@
 import { createElement, type CSSProperties } from "react";
 
-import { getItemTypeIcon } from "@/lib/item-type-icons";
+import { getItemTypeIcon } from "@/lib/items/item-type-icons";
 import { cn } from "@/lib/utils";
 
 /**

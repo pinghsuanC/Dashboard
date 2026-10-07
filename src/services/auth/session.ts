@@ -1,11 +1,13 @@
+import "server-only";
+
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
 import { auth } from "@/auth";
 import type { Plan } from "@/generated/prisma/client";
-import { signInHref } from "@/lib/auth-redirect";
+import { signInHref } from "@/lib/auth/auth-redirect";
 import { DEFAULT_SIGN_IN_REDIRECT } from "@/lib/constants/routes";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/services/prisma";
 
 /** The signed-in user's profile, safe to hand to client components. */
 export interface CurrentUser {

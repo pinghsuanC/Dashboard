@@ -6,12 +6,12 @@ import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam } from "@/lib/auth-redirect";
+import { firstParam } from "@/lib/auth/auth-redirect";
+import { checkResetToken } from "@/lib/auth/password-reset";
 import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
 import { RESET_TOKEN_ERRORS } from "@/lib/constants/messages/auth";
 import { ROUTES } from "@/lib/constants/routes";
-import { redirectIfSignedIn } from "@/lib/db/current-user";
-import { checkResetToken } from "@/lib/password-reset";
+import { redirectIfSignedIn } from "@/services/auth/session";
 
 export const metadata: Metadata = {
   title: "Reset password",

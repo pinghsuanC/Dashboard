@@ -8,16 +8,16 @@ import {
   ITEM_TITLE_REQUIRED,
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
-import { requireCurrentUserId } from "@/lib/db/current-user";
-import { resetProfile } from "@/lib/user-session";
+import { resetProfile } from "@/lib/session/user-session";
+import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { updateItem } from "./items";
 
-vi.mock("@/lib/db/current-user", () => ({ requireCurrentUserId: vi.fn() }));
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Next's refresh() only works inside a real request; the tests check it was asked for.
-vi.mock("@/lib/user-session", () => ({ resetProfile: vi.fn() }));
+vi.mock("@/lib/session/user-session", () => ({ resetProfile: vi.fn() }));
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 const day = (n: number) => new Date(Date.UTC(2026, 0, n));

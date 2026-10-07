@@ -1,8 +1,8 @@
-import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
-import { requireCurrentUserId } from "@/lib/db/current-user";
-import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slugify";
 import { Prisma } from "@/generated/prisma/client";
+import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
+import { slugify } from "@/lib/helpers/slugify";
+import { requireCurrentUserId } from "@/services/auth/session";
+import { prisma } from "@/services/prisma";
 
 /** The slice of an item type an item row needs for its icon and accent. */
 export interface ItemRowType {

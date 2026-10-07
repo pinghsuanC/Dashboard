@@ -15,7 +15,7 @@ import {
   selectItemStats,
   selectPinnedItems,
   selectRecentCollections,
-} from "@/lib/session-selectors";
+} from "@/lib/session/session-selectors";
 
 interface DashboardContentProps {
   /** Fetched by the page on every visit; not kept in the session. */

@@ -1,19 +1,19 @@
 import { compare } from "bcryptjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sendAccountExistsEmail } from "@/lib/email";
-import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/email-verification";
+import { isEmailVerificationEnabled, sendVerificationLink } from "@/lib/auth/email-verification";
+import { sendAccountExistsEmail } from "@/services/email";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { registerPasswordUser } from "./register-user";
 
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
-vi.mock("@/lib/email", () => ({ sendAccountExistsEmail: vi.fn() }));
-vi.mock("@/lib/email-verification", () => ({
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/email", () => ({ sendAccountExistsEmail: vi.fn() }));
+vi.mock("@/lib/auth/email-verification", () => ({
   isEmailVerificationEnabled: vi.fn(),
   sendVerificationLink: vi.fn(),
 }));
-vi.mock("@/lib/auth-tokens", () => ({ appOrigin: async () => "https://app.test" }));
+vi.mock("@/lib/auth/auth-tokens", () => ({ appOrigin: async () => "https://app.test" }));
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 const PASSWORD = "new-password-1";

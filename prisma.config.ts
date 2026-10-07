@@ -7,13 +7,13 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
     // Prisma 7 never runs this automatically after migrate; use `npx prisma db seed`.
-    // It seeds 7 system types + a demo user from src/lib/mock-data.ts, idempotently.
+    // It seeds 7 system types + a demo user from prisma/seed-data.ts, idempotently.
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // The CLI (migrate, studio) uses the direct, unpooled Neon connection:
     // migrations need session-level features that PgBouncer doesn't keep.
-    // The app itself connects through the pooled DATABASE_URL (src/lib/prisma.ts).
+    // The app itself connects through the pooled DATABASE_URL (src/services/prisma.ts).
     //
     // Deviation from the Prisma docs: process.env instead of env("DIRECT_URL").
     // env() throws when the variable is unset, which would break the

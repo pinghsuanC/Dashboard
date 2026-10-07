@@ -435,10 +435,11 @@ export const fakePrisma = {
      * Membership comes from the fake items' `collectionIds`; `items` returns
      * one join row per member with its type, as the collection select nests it.
      */
-    findMany: ({ where, select }: { where: { userId: string }; select?: Select }) =>
+    findMany: ({ where, select }: { where?: { userId?: string }; select?: Select }) =>
       query(() =>
         db.collections
-          .filter((row) => row.userId === where.userId)
+          // An absent filter matches every row, as in Prisma.
+          .filter((row) => where?.userId === undefined || row.userId === where.userId)
           .map((row) =>
             pick(
               {

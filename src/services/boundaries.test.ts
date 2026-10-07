@@ -1,0 +1,114 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+// Who may reach the database. `services/prisma.ts` builds the one client;
+// `services/` and `lib/db/` are the only modules allowed to import it, and
+// `services/` sits below `lib/db/`, never the other way round. Test files are
+// skipped: they mock the client by path.
+
+const SRC = join(__dirname, "..");
+
+const sourceFiles = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return entry.name === "generated" ? [] : sourceFiles(path);
+    return /\.(ts|tsx)$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name) ? [path] : [];
+  });
+
+const files = sourceFiles(SRC).map((path) => ({
+  path: relative(SRC, path).split(sep).join("/"),
+  text: readFileSync(path, "utf8"),
+}));
+
+const importing = (specifier: string) =>
+  files.filter(({ text }) => text.includes(`from "${specifier}"`)).map(({ path }) => path);
+
+// As `importing`, minus `import type` lines: those vanish at runtime.
+const importingAtRuntime = (specifier: string) =>
+  files
+    .filter(({ text }) =>
+      text.split("\n").some((line) => line.includes(`from "${specifier}"`) && !line.startsWith("import type")),
+    )
+    .map(({ path }) => path);
+
+describe("service boundaries", () => {
+  it("B1: only services/ and lib/db/ import the Prisma client", () => {
+    const outside = importing("@/services/prisma").filter(
+      (path) => !path.startsWith("services/") && !path.startsWith("lib/db/"),
+    );
+    expect(outside).toEqual([]);
+  });
+
+  it("B1: the client is imported from services, and the old path is gone", () => {
+    expect(importing("@/services/prisma").length).toBeGreaterThan(0);
+    expect(importing("@/lib/prisma")).toEqual([]);
+  });
+
+  it("B2: a PrismaClient is built only in services/prisma.ts", () => {
+    const builders = files.filter(({ text }) => text.includes("new PrismaClient")).map(({ path }) => path);
+    expect(builders).toEqual(["services/prisma.ts"]);
+  });
+
+  it("B3: services never import from lib/db", () => {
+    const upward = files
+      .filter(({ path }) => path.startsWith("services/"))
+      .filter(({ text }) => text.includes('from "@/lib/db/'))
+      .map(({ path }) => path);
+    expect(upward).toEqual([]);
+  });
+
+  it("B5: only the email service talks to Resend", () => {
+    expect(importing("resend")).toEqual(["services/email.ts"]);
+  });
+
+  it("B5: email is sent through services, and the old path is gone", () => {
+    expect(importing("@/services/email").length).toBeGreaterThan(0);
+    expect(importing("@/lib/email")).toEqual([]);
+  });
+
+  it("B6: only the rate limit service talks to Upstash", () => {
+    expect(importingAtRuntime("@upstash/redis")).toEqual(["services/rate-limit.ts"]);
+    expect(importingAtRuntime("@upstash/ratelimit")).toEqual(["services/rate-limit.ts"]);
+  });
+
+  it("B6: rate limits are checked through services, and the old path is gone", () => {
+    expect(importing("@/services/rate-limit").length).toBeGreaterThan(0);
+    expect(importing("@/lib/rate-limit")).toEqual([]);
+  });
+
+  it("B7: lib/ is grouped by area; only shadcn's utils stays at its root", () => {
+    const root = readdirSync(join(SRC, "lib"), { withFileTypes: true });
+    expect(root.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()).toEqual([
+      "auth",
+      "constants",
+      "db",
+      "helpers",
+      "items",
+      "session",
+    ]);
+    expect(root.filter((entry) => entry.isFile()).map((entry) => entry.name)).toEqual(["utils.ts"]);
+  });
+
+  it("B8: every service is server-only, except the client the seed loads in plain Node", () => {
+    const unguarded = files
+      .filter(({ path }) => path.startsWith("services/") && path !== "services/prisma.ts")
+      .filter(({ text }) => !text.startsWith('import "server-only";'))
+      .map(({ path }) => path);
+    expect(unguarded).toEqual([]);
+  });
+
+  it("B9: services hold no user-facing copy; messages are worded in lib/ and the UI", () => {
+    const wording = files
+      .filter(({ path }) => path.startsWith("services/"))
+      .filter(({ text }) => text.includes('from "@/lib/constants/messages/'))
+      .map(({ path }) => path);
+    expect(wording).toEqual([]);
+  });
+
+  it("B4: only the session service imports Auth.js's @/auth among services", () => {
+    const authImporters = importing("@/auth").filter((path) => path.startsWith("services/"));
+    expect(authImporters).toEqual(["services/auth/session.ts"]);
+  });
+});

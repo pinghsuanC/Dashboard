@@ -1,6 +1,6 @@
-import { requireCurrentUserId } from "@/lib/db/current-user";
 import type { ItemRowType } from "@/lib/db/items";
-import { prisma } from "@/lib/prisma";
+import { requireCurrentUserId } from "@/services/auth/session";
+import { prisma } from "@/services/prisma";
 
 /**
  * A collection as the session holds it, with its item count and types

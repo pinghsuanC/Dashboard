@@ -2,14 +2,14 @@
 // Run: npm run db:test
 import "dotenv/config";
 
-// Checked before the client is imported: src/lib/prisma.ts reads
+// Checked before the client is imported: src/services/prisma.ts reads
 // DATABASE_URL at module load, and a missing URL there fails far less clearly.
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is not set. Add it to .env (see CLAUDE.md).");
   process.exit(1);
 }
 
-const { prisma } = await import("../src/lib/prisma");
+const { prisma } = await import("../src/services/prisma");
 
 const UUID = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 

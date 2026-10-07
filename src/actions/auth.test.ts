@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as registerRoute } from "@/app/api/auth/register/route";
 import { signIn } from "@/auth";
-import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
-import { resendVerificationLink } from "@/lib/email-verification";
-import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/auth-errors";
+import { resendVerificationLink } from "@/lib/auth/email-verification";
+import { requestPasswordReset, resetPassword } from "@/lib/auth/password-reset";
+import { registerPasswordUser } from "@/lib/auth/register-user";
 import type { RateLimitPolicy } from "@/lib/constants/rate-limits";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { registerPasswordUser } from "@/lib/register-user";
+import { checkRateLimit } from "@/services/rate-limit";
 
 import {
   registerWithCredentials,
@@ -34,15 +34,15 @@ vi.mock("next/headers", () => ({
 // Runs the callback at once, so the test sees whether the reset was requested.
 vi.mock("next/server", () => ({ after: (run: () => unknown) => run() }));
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
-vi.mock("@/lib/email-verification", () => ({ resendVerificationLink: vi.fn() }));
-vi.mock("@/lib/password-reset", () => ({
+vi.mock("@/lib/auth/email-verification", () => ({ resendVerificationLink: vi.fn() }));
+vi.mock("@/lib/auth/password-reset", () => ({
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
 }));
-vi.mock("@/lib/register-user", () => ({ registerPasswordUser: vi.fn() }));
+vi.mock("@/lib/auth/register-user", () => ({ registerPasswordUser: vi.fn() }));
 // The real messages; only the check against Upstash is faked.
-vi.mock("@/lib/rate-limit", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+vi.mock("@/services/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/rate-limit")>()),
   checkRateLimit: vi.fn(),
 }));
 

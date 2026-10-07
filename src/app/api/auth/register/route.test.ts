@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { registerPasswordUser } from "@/lib/auth/register-user";
 import { AUTH_MESSAGES } from "@/lib/constants/messages/auth";
 import { INVALID_REQUEST_BODY } from "@/lib/constants/messages/common";
-import { checkRateLimit } from "@/lib/rate-limit";
-import { registerPasswordUser } from "@/lib/register-user";
+import { checkRateLimit } from "@/services/rate-limit";
 
 import { POST } from "./route";
 
-vi.mock("@/lib/register-user", () => ({ registerPasswordUser: vi.fn() }));
-vi.mock("@/lib/rate-limit", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/rate-limit")>()),
+vi.mock("@/lib/auth/register-user", () => ({ registerPasswordUser: vi.fn() }));
+vi.mock("@/services/rate-limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/services/rate-limit")>()),
   checkRateLimit: vi.fn(),
 }));
 

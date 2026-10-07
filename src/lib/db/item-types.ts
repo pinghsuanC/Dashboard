@@ -1,7 +1,7 @@
 import { cache } from "react";
 
 import { itemTypeHref } from "@/lib/constants/routes";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "@/services/prisma";
 
 /** A built-in item type as every screen shows it. The same for every user. */
 export interface ItemTypeDefinition {

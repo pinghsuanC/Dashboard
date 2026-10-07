@@ -1,17 +1,17 @@
 import { compare, hash } from "bcryptjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
-import { isEmailVerificationEnabled } from "@/lib/email-verification";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/auth-errors";
+import { isEmailVerificationEnabled } from "@/lib/auth/email-verification";
 import { BCRYPT_ROUNDS } from "@/lib/constants/security";
+import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { authorizeCredentials } from "./authorize-credentials";
 
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
-vi.mock("@/lib/email-verification", () => ({ isEmailVerificationEnabled: vi.fn() }));
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: vi.fn() }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/lib/auth/email-verification", () => ({ isEmailVerificationEnabled: vi.fn() }));
+vi.mock("@/services/rate-limit", () => ({ checkRateLimit: vi.fn() }));
 // The real bcrypt, watched so a test can see whether a compare ran.
 vi.mock("bcryptjs", async (importOriginal) => {
   const bcrypt = await importOriginal<typeof import("bcryptjs")>();

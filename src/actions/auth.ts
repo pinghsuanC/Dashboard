@@ -6,23 +6,24 @@ import { after } from "next/server";
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth-errors";
-import { safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/auth-errors";
+import { safeCallbackUrl, signInHref } from "@/lib/auth/auth-redirect";
 import {
   forgotPasswordSchema,
   registerSchema,
   resetPasswordSchema,
   signInSchema,
-} from "@/lib/auth-schemas";
+} from "@/lib/auth/auth-schemas";
+import { resendVerificationLink } from "@/lib/auth/email-verification";
+import { requestPasswordReset, resetPassword } from "@/lib/auth/password-reset";
+import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
+import { registerPasswordUser } from "@/lib/auth/register-user";
 import { AUTH_MESSAGES, RESET_TOKEN_ERRORS } from "@/lib/constants/messages/auth";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import type { RateLimitPolicy } from "@/lib/constants/rate-limits";
 import { FLAGS, flagParams, ROUTES, withFlag } from "@/lib/constants/routes";
-import { resendVerificationLink } from "@/lib/email-verification";
-import { fieldErrorsOf } from "@/lib/form-errors";
-import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
-import { checkRateLimit, rateLimitMessage } from "@/lib/rate-limit";
-import { registerPasswordUser } from "@/lib/register-user";
+import { fieldErrorsOf } from "@/lib/helpers/form-errors";
+import { checkRateLimit } from "@/services/rate-limit";
 import type { FormState } from "@/types/forms";
 
 /**

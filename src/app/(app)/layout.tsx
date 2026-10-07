@@ -7,7 +7,7 @@ import { TopBar } from "@/components/layout/TopBar";
 import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getUserSession } from "@/lib/user-session";
+import { getUserSession } from "@/lib/session/user-session";
 
 const AppLayout = async ({ children }: LayoutProps<"/">) => {
   // SidebarProvider persists its open state in this cookie. Reading it on the

@@ -6,9 +6,9 @@ import { ActionForm } from "@/components/shared/ActionForm";
 import { FormError, FormField } from "@/components/shared/FormField";
 import { SubmitButton } from "@/components/shared/SubmitButton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth-redirect";
+import { firstParam, safeCallbackUrl, signInHref } from "@/lib/auth/auth-redirect";
 import { PASSWORD_MIN_LENGTH } from "@/lib/constants/limits";
-import { redirectIfSignedIn } from "@/lib/db/current-user";
+import { redirectIfSignedIn } from "@/services/auth/session";
 
 export const metadata: Metadata = { title: "Register" };
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { auth } from "@/auth";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { getCurrentUser, redirectIfSignedIn, requireCurrentUserId } from "./current-user";
+import { getCurrentUser, redirectIfSignedIn, requireCurrentUserId } from "./session";
 
 // Next's redirect() works by throwing; the tests read the target off the error.
 class RedirectError extends Error {
@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
 }));
 // The JWT: the user id, plus the session version stamped at sign-in.
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("@/lib/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 const withToken = (userId: string | null) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- auth() is overloaded; the session shape is all that matters

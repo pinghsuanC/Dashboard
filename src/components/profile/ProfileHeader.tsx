@@ -2,7 +2,7 @@ import { CalendarDays } from "lucide-react";
 
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatLongDate } from "@/lib/format";
+import { formatLongDate } from "@/lib/helpers/format";
 
 interface ProfileHeaderProps {
   name: string | null;
