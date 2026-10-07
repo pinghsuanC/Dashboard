@@ -2,16 +2,6 @@
 
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
-## Fix: dates from JSON
-
-`fetchItemDetail()` turns only `createdAt` and `updatedAt` back into `Date` by hand. A new `Date` field on `ItemDetail` would arrive as a string while its type says `Date`, and nothing would fail until something called a date method on it.
-
-- **R1:** `reviveDates()` turns each listed field's ISO string back into the same `Date`.
-- **R2:** Fields not listed stay as they are, even a string that looks like a date (a title, say).
-- **R3:** A listed field that is `null` stays `null`.
-- **R4:** The list must name every `Date` field of the type: a missing or unknown key is a compile error.
-- **R5:** `fetchItemDetail()` uses it; the drawer still gets its dates as `Date`.
-
 ---
 
 ## History
@@ -44,3 +34,4 @@
 - **2026-10-06** — Refactored types into `src/types/`.
 - **2026-10-06** — Item delete: drawer Trash button opens a confirm dialog naming the item; owner-scoped `deleteItem` action, success toast, lists and session refresh.
 - **2026-10-07** — Item create: New Item dialog with a type picker and per-type fields shared with the edit drawer; `createItem` action with Zod validation, tags matched by slug; lists and session refresh.
+- **2026-10-07** — Fix: item drawer dates revived from JSON by `reviveDates()`, whose field list must name every top-level `Date` field.
