@@ -1,8 +1,10 @@
 import type { ReactNode, Ref } from "react";
 
+import { CodeEditor } from "@/components/items/CodeEditor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isCodeItemType } from "@/lib/constants/item-types";
 import {
   ITEM_CONTENT_MAX_LENGTH,
   ITEM_DESCRIPTION_MAX_LENGTH,
@@ -14,12 +16,14 @@ import type { EditableItemField, ItemDraft } from "@/types/items";
 interface ItemFormFieldsProps {
   /** Prefixes the input ids, so the drawer and the dialog never share one. */
   idPrefix: string;
+  /** The item type's name: snippet and command content opens in the code editor. */
+  typeName: string;
   /** Body fields the item's type uses (`editableFieldsFor`). */
   fields: readonly EditableItemField[];
   draft: ItemDraft;
   onChange: (key: keyof ItemDraft, value: string) => void;
   fieldErrors: FieldErrors;
-  /** Lines in the content box: tall in the drawer, shorter in the dialog. */
+  /** Lines in the content box or code editor: tall in the drawer, shorter in the dialog. */
   contentRows?: number;
   /** For a parent that focuses the title, e.g. when the dialog opens. */
   titleRef?: Ref<HTMLInputElement>;
@@ -63,6 +67,7 @@ const Field = ({ id, label, error, hint, children }: FieldProps) => {
  */
 export const ItemFormFields = ({
   idPrefix,
+  typeName,
   fields,
   draft,
   onChange,
@@ -105,16 +110,29 @@ export const ItemFormFields = ({
 
       {fields.includes("content") && (
         <Field id={`${idPrefix}-content`} label="Content" error={fieldErrors.content}>
-          {(describedBy) => (
-            <Textarea
-              {...bind("content")}
-              rows={contentRows}
-              maxLength={ITEM_CONTENT_MAX_LENGTH}
-              spellCheck={false}
-              className="font-mono text-xs leading-relaxed md:text-xs"
-              aria-describedby={describedBy}
-            />
-          )}
+          {(describedBy) =>
+            isCodeItemType(typeName) ? (
+              <CodeEditor
+                id={`${idPrefix}-content`}
+                value={draft.content}
+                onChange={(value) => onChange("content", value)}
+                language={draft.language}
+                minLines={contentRows}
+                ariaLabel="Content"
+                ariaDescribedBy={describedBy}
+                ariaInvalid={Boolean(fieldErrors.content)}
+              />
+            ) : (
+              <Textarea
+                {...bind("content")}
+                rows={contentRows}
+                maxLength={ITEM_CONTENT_MAX_LENGTH}
+                spellCheck={false}
+                className="font-mono text-xs leading-relaxed md:text-xs"
+                aria-describedby={describedBy}
+              />
+            )
+          }
         </Field>
       )}
 

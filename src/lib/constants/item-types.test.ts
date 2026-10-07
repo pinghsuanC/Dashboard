@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { CREATABLE_ITEM_TYPE_NAMES, editableFieldsFor, isCreatableItemType } from "./item-types";
+import {
+  CREATABLE_ITEM_TYPE_NAMES,
+  editableFieldsFor,
+  isCodeItemType,
+  isCreatableItemType,
+} from "./item-types";
 
 describe("editable body fields per item type (E1)", () => {
   it("snippets and commands edit content and language", () => {
@@ -55,5 +60,27 @@ describe("types the New Item dialog offers (R1)", () => {
   it("a type named like an object or array property can't be created", () => {
     expect(isCreatableItemType("constructor")).toBe(false);
     expect(isCreatableItemType("length")).toBe(false);
+  });
+});
+
+describe("types whose content opens in the code editor (CE1)", () => {
+  it("snippets and commands are code", () => {
+    expect(isCodeItemType("snippet")).toBe(true);
+    expect(isCodeItemType("command")).toBe(true);
+  });
+
+  it("prompts, notes, links, files, images and custom types are not", () => {
+    for (const name of ["prompt", "note", "link", "file", "image", "my-custom-type"]) {
+      expect(isCodeItemType(name)).toBe(false);
+    }
+  });
+
+  it("matches on the type name, not the display label", () => {
+    expect(isCodeItemType("Snippet")).toBe(false);
+  });
+
+  it("a type named like an object or set property is not code", () => {
+    expect(isCodeItemType("constructor")).toBe(false);
+    expect(isCodeItemType("size")).toBe(false);
   });
 });

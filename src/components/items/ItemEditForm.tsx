@@ -89,6 +89,7 @@ export const ItemEditForm = ({ item, onCancel, onSaved, onGone, children }: Item
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
         <ItemFormFields
           idPrefix="item-edit"
+          typeName={item.type.name}
           fields={fields}
           draft={draft}
           onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}

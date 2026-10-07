@@ -2,8 +2,8 @@
 
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { Calendar, Copy, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
-import { toast } from "sonner";
 
+import { CodeEditor } from "@/components/items/CodeEditor";
 import { ItemDeleteDialog } from "@/components/items/ItemDeleteDialog";
 import { ItemEditForm } from "@/components/items/ItemEditForm";
 import { TypeIcon } from "@/components/shared/TypeIcon";
@@ -17,9 +17,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ITEM_COPIED, ITEM_COPY_FAILED, ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
-import { ITEM_COPY_TOAST_ID } from "@/lib/constants/ui";
+import { isCodeItemType } from "@/lib/constants/item-types";
+import { ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
 import { formatLongDate } from "@/lib/helpers/format";
+import { copyToClipboard } from "@/lib/items/copy-to-clipboard";
 import { cn } from "@/lib/utils";
 import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
 
@@ -56,15 +57,6 @@ const Section = ({ title, icon, children }: SectionProps) => (
 
 /** Only web links become anchors; anything else stays text. */
 const isWebUrl = (url: string) => /^https?:\/\//i.test(url);
-
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.success(ITEM_COPIED, { id: ITEM_COPY_TOAST_ID });
-  } catch {
-    toast.error(ITEM_COPY_FAILED, { id: ITEM_COPY_TOAST_ID });
-  }
-};
 
 /** Collections and dates: shown in both modes, never edited here. */
 const ItemMeta = ({ detail }: { detail: ItemDetail }) => (
@@ -139,7 +131,10 @@ export const ItemDrawer = ({
             <SheetDescription className="sr-only">Item details</SheetDescription>
             <div className="flex flex-wrap gap-1.5">
               <Badge variant="secondary">{type.label}</Badge>
-              {detail?.language && <Badge variant="outline">{detail.language}</Badge>}
+              {/* Code types show their language in the code editor's header instead. */}
+              {detail?.language && !isCodeItemType(type.name) && (
+                <Badge variant="outline">{detail.language}</Badge>
+              )}
             </div>
           </div>
         </SheetHeader>
@@ -219,9 +214,13 @@ export const ItemDrawer = ({
 
               {detail?.content && (
                 <Section title="Content">
-                  <pre className="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs leading-relaxed">
-                    <code>{detail.content}</code>
-                  </pre>
+                  {isCodeItemType(type.name) ? (
+                    <CodeEditor value={detail.content} language={detail.language} readOnly />
+                  ) : (
+                    <pre className="bg-muted overflow-x-auto rounded-lg p-4 font-mono text-xs leading-relaxed">
+                      <code>{detail.content}</code>
+                    </pre>
+                  )}
                 </Section>
               )}
 
