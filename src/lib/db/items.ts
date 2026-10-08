@@ -12,7 +12,10 @@ const itemSummarySelect = {
   description: true,
   isPinned: true,
   isFavorite: true,
+  createdAt: true,
   updatedAt: true,
+  fileName: true,
+  fileSize: true,
   // Read only to set `hasFile`; the mappers drop the key itself.
   fileKey: true,
   type: { select: { id: true, name: true, label: true, icon: true, color: true } },
@@ -100,10 +103,7 @@ const itemDetailSelect = {
   content: true,
   language: true,
   url: true,
-  fileName: true,
-  fileSize: true,
   mimeType: true,
-  createdAt: true,
   collections: {
     select: { collection: { select: { id: true, name: true } } },
     orderBy: { collection: { name: "asc" } },

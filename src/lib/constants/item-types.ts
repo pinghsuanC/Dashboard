@@ -59,3 +59,11 @@ export const isMarkdownItemType = (name: string): boolean => MARKDOWN_ITEM_TYPE_
 export const GALLERY_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["image"]);
 
 export const isGalleryItemType = (name: string): boolean => GALLERY_ITEM_TYPE_NAMES.has(name);
+
+/**
+ * Types whose list page is a single column of file rows (name, size, upload
+ * date, download) rather than item cards. Keyed by name, like the maps above.
+ */
+export const LIST_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["file"]);
+
+export const isListItemType = (name: string): boolean => LIST_ITEM_TYPE_NAMES.has(name);

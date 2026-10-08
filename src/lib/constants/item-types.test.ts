@@ -5,6 +5,8 @@ import {
   editableFieldsFor,
   isCodeItemType,
   isCreatableItemType,
+  isGalleryItemType,
+  isListItemType,
   isMarkdownItemType,
 } from "./item-types";
 
@@ -109,5 +111,33 @@ describe("types whose content opens in the Markdown editor (MD4)", () => {
   it("a type named like an object or set property is not Markdown", () => {
     expect(isMarkdownItemType("constructor")).toBe(false);
     expect(isMarkdownItemType("size")).toBe(false);
+  });
+});
+
+describe("types whose page lists files as rows (FL1)", () => {
+  it("files list as rows", () => {
+    expect(isListItemType("file")).toBe(true);
+  });
+
+  it("snippets, commands, prompts, notes, links, images and custom types do not", () => {
+    for (const name of ["snippet", "command", "prompt", "note", "link", "image", "my-custom-type"]) {
+      expect(isListItemType(name)).toBe(false);
+    }
+  });
+
+  it("no type is both a gallery and a file list", () => {
+    for (const name of ["snippet", "command", "prompt", "note", "link", "file", "image"]) {
+      expect(isGalleryItemType(name) && isListItemType(name)).toBe(false);
+    }
+  });
+
+  it("matches on the type name, not the display label", () => {
+    expect(isListItemType("File")).toBe(false);
+    expect(isListItemType("Files")).toBe(false);
+  });
+
+  it("a type named like an object or set property is not a list", () => {
+    expect(isListItemType("constructor")).toBe(false);
+    expect(isListItemType("size")).toBe(false);
   });
 });

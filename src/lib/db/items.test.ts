@@ -158,6 +158,47 @@ describe("image gallery: whether a card has a stored file to show", () => {
   });
 });
 
+describe("file list: each row's file name, size and upload date (FL2)", () => {
+  beforeEach(() => {
+    db.itemTypes.push({ id: "t-file", name: "file", label: "Files", icon: "File", color: "#6b7280", isSystem: true, userId: null });
+  });
+
+  it("FL2: a stored file's name, size and upload date come with the list", async () => {
+    db.items.push({
+      id: "doc",
+      userId: "ada",
+      typeId: "t-file",
+      title: "Spec",
+      fileKey: "users/ada/doc.pdf",
+      fileName: "spec.pdf",
+      fileSize: 2048,
+      createdAt: day(3),
+      updatedAt: day(4),
+    });
+
+    const [item] = await getItemsByType("t-file");
+
+    expect(item).toMatchObject({ fileName: "spec.pdf", fileSize: 2048, createdAt: day(3), hasFile: true });
+  });
+
+  it("FL2: an item whose upload failed lists with no name or size", async () => {
+    db.items.push({ id: "failed", userId: "ada", typeId: "t-file", title: "Failed", createdAt: day(1), updatedAt: day(1) });
+
+    const [item] = await getItemsByType("t-file");
+
+    expect(item).toMatchObject({ fileName: null, fileSize: null, createdAt: day(1), hasFile: false });
+  });
+
+  it("FL2: the row data still never carries the storage key", async () => {
+    db.items.push({ id: "doc", userId: "ada", typeId: "t-file", title: "Spec", fileKey: "users/ada/doc.pdf", fileName: "spec.pdf", updatedAt: day(1) });
+
+    const [item] = await getItemsByType("t-file");
+
+    expect(item).not.toHaveProperty("fileKey");
+    expect(JSON.stringify(item)).not.toContain("users/ada/doc.pdf");
+  });
+});
+
 describe("item drawer detail, loaded on click (getItemDetail)", () => {
   beforeEach(() => {
     db.collections.push(

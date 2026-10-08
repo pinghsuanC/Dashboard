@@ -1,13 +1,15 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { FileListHeader, FileRow } from "@/components/items/FileRow";
 import { ImageCard } from "@/components/items/ImageCard";
 import { ItemRow } from "@/components/items/ItemRow";
 import { TypeIcon } from "@/components/shared/TypeIcon";
+import { FileListSkeleton } from "@/components/skeleton/FileListSkeleton";
 import { ImageGridSkeleton } from "@/components/skeleton/ImageGridSkeleton";
 import { ItemGridSkeleton } from "@/components/skeleton/ItemGridSkeleton";
-import { isGalleryItemType } from "@/lib/constants/item-types";
+import { isGalleryItemType, isListItemType } from "@/lib/constants/item-types";
 import { itemTypeNameFromSegment } from "@/lib/constants/routes";
 import { getSystemItemTypeByName } from "@/lib/db/item-types";
 import { getItemsByType } from "@/lib/db/items";
@@ -26,10 +28,24 @@ export const generateMetadata = async ({
   return type ? { title: type.label } : {};
 };
 
+/**
+ * How a type's items are laid out: image tiles in three columns, file rows
+ * in one, or item cards in two.
+ */
+type ItemLayout = "gallery" | "list" | "cards";
+
+const itemLayoutFor = (typeName: string): ItemLayout =>
+  isGalleryItemType(typeName) ? "gallery" : isListItemType(typeName) ? "list" : "cards";
+
+const SKELETONS: Record<ItemLayout, ReactNode> = {
+  gallery: <ImageGridSkeleton />,
+  list: <FileListSkeleton />,
+  cards: <ItemGridSkeleton />,
+};
+
 interface ItemTypeItemsProps {
   type: ItemTypeDefinition;
-  /** Image tiles in three columns instead of item cards in two. */
-  gallery: boolean;
+  layout: ItemLayout;
 }
 
 /**
@@ -37,7 +53,7 @@ interface ItemTypeItemsProps {
  * the skeleton when the query returns. The count lives here, not in the
  * header, because it comes from the same query.
  */
-const ItemTypeItems = async ({ type, gallery }: ItemTypeItemsProps) => {
+const ItemTypeItems = async ({ type, layout }: ItemTypeItemsProps) => {
   const items = await getItemsByType(type.id);
 
   if (items.length === 0) {
@@ -53,11 +69,20 @@ const ItemTypeItems = async ({ type, gallery }: ItemTypeItemsProps) => {
       <p className="text-muted-foreground">
         {items.length} {items.length === 1 ? "item" : "items"}
       </p>
-      {gallery ? (
+      {layout === "gallery" ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <ImageCard key={item.id} item={item} />
           ))}
+        </div>
+      ) : layout === "list" ? (
+        <div className="overflow-hidden rounded-lg border">
+          <FileListHeader />
+          <ul className="divide-y">
+            {items.map((item) => (
+              <FileRow key={item.id} item={item} />
+            ))}
+          </ul>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
@@ -76,12 +101,13 @@ const ItemTypeItems = async ({ type, gallery }: ItemTypeItemsProps) => {
  * request-cached row shared with `generateMetadata`) runs before the header
  * renders; the item query streams in behind a skeleton of the same shape.
  * `ItemRow` is already a card with the type-coloured left edge, so the grid
- * reuses it; gallery types (images) show `ImageCard` thumbnails instead.
+ * reuses it; gallery types (images) show `ImageCard` thumbnails instead, and
+ * list types (files) a single column of `FileRow`s.
  */
 const ItemTypePage = async ({ params }: PageProps<"/items/[type]">) => {
   const type = await resolveType(params);
   if (!type) notFound();
-  const gallery = isGalleryItemType(type.name);
+  const layout = itemLayoutFor(type.name);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -92,8 +118,8 @@ const ItemTypePage = async ({ params }: PageProps<"/items/[type]">) => {
 
       {/* Keyed by type so moving between type pages shows the skeleton again
           instead of holding the previous type's items. */}
-      <Suspense key={type.id} fallback={gallery ? <ImageGridSkeleton /> : <ItemGridSkeleton />}>
-        <ItemTypeItems type={type} gallery={gallery} />
+      <Suspense key={type.id} fallback={SKELETONS[layout]}>
+        <ItemTypeItems type={type} layout={layout} />
       </Suspense>
     </div>
   );

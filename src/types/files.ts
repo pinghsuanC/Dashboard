@@ -47,3 +47,6 @@ export interface ItemFileRef {
   mimeType: string | null;
   fileSize: number | null;
 }
+
+/** Which icon a file row shows, chosen from the file name's extension. */
+export type FileIconKind = "pdf" | "text" | "code" | "spreadsheet" | "file";
