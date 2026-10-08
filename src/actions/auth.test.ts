@@ -116,6 +116,30 @@ describe("register", () => {
     expect(registerPasswordUser).not.toHaveBeenCalled();
   });
 
+  it("R4b: over the per-email limit (from any IP), no account is created and the form toasts the wait", async () => {
+    overLimit("registerEmail");
+
+    await expect(registerWithCredentials({}, registerForm())).resolves.toEqual({ toast: WAIT });
+    expect(registerPasswordUser).not.toHaveBeenCalled();
+  });
+
+  it("R5b: counts one attempt per IP and one per email", async () => {
+    await registerWithCredentials({}, registerForm()).catch(() => {});
+
+    expect(vi.mocked(checkRateLimit).mock.calls).toEqual([
+      ["register", expect.any(Headers)],
+      ["registerEmail", expect.any(Headers), "ada@example.test"],
+    ]);
+  });
+
+  it("R5c: a caller over the IP limit doesn't use up the email's attempts", async () => {
+    overLimit("register");
+
+    await registerWithCredentials({}, registerForm());
+
+    expect(checkRateLimit).not.toHaveBeenCalledWith("registerEmail", expect.anything(), expect.anything());
+  });
+
   it("R5: an invalid form doesn't use up an attempt", async () => {
     await registerWithCredentials({}, form({ email: "not-an-email" }));
 
