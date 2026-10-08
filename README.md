@@ -20,6 +20,14 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Future Plans
+
+Deferred work, to pick up in the polishing phase.
+
+- **Key the upload rate limit by user, not IP (next).** `checkRateLimit`'s third parameter is email-specific, so the `upload` limit is keyed by IP alone: everyone behind one office NAT shares a bucket, and switching networks dodges it. Generalise it to `{ email } | { userId }`: auth flows keep their `ip:email` keys byte-for-byte, signed-in actions such as uploads key by `user:<id>`. Tests first.
+- **Attachments for every item type.** Let any item (a snippet, a note, ...) carry its own uploaded files, owned by one item, never shared. An `Attachment` table (`userId`, `itemId`, `key`, `name`, `size`, `mimeType`, cascading with its item) replaces the `Item.file*` columns; the storage service is reused as is. Open questions: do the File and Image types stay (as items with a required attachment)? Max attachments per item, and 5 MB per file or per item? Which file types attachments allow? Do it early, before production holds many uploads, so the migration moves little data.
+- **Delete a user's R2 files with their account.** Deleting an account cascades their items in the database but leaves their uploads in R2. Delete everything under the `users/{userId}/` prefix (after the database delete succeeds), so the bucket holds no orphans.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

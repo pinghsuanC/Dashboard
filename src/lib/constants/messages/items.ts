@@ -3,6 +3,7 @@ import {
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_TITLE_MAX_LENGTH,
 } from "@/lib/constants/limits";
+import { formatBytes } from "@/lib/helpers/format";
 
 /** Item drawer toasts and inline errors. */
 export const ITEM_COPIED = "Copied to clipboard";
@@ -29,3 +30,17 @@ export const ITEM_DELETED = "Item deleted";
 /** Item create: outcome. Invalid fields reuse `ITEM_SAVE_INVALID`. */
 export const ITEM_CREATED = "Item created";
 export const ITEM_TYPE_INVALID = "Choose one of the listed item types";
+
+/** File and image items: the picked file (file-rules.ts, the upload). */
+export const FILE_REQUIRED = "Choose a file to upload";
+/** "File must be at most 5 MB". */
+export const fileTooLarge = (maxBytes: number): string => `File must be at most ${formatBytes(maxBytes)}`;
+/** "Allowed: .png, .jpg, …", from the kind's extensions. */
+export const fileTypeNotAllowed = (extensions: readonly string[]): string =>
+  `This file type isn't allowed. Allowed: ${extensions.join(", ")}`;
+export const FILE_UPLOADING = "Uploading…";
+/** Storage isn't configured on this server; the details only go to the log. */
+export const FILE_UPLOAD_UNAVAILABLE = "An unknown error occurred with file uploads. Please try again later.";
+export const FILE_UPLOAD_FAILED = "The item was saved, but its file didn't upload. Delete it and try again.";
+/** The item was saved but its file step failed: "The item was saved without its file. <reason>". */
+export const itemSavedWithoutFile = (reason: string): string => `The item was saved without its file. ${reason}`;

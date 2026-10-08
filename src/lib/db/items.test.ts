@@ -3,7 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { createItem, deleteItem, getItemDetail, getItemTypeName, getItemsByType, getRecentItems, updateItem } from "./items";
+import {
+  createItem,
+  deleteItem,
+  getItemDetail,
+  getItemFile,
+  getItemTypeName,
+  getItemsByType,
+  getRecentItems,
+  setItemFile,
+  updateItem,
+} from "./items";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -335,18 +345,18 @@ describe("item delete, scoped to the user (deleteItem, R1)", () => {
     );
   });
 
-  it("deletes the user's item and answers true", async () => {
-    expect(await deleteItem("mine")).toBe(true);
+  it("deletes the user's item and answers what it removed", async () => {
+    expect(await deleteItem("mine")).toEqual({ fileKey: null });
     expect(db.items.map((item) => item.id)).toEqual(["other", "bobs"]);
   });
 
-  it("another user's item is left alone and answers false", async () => {
-    expect(await deleteItem("bobs")).toBe(false);
+  it("another user's item is left alone and answers null", async () => {
+    expect(await deleteItem("bobs")).toBeNull();
     expect(db.items.map((item) => item.id)).toContain("bobs");
   });
 
-  it("a missing id deletes nothing and answers false", async () => {
-    expect(await deleteItem("no-such-item")).toBe(false);
+  it("a missing id deletes nothing and answers null", async () => {
+    expect(await deleteItem("no-such-item")).toBeNull();
     expect(db.items).toHaveLength(3);
   });
 });
@@ -538,5 +548,91 @@ describe("item create, saved for the session user (createItem)", () => {
 
     expect(await createItem("snippet", { title: "T" })).toBeNull();
     expect(db.items).toEqual([]);
+  });
+});
+
+describe("file and image items: the stored file's key (F6)", () => {
+  beforeEach(() => {
+    db.itemTypes.push({ id: "t-image", name: "image", label: "Images", color: "#ec4899", isSystem: true, userId: null });
+    db.items.push(
+      { id: "pic", userId: "ada", typeId: "t-image", title: "Pic", fileKey: "users/ada/u1.png", fileName: "pic.png", fileSize: 10, mimeType: "image/png", updatedAt: day(1) },
+      { id: "bobs-pic", userId: "bob", typeId: "t-image", title: "Bob's", fileKey: "users/bob/u2.png", fileName: "b.png", fileSize: 20, mimeType: "image/png", updatedAt: day(1) },
+      { id: "text", userId: "ada", typeId: "t-snippet", title: "Text", updatedAt: day(1) },
+    );
+  });
+
+  it("deleting a file item answers its key, so the caller can delete the stored file", async () => {
+    expect(await deleteItem("pic")).toEqual({ fileKey: "users/ada/u1.png" });
+    expect(db.items.map((item) => item.id)).toEqual(["bobs-pic", "text"]);
+  });
+
+  it("deleting another user's file item answers null and leaves it", async () => {
+    expect(await deleteItem("bobs-pic")).toBeNull();
+    expect(db.items.map((item) => item.id)).toContain("bobs-pic");
+  });
+
+  it("getItemFile gives the file route the key, name, type and size", async () => {
+    expect(await getItemFile("pic")).toEqual({
+      fileKey: "users/ada/u1.png",
+      fileName: "pic.png",
+      mimeType: "image/png",
+      fileSize: 10,
+    });
+  });
+
+  it("getItemFile answers null for another user's item, a missing one, and one with no file", async () => {
+    expect(await getItemFile("bobs-pic")).toBeNull();
+    expect(await getItemFile("no-such-item")).toBeNull();
+    expect(await getItemFile("text")).toBeNull();
+  });
+
+  it("the drawer's detail never carries the key", async () => {
+    expect(await getItemDetail("pic")).not.toHaveProperty("fileKey");
+  });
+
+  it("setItemFile writes a saved item's file details and returns it as the drawer shows it", async () => {
+    db.items.push({ id: "new-pic", userId: "ada", typeId: "t-image", title: "New", updatedAt: day(1) });
+
+    const saved = await setItemFile("new-pic", {
+      fileKey: "users/ada/u4.png",
+      fileName: "new.png",
+      fileSize: 42,
+      mimeType: "image/png",
+    });
+
+    expect(saved).toMatchObject({ id: "new-pic", fileName: "new.png", fileSize: 42, mimeType: "image/png" });
+    expect(saved).not.toHaveProperty("fileKey");
+    expect(db.items.find((item) => item.id === "new-pic")).toMatchObject({ fileKey: "users/ada/u4.png" });
+  });
+
+  it("setItemFile leaves another user's item alone and answers null", async () => {
+    const result = await setItemFile("bobs-pic", {
+      fileKey: "users/ada/u5.png",
+      fileName: "x.png",
+      fileSize: 1,
+      mimeType: "image/png",
+    });
+
+    expect(result).toBeNull();
+    expect(db.items.find((item) => item.id === "bobs-pic")).toMatchObject({ fileKey: "users/bob/u2.png" });
+  });
+
+  it("creating a file item saves its key and file details", async () => {
+    await createItem("image", {
+      title: "Logo",
+      fileKey: "users/ada/u3.svg",
+      fileName: "logo.svg",
+      fileSize: 300,
+      mimeType: "image/svg+xml",
+    });
+
+    expect(db.items.at(-1)).toMatchObject({
+      userId: "ada",
+      typeId: "t-image",
+      fileKey: "users/ada/u3.svg",
+      fileName: "logo.svg",
+      fileSize: 300,
+      mimeType: "image/svg+xml",
+    });
   });
 });

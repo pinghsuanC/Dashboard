@@ -1,22 +1,37 @@
 "use server";
 
+import { headers } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 
+import { isFileItemType } from "@/lib/constants/files";
 import { isCreatableItemType } from "@/lib/constants/item-types";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
-import { ITEM_NOT_FOUND, ITEM_SAVE_INVALID, ITEM_TYPE_INVALID } from "@/lib/constants/messages/items";
+import {
+  FILE_REQUIRED,
+  FILE_UPLOAD_UNAVAILABLE,
+  ITEM_NOT_FOUND,
+  ITEM_SAVE_INVALID,
+  ITEM_TYPE_INVALID,
+  itemSavedWithoutFile,
+} from "@/lib/constants/messages/items";
 import {
   createItem as saveNewItem,
   deleteItem as removeItem,
   getItemTypeName,
+  setItemFile,
   updateItem as saveItem,
 } from "@/lib/db/items";
+import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemCreateSchemaFor, itemUpdateSchemaFor } from "@/lib/items/item-schemas";
+import { FileMissingError, StorageNotConfiguredError, UploadRateLimitedError } from "@/lib/items/upload-errors";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
+import { checkRateLimit } from "@/services/rate-limit";
+import { createUploadUrl, deleteFile, newFileKey } from "@/services/storage";
 import type { ActionResult } from "@/types/forms";
-import type { ItemDetail } from "@/types/items";
+import type { CheckedFile } from "@/types/files";
+import type { CreatedItem, ItemDetail } from "@/types/items";
 
 const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } } as const;
 const INVALID_TYPE = { success: false, error: { message: ITEM_TYPE_INVALID } } as const;
@@ -65,19 +80,37 @@ export const updateItem = async (
  * Deletes one of the session user's items, after the drawer's confirm. A
  * missing item and another user's answer alike, as in `updateItem`. Both
  * success and not-found refresh the page and session, so counts, pinned
- * items and card lists drop it.
+ * items and card lists drop it. A file or image item's stored file is
+ * deleted after the item.
  */
 export const deleteItem = async (itemId: string): Promise<ActionResult<null>> => {
   if (typeof itemId !== "string") return NOT_FOUND;
+  // Outside the try, so the sign-in redirect propagates; storage needs the id.
+  const userId = await requireCurrentUserId();
   try {
     const deleted = await removeItem(itemId);
     resetProfile();
-    return deleted ? { success: true, data: null } : NOT_FOUND;
+    if (!deleted) return NOT_FOUND;
+    if (deleted.fileKey) await deleteStoredFile(userId, deleted.fileKey);
+    return { success: true, data: null };
   } catch (error) {
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
     console.error("Item delete failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/**
+ * Deletes a deleted item's file from storage. The item is already gone, so a
+ * failure here is logged, not reported: it leaves an unused object in the
+ * bucket, never an item pointing at a missing file.
+ */
+const deleteStoredFile = async (userId: string, fileKey: string) => {
+  try {
+    await deleteFile(userId, fileKey);
+  } catch (error) {
+    console.error("Stored file delete failed; the object is left in the bucket:", error);
   }
 };
 
@@ -88,14 +121,25 @@ export const deleteItem = async (itemId: string): Promise<ActionResult<null>> =>
  * Only the dialog's types are accepted (`isCreatableItemType`); the type
  * picks which fields are validated and written. Success refreshes the page
  * and session, so card lists and counts show the new item.
+ *
+ * A file or image item is saved first, then `uploadItemFile` signs its upload
+ * and writes the file details onto it; success returns the signed link the
+ * browser then PUTs the file to. If that file step throws (over the upload
+ * limit, storage unavailable), the item is kept without a file and the answer
+ * carries `code: "file-not-uploaded"`, so the dialog treats it as created; the
+ * user can delete it and upload again.
+ *
+ * Known gap: an upload that fails after the link is signed (network drop, tab
+ * closed) leaves an item whose file was never stored; its file route answers
+ * 404. Not handled for now.
  */
 export const createItem = async (
   typeName: string,
   input: unknown,
-): Promise<ActionResult<ItemDetail>> => {
+): Promise<ActionResult<CreatedItem>> => {
   // First and outside the try: a signed-out caller is redirected to sign in
   // whatever they send, never answered with validation messages.
-  await requireCurrentUserId();
+  const userId = await requireCurrentUserId();
 
   // Also false for a non-string, which a hand-built request could send.
   if (!isCreatableItemType(typeName)) return INVALID_TYPE;
@@ -107,16 +151,72 @@ export const createItem = async (
       error: { message: ITEM_SAVE_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
     };
   }
+  // The file is the file step's; the item is saved without it.
+  const { file, ...fields } = parsed.data;
 
+  let item: ItemDetail | null;
   try {
-    const item = await saveNewItem(typeName, parsed.data);
-    if (!item) return INVALID_TYPE;
-    resetProfile();
-    return { success: true, data: item };
+    item = await saveNewItem(typeName, fields);
   } catch (error) {
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
     console.error("Item create failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }
+  if (!item) return INVALID_TYPE;
+  resetProfile();
+
+  if (!isFileItemType(typeName)) return { success: true, data: { item, upload: null } };
+
+  try {
+    return { success: true, data: await uploadItemFile(userId, item, file) };
+  } catch (error) {
+    unstable_rethrow(error);
+    return {
+      success: false,
+      error: { message: itemSavedWithoutFile(fileStepFailure(error)), code: "file-not-uploaded" },
+    };
+  }
+};
+
+/**
+ * The file step of a just-saved file or image item: checks its parsed file,
+ * counts one try against the upload limit, signs the upload link for a new
+ * key in the user's folder, and only then writes the file details onto the
+ * item. Throws `FileMissingError`, `UploadRateLimitedError`, or whatever
+ * storage throws; `createItem` turns each into a message.
+ */
+const uploadItemFile = async (
+  userId: string,
+  item: ItemDetail,
+  file: CheckedFile | undefined,
+): Promise<CreatedItem> => {
+  if (!file) throw new FileMissingError();
+
+  const limit = await checkRateLimit("upload", await headers());
+  if (!limit.success) throw new UploadRateLimitedError(limit.reset);
+
+  const fileKey = newFileKey(userId, file.ext);
+  const upload = await createUploadUrl(userId, fileKey, file.contentType, file.size);
+  const saved = await setItemFile(item.id, {
+    fileKey,
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.contentType,
+  });
+  // Null only if the item was deleted in the moment since its save.
+  if (!saved) throw new Error("The item was deleted before its file details were saved");
+  return { item: saved, upload };
+};
+
+/** Why a file step failed, worded for the user; the details go to the log. */
+const fileStepFailure = (error: unknown): string => {
+  if (error instanceof UploadRateLimitedError) return rateLimitMessage(error.reset);
+  if (error instanceof FileMissingError) return FILE_REQUIRED;
+  if (error instanceof StorageNotConfiguredError) {
+    console.error("File upload unavailable; missing settings:", error.missing.join(", "));
+    return FILE_UPLOAD_UNAVAILABLE;
+  }
+  console.error("File upload step failed:", error);
+  return SOMETHING_WENT_WRONG;
 };

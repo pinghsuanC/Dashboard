@@ -82,6 +82,14 @@ describe("service boundaries", () => {
     expect(importing("@/lib/rate-limit")).toEqual([]);
   });
 
+  it("B10: only the storage service talks to R2", () => {
+    expect(importingPrefix("@aws-sdk/")).toEqual(["services/storage.ts"]);
+  });
+
+  it("B10: files are stored through services", () => {
+    expect(importing("@/services/storage").length).toBeGreaterThan(0);
+  });
+
   it("B7: lib/ is grouped by area; only shadcn's utils stays at its root", () => {
     const root = readdirSync(join(SRC, "lib"), { withFileTypes: true });
     expect(root.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()).toEqual([

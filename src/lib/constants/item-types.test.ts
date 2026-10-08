@@ -40,17 +40,15 @@ describe("editable body fields per item type (E1)", () => {
 });
 
 describe("types the New Item dialog offers (R1)", () => {
-  it("lists snippet, prompt, command, note and link, in that order", () => {
-    expect(CREATABLE_ITEM_TYPE_NAMES).toEqual(["snippet", "prompt", "command", "note", "link"]);
+  it("lists snippet, prompt, command, note, link, file and image, in that order", () => {
+    expect(CREATABLE_ITEM_TYPE_NAMES).toEqual(["snippet", "prompt", "command", "note", "link", "file", "image"]);
   });
 
   it("each of them can be created", () => {
     for (const name of CREATABLE_ITEM_TYPE_NAMES) expect(isCreatableItemType(name)).toBe(true);
   });
 
-  it("files, images and custom types can't be created", () => {
-    expect(isCreatableItemType("file")).toBe(false);
-    expect(isCreatableItemType("image")).toBe(false);
+  it("custom types can't be created", () => {
     expect(isCreatableItemType("my-custom-type")).toBe(false);
   });
 

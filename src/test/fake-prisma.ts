@@ -45,6 +45,7 @@ interface ItemRow {
   content?: string | null;
   language?: string | null;
   url?: string | null;
+  fileKey?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
   mimeType?: string | null;
