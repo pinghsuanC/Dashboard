@@ -2,9 +2,12 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ImageCard } from "@/components/items/ImageCard";
 import { ItemRow } from "@/components/items/ItemRow";
 import { TypeIcon } from "@/components/shared/TypeIcon";
+import { ImageGridSkeleton } from "@/components/skeleton/ImageGridSkeleton";
 import { ItemGridSkeleton } from "@/components/skeleton/ItemGridSkeleton";
+import { isGalleryItemType } from "@/lib/constants/item-types";
 import { itemTypeNameFromSegment } from "@/lib/constants/routes";
 import { getSystemItemTypeByName } from "@/lib/db/item-types";
 import { getItemsByType } from "@/lib/db/items";
@@ -25,6 +28,8 @@ export const generateMetadata = async ({
 
 interface ItemTypeItemsProps {
   type: ItemTypeDefinition;
+  /** Image tiles in three columns instead of item cards in two. */
+  gallery: boolean;
 }
 
 /**
@@ -32,7 +37,7 @@ interface ItemTypeItemsProps {
  * the skeleton when the query returns. The count lives here, not in the
  * header, because it comes from the same query.
  */
-const ItemTypeItems = async ({ type }: ItemTypeItemsProps) => {
+const ItemTypeItems = async ({ type, gallery }: ItemTypeItemsProps) => {
   const items = await getItemsByType(type.id);
 
   if (items.length === 0) {
@@ -48,11 +53,19 @@ const ItemTypeItems = async ({ type }: ItemTypeItemsProps) => {
       <p className="text-muted-foreground">
         {items.length} {items.length === 1 ? "item" : "items"}
       </p>
-      <div className="grid gap-3 md:grid-cols-2">
-        {items.map((item) => (
-          <ItemRow key={item.id} item={item} />
-        ))}
-      </div>
+      {gallery ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <ImageCard key={item.id} item={item} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {items.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
+        </div>
+      )}
     </section>
   );
 };
@@ -61,12 +74,14 @@ const ItemTypeItems = async ({ type }: ItemTypeItemsProps) => {
  * The items are queried on every visit, like the dashboard's recent items,
  * and are not kept in the user session. Only the type lookup (one small,
  * request-cached row shared with `generateMetadata`) runs before the header
- * renders; the item query streams in behind `ItemGridSkeleton`. `ItemRow` is
- * already a card with the type-coloured left edge, so the grid reuses it.
+ * renders; the item query streams in behind a skeleton of the same shape.
+ * `ItemRow` is already a card with the type-coloured left edge, so the grid
+ * reuses it; gallery types (images) show `ImageCard` thumbnails instead.
  */
 const ItemTypePage = async ({ params }: PageProps<"/items/[type]">) => {
   const type = await resolveType(params);
   if (!type) notFound();
+  const gallery = isGalleryItemType(type.name);
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -77,8 +92,8 @@ const ItemTypePage = async ({ params }: PageProps<"/items/[type]">) => {
 
       {/* Keyed by type so moving between type pages shows the skeleton again
           instead of holding the previous type's items. */}
-      <Suspense key={type.id} fallback={<ItemGridSkeleton />}>
-        <ItemTypeItems type={type} />
+      <Suspense key={type.id} fallback={gallery ? <ImageGridSkeleton /> : <ItemGridSkeleton />}>
+        <ItemTypeItems type={type} gallery={gallery} />
       </Suspense>
     </div>
   );

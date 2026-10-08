@@ -24,6 +24,7 @@ const item = (id: string, overrides: Partial<ItemSummary> = {}): ItemSummary => 
   isFavorite: false,
   updatedAt: at(1),
   tags: [],
+  hasFile: false,
   type: SNIPPET,
   ...overrides,
 });

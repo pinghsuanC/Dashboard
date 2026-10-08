@@ -218,6 +218,7 @@ describe("user session: item counts, pinned items and collections (S3)", () => {
       isFavorite: true,
       updatedAt: day(5),
       tags: ["auth", "hooks", "react"],
+      hasFile: false,
       type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
     });
   });

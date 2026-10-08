@@ -13,6 +13,8 @@ const itemSummarySelect = {
   isPinned: true,
   isFavorite: true,
   updatedAt: true,
+  // Read only to set `hasFile`; the mappers drop the key itself.
+  fileKey: true,
   type: { select: { id: true, name: true, label: true, icon: true, color: true } },
   tags: {
     select: { tag: { select: { name: true } } },
@@ -30,9 +32,10 @@ type ItemSummaryRow = Prisma.ItemGetPayload<{
   select: typeof itemSummarySelect;
 }>;
 
-const toItemSummary = ({ tags, ...item }: ItemSummaryRow): ItemSummary => ({
+const toItemSummary = ({ tags, fileKey, ...item }: ItemSummaryRow): ItemSummary => ({
   ...item,
   tags: tags.map(({ tag }) => tag.name),
+  hasFile: fileKey !== null,
 });
 
 /**
@@ -109,9 +112,10 @@ const itemDetailSelect = {
 
 type ItemDetailRow = Prisma.ItemGetPayload<{ select: typeof itemDetailSelect }>;
 
-const toItemDetail = ({ tags, collections, ...item }: ItemDetailRow): ItemDetail => ({
+const toItemDetail = ({ tags, collections, fileKey, ...item }: ItemDetailRow): ItemDetail => ({
   ...item,
   tags: tags.map(({ tag }) => tag.name),
+  hasFile: fileKey !== null,
   collections: collections.map(({ collection }) => collection),
 });
 

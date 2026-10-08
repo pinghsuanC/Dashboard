@@ -26,7 +26,6 @@ Deferred work, to pick up in the polishing phase.
 
 - **Attachments for every item type.** Let any item (a snippet, a note, ...) carry its own uploaded files, owned by one item, never shared. An `Attachment` table (`userId`, `itemId`, `key`, `name`, `size`, `mimeType`, cascading with its item) replaces the `Item.file*` columns; the storage service is reused as is. Open questions: do the File and Image types stay (as items with a required attachment)? Max attachments per item, and 5 MB per file or per item? Which file types attachments allow? Do it early, before production holds many uploads, so the migration moves little data.
 - **Delete a user's R2 files with their account.** Deleting an account cascades their items in the database but leaves their uploads in R2. Delete everything under the `users/{userId}/` prefix (after the database delete succeeds), so the bucket holds no orphans.
-- **Per-email sign-in limit across IPs.** Sign-in is keyed `{email}-{ip}`, so rotating IPs gets 5 tries per IP. Add a second, higher per-email limit (`perIp: false`) to cap guessing without easy lockouts.
 
 ## Learn More
 

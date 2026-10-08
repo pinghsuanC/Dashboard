@@ -24,6 +24,11 @@ export interface ItemSummary {
   /** Tag names, alphabetical: the join table records no order of its own. */
   tags: string[];
   /**
+   * Whether a file is stored for it: false for an image or file item whose
+   * upload failed. The storage key itself never leaves the server.
+   */
+  hasFile: boolean;
+  /**
    * Embedded rather than looked up in the session's type list: that list is
    * the system types, and a Pro user's items can use their own types.
    */
