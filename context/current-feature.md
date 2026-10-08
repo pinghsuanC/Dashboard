@@ -2,8 +2,6 @@
 
 <!-- One `##` section per feature, in build order. Remove a section once it lands and is recorded in History. -->
 
----
-
 ## History
 
 <!-- Keep this updated, earliest to latest. -->
@@ -40,3 +38,4 @@
 - **2026-10-07** — Code editor: snippet and command content shown and edited in a bundled Monaco editor with a macOS-style header (window dots, language, copy), height up to 400px then scrolls; free-text language mapped to Monaco ids; autocomplete off; `dompurify` overridden to a patched version.
 - **2026-10-07** — Markdown editor: note and prompt content written in a Write tab and shown rendered in Preview (GFM, newlines kept, no raw HTML), styled like the code editor with copy and a 400px max height; read-only Preview in the drawer.
 - **2026-10-08** — File uploads: file and image items upload straight to Cloudflare R2 through signed links (5 MB, rate limited, 1-minute timeout); user-scoped storage keys; sandboxed file route for previews and downloads; R2 object deleted with its item; proxy answers signed-out API calls with 401.
+- **2026-10-08** — Rate limit keys: buckets keyed by subject through one helper; uploads limited per user across IPs, register adds a per-email limit from any IP; sign-in and resend stay email plus IP.

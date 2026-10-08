@@ -77,10 +77,13 @@ describe("POST /api/auth/register", () => {
     expect(registerPasswordUser).not.toHaveBeenCalled();
   });
 
-  it("counts the attempt under the register policy, keyed by the request", async () => {
+  it("counts the attempt per IP under register and per email under registerEmail", async () => {
     await post(JSON.stringify(VALID));
 
-    expect(checkRateLimit).toHaveBeenCalledWith("register", expect.any(Headers));
+    expect(vi.mocked(checkRateLimit).mock.calls).toEqual([
+      ["register", expect.any(Headers)],
+      ["registerEmail", expect.any(Headers), "ada@example.test"],
+    ]);
   });
 
   it("passes a registration failure through with its status", async () => {

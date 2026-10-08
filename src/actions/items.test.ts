@@ -417,7 +417,7 @@ describe("createItem action: file and image items (F7)", () => {
       success: false,
       error: { message: expect.stringContaining("Too many attempts"), code: "file-not-uploaded" },
     });
-    expect(checkRateLimit).toHaveBeenCalledWith("upload", expect.any(Headers));
+    expect(checkRateLimit).toHaveBeenCalledWith("upload", expect.any(Headers), "ada");
     expect(created()).toEqual([expect.objectContaining({ title: "Logo" })]);
     expect(created()[0].fileKey ?? null).toBeNull();
     expect(storage.signed.size).toBe(0);

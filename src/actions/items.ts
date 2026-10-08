@@ -193,7 +193,9 @@ const uploadItemFile = async (
 ): Promise<CreatedItem> => {
   if (!file) throw new FileMissingError();
 
-  const limit = await checkRateLimit("upload", await headers());
+  // Per user alone (`upload` is `perIp: false`): users behind one NAT don't
+  // share a bucket, and switching IP (a VPN) doesn't get a fresh one.
+  const limit = await checkRateLimit("upload", await headers(), userId);
   if (!limit.success) throw new UploadRateLimitedError(limit.reset);
 
   const fileKey = newFileKey(userId, file.ext);

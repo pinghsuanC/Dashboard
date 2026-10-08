@@ -17,6 +17,7 @@ import {
 import { resendVerificationLink } from "@/lib/auth/email-verification";
 import { requestPasswordReset, resetPassword } from "@/lib/auth/password-reset";
 import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
+import { checkRegisterRateLimit } from "@/lib/auth/register-rate-limit";
 import { registerPasswordUser } from "@/lib/auth/register-user";
 import { AUTH_MESSAGES, RESET_TOKEN_ERRORS } from "@/lib/constants/messages/auth";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
@@ -94,8 +95,8 @@ export const registerWithCredentials = async (
   });
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
 
-  const limited = await rateLimited("register");
-  if (limited) return limited;
+  const limit = await checkRegisterRateLimit(await headers(), parsed.data.email);
+  if (!limit.success) return { toast: rateLimitMessage(limit.reset) };
 
   const result = await registerPasswordUser(parsed.data);
   if (!result.success) return { error: result.error };

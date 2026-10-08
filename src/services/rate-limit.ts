@@ -63,25 +63,38 @@ export const clientIp = (headers: Headers): string =>
   UNKNOWN_CLIENT_IP;
 
 /**
- * Counts one attempt against `policy`, keyed by the caller's IP plus the
- * email when given (normalised, so a change of case doesn't get a fresh
- * bucket). Fails open: with Upstash unset, down or slow, the request is
- * allowed and the error logged.
+ * The one place a bucket's key is built: `{key}-{ip}` when the caller names
+ * a subject (an email, a user id), just `{key}` for a policy with
+ * `perIp: false`, else the IP alone. The key is trimmed and lower-cased, so
+ * a change of case doesn't get a fresh bucket. The IP is always the last
+ * part and never holds a `-`, so a `-` inside the key (an email can have
+ * one) can't make two keys collide.
+ */
+export const rateLimitKey = (policy: RateLimitPolicy, headers: Headers, key?: string): string => {
+  const ip = clientIp(headers);
+  const subject = key?.trim().toLowerCase();
+  if (!subject) return ip;
+  return "perIp" in RATE_LIMITS[policy] ? subject : `${subject}-${ip}`;
+};
+
+/**
+ * Counts one attempt against `policy`, keyed by `rateLimitKey()`. Fails
+ * open: with Upstash unset, down or slow, the request is allowed and the
+ * error logged.
  */
 export const checkRateLimit = async (
   policy: RateLimitPolicy,
   headers: Headers,
-  email?: string,
+  key?: string,
 ): Promise<RateLimitResult> => {
-  const ip = clientIp(headers);
-  const key = email ? `${ip}:${email.trim().toLowerCase()}` : ip;
+  const bucket = rateLimitKey(policy, headers, key);
   const allowed = { success: true, remaining: RATE_LIMITS[policy].limit, reset: Date.now() };
 
   const limiter = getLimiters()?.get(policy);
   if (!limiter) return allowed;
 
   try {
-    const { success, remaining, reset } = await limiter.limit(key);
+    const { success, remaining, reset } = await limiter.limit(bucket);
     return { success, remaining, reset };
   } catch (error) {
     console.error(`Rate limit check failed (${policy}); allowing the request`, error);
