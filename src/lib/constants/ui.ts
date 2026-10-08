@@ -36,3 +36,9 @@ export const EDITOR_MAX_HEIGHT_PX = 400;
 
 /** The code editor header's language when an item has none. */
 export const CODE_LANGUAGE_FALLBACK_LABEL = "plain text";
+
+/**
+ * The files list's name, size and upload-date columns from `sm`, shared by
+ * the rows, their headings and the loading skeleton so all three line up.
+ */
+export const FILE_LIST_COLUMNS = "sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_10rem] sm:items-center sm:gap-4";

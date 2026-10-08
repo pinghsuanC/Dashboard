@@ -20,7 +20,14 @@ export interface ItemSummary {
   description: string | null;
   isPinned: boolean;
   isFavorite: boolean;
+  createdAt: Date;
   updatedAt: Date;
+  /**
+   * The stored file's name and size in bytes, for file rows; null for
+   * non-file items and for a file item whose upload failed.
+   */
+  fileName: string | null;
+  fileSize: number | null;
   /** Tag names, alphabetical: the join table records no order of its own. */
   tags: string[];
   /**
@@ -57,10 +64,7 @@ export interface ItemDetail extends ItemSummary {
   content: string | null;
   language: string | null;
   url: string | null;
-  fileName: string | null;
-  fileSize: number | null;
   mimeType: string | null;
-  createdAt: Date;
   /** By name: the join table records no order of its own. */
   collections: ItemCollectionRef[];
 }
