@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { BYTES_PER_MB } from "@/lib/constants/files";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import {
+  FILE_REQUIRED,
+  FILE_UPLOAD_UNAVAILABLE,
+  fileTooLarge,
   ITEM_NOT_FOUND,
   ITEM_TYPE_INVALID,
   ITEM_SAVE_INVALID,
@@ -11,7 +15,9 @@ import {
 } from "@/lib/constants/messages/items";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
+import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
+import { resetStorage, storage, upload } from "@/test/fake-storage";
 
 import { createItem, deleteItem, updateItem } from "./items";
 
@@ -19,6 +25,9 @@ vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Next's refresh() only works inside a real request; the tests check it was asked for.
 vi.mock("@/lib/session/user-session", () => ({ resetProfile: vi.fn() }));
+vi.mock("@/services/storage", async () => (await import("@/test/fake-storage")).fakeStorage);
+vi.mock("@/services/rate-limit", () => ({ checkRateLimit: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "1.1.1.1" }) }));
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 const day = (n: number) => new Date(Date.UTC(2026, 0, n));
@@ -26,6 +35,8 @@ const itemRow = (id: string) => db.items.find((item) => item.id === id)!;
 
 beforeEach(() => {
   resetDb();
+  resetStorage();
+  vi.mocked(checkRateLimit).mockReset().mockResolvedValue({ success: true, remaining: 1, reset: Date.now() });
   vi.mocked(resetProfile).mockClear();
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
   db.itemTypes.push(
@@ -204,7 +215,10 @@ describe("createItem action: success (R6)", () => {
 
     expect(result).toEqual({
       success: true,
-      data: expect.objectContaining({ title: "Retro", content: "went well", tags: ["team"], type: expect.objectContaining({ name: "note" }) }),
+      data: {
+        item: expect.objectContaining({ title: "Retro", content: "went well", tags: ["team"], type: expect.objectContaining({ name: "note" }) }),
+        upload: null,
+      },
     });
     expect(created()).toEqual([expect.objectContaining({ userId: "ada", typeId: "t-note", title: "Retro" })]);
   });
@@ -251,13 +265,6 @@ describe("createItem action: validation (R6)", () => {
 describe("createItem action: only the listed types (R5)", () => {
   const invalidType = { success: false, error: { message: ITEM_TYPE_INVALID } };
 
-  it("a file or image type is refused, even though it exists", async () => {
-    db.itemTypes.push({ id: "t-file", name: "file", label: "Files", color: "#6b7280", isSystem: true, userId: null });
-
-    expect(await createItem("file", { title: "Upload" })).toEqual(invalidType);
-    expect(db.items).toHaveLength(2);
-  });
-
   it("an unknown type name is refused", async () => {
     expect(await createItem("my-custom-type", { title: "T" })).toEqual(invalidType);
     expect(db.items).toHaveLength(2);
@@ -301,5 +308,221 @@ describe("createItem action: failures (R6)", () => {
 
     await expect(createItem("note", { title: "  " })).rejects.toMatchObject(redirected);
     await expect(createItem("file", { title: "Upload" })).rejects.toMatchObject(redirected);
+  });
+});
+
+describe("createItem action: file and image items (F7)", () => {
+  const created = () => db.items.filter((item) => !["note", "link"].includes(item.id));
+  const MAX = 5 * BYTES_PER_MB;
+
+  beforeEach(() => {
+    db.itemTypes.push(
+      { id: "t-file", name: "file", label: "Files", color: "#6b7280", isSystem: true, userId: null },
+      { id: "t-image", name: "image", label: "Images", color: "#ec4899", isSystem: true, userId: null },
+    );
+  });
+
+  it("saves the item with its file details under a key in the user's folder", async () => {
+    await createItem("image", { title: "Logo", file: { name: "My Logo.PNG", size: 1234, mimeType: "image/png" } });
+
+    expect(created()).toEqual([
+      expect.objectContaining({
+        userId: "ada",
+        typeId: "t-image",
+        title: "Logo",
+        fileName: "My Logo.png",
+        fileSize: 1234,
+        mimeType: "image/png",
+        fileKey: expect.stringMatching(/^users\/ada\/[^/]+\.png$/),
+      }),
+    ]);
+  });
+
+  it("returns the item and a signed upload link for that key, type and size", async () => {
+    const result = await createItem("file", { title: "Spec", file: { name: "spec.pdf", size: 2048, mimeType: "application/pdf" } });
+
+    const { fileKey } = created()[0];
+    expect(result).toEqual({
+      success: true,
+      data: {
+        item: expect.objectContaining({ title: "Spec", fileName: "spec.pdf", fileSize: 2048, mimeType: "application/pdf" }),
+        upload: { url: `https://bucket.test/${fileKey}?signed`, headers: { "Content-Type": "application/pdf" } },
+      },
+    });
+    expect(storage.signed.get(fileKey!)).toEqual({ contentType: "application/pdf", size: 2048 });
+  });
+
+  it("the key and stored type are the server's: a client can't choose them", async () => {
+    await createItem("file", {
+      title: "Spec",
+      fileKey: "users/bob/theirs.pdf",
+      mimeType: "text/html",
+      file: { name: "notes.yml", size: 10, mimeType: "text/yaml" },
+    });
+
+    expect(created()[0]).toMatchObject({ fileKey: expect.stringMatching(/^users\/ada\//), mimeType: "application/x-yaml" });
+  });
+
+  it("the item's body can't carry text: content, language and url are dropped", async () => {
+    await createItem("file", {
+      title: "Spec",
+      content: "text",
+      url: "https://evil.example",
+      file: { name: "spec.pdf", size: 10, mimeType: "application/pdf" },
+    });
+
+    expect(created()[0]).toMatchObject({ content: null, url: null });
+  });
+
+  it("a file over 5 MB is refused as a field error, and nothing is saved or signed", async () => {
+    const result = await createItem("image", { title: "Big", file: { name: "big.png", size: MAX + 1, mimeType: "image/png" } });
+
+    expect(result).toEqual({
+      success: false,
+      error: { message: ITEM_SAVE_INVALID, fieldErrors: { file: fileTooLarge(MAX) } },
+    });
+    expect(created()).toEqual([]);
+    expect(storage.signed.size).toBe(0);
+  });
+
+  it("a type the kind doesn't take is refused", async () => {
+    const result = await createItem("image", { title: "Doc", file: { name: "doc.pdf", size: 10, mimeType: "application/pdf" } });
+
+    expect(result).toMatchObject({ success: false, error: { fieldErrors: { file: expect.any(String) } } });
+    expect(created()).toEqual([]);
+  });
+
+  it("a file or image item needs a file", async () => {
+    const result = await createItem("file", { title: "Nothing" });
+
+    expect(result).toMatchObject({ success: false, error: { fieldErrors: { file: FILE_REQUIRED } } });
+    expect(created()).toEqual([]);
+  });
+
+  it("other types ignore a file sent with them", async () => {
+    const result = await createItem("note", { title: "Retro", file: { name: "a.png", size: 10, mimeType: "image/png" } });
+
+    expect(result).toMatchObject({ success: true, data: { upload: null } });
+    expect(created()[0].fileKey ?? null).toBeNull();
+    expect(created()[0].fileName ?? null).toBeNull();
+    expect(storage.signed.size).toBe(0);
+  });
+
+  it("is rate limited after the save: the item stays without a file, and the wait is the message", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 10 * 60_000 });
+
+    const result = await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } });
+
+    expect(result).toEqual({
+      success: false,
+      error: { message: expect.stringContaining("Too many attempts"), code: "file-not-uploaded" },
+    });
+    expect(checkRateLimit).toHaveBeenCalledWith("upload", expect.any(Headers));
+    expect(created()).toEqual([expect.objectContaining({ title: "Logo" })]);
+    expect(created()[0].fileKey ?? null).toBeNull();
+    expect(storage.signed.size).toBe(0);
+  });
+
+  it("a saved item whose file step failed still refreshes the lists", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 10 * 60_000 });
+
+    await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } });
+
+    expect(resetProfile).toHaveBeenCalledOnce();
+  });
+
+  it("the file details are written only once the upload link is signed", async () => {
+    const result = await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } });
+
+    const { fileKey } = created()[0];
+    expect(storage.signed.has(fileKey!)).toBe(true);
+    expect(result).toMatchObject({ success: true, data: { item: { fileName: "a.png", fileSize: 10, mimeType: "image/png" } } });
+  });
+
+  it("only file and image items count against the upload limit", async () => {
+    await createItem("note", { title: "Retro" });
+
+    expect(checkRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("an invalid file doesn't use up an upload try", async () => {
+    await createItem("image", { title: "Big", file: { name: "big.png", size: MAX + 1, mimeType: "image/png" } });
+
+    expect(checkRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("storage not configured: the item stays without a file, with the upload-unavailable message", async () => {
+    storage.unconfigured = true;
+
+    expect(await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } })).toEqual({
+      success: false,
+      error: { message: expect.stringContaining(FILE_UPLOAD_UNAVAILABLE), code: "file-not-uploaded" },
+    });
+    expect(created()).toHaveLength(1);
+    expect(created()[0].fileKey ?? null).toBeNull();
+  });
+
+  it("storage not configured doesn't affect items without a file", async () => {
+    storage.unconfigured = true;
+
+    expect(await createItem("note", { title: "Retro" })).toMatchObject({ success: true });
+  });
+
+  it("a storage failure while signing: the item stays without a file, with a retry message", async () => {
+    storage.down = true;
+
+    expect(await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } })).toEqual({
+      success: false,
+      error: { message: expect.stringContaining(SOMETHING_WENT_WRONG), code: "file-not-uploaded" },
+    });
+    expect(created()).toHaveLength(1);
+    expect(created()[0].fileKey ?? null).toBeNull();
+  });
+
+  it("a failure saving the item itself writes nothing and asks for no file", async () => {
+    db.down = true;
+
+    expect(await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } })).toEqual({
+      success: false,
+      error: { message: SOMETHING_WENT_WRONG },
+    });
+    expect(checkRateLimit).not.toHaveBeenCalled();
+    expect(storage.signed.size).toBe(0);
+  });
+});
+
+describe("deleteItem action: the stored file goes too (F8)", () => {
+  beforeEach(() => {
+    db.itemTypes.push({ id: "t-image", name: "image", label: "Images", color: "#ec4899", isSystem: true, userId: null });
+    db.items.push(
+      { id: "pic", userId: "ada", typeId: "t-image", title: "Pic", fileKey: "users/ada/u1.png", updatedAt: day(1) },
+      { id: "bobs-pic", userId: "bob", typeId: "t-image", title: "Bob's", fileKey: "users/bob/u2.png", updatedAt: day(1) },
+    );
+    upload("users/ada/u1.png", "png bytes");
+    upload("users/bob/u2.png", "png bytes");
+  });
+
+  it("deleting a file or image item deletes its stored file", async () => {
+    expect(await deleteItem("pic")).toEqual({ success: true, data: null });
+    expect(storage.objects.has("users/ada/u1.png")).toBe(false);
+  });
+
+  it("another user's item: nothing is deleted, in the database or the bucket", async () => {
+    expect(await deleteItem("bobs-pic")).toMatchObject({ success: false, error: { code: "not-found" } });
+    expect(storage.objects.has("users/bob/u2.png")).toBe(true);
+  });
+
+  it("an item without a file touches no stored file", async () => {
+    await deleteItem("note");
+
+    expect([...storage.objects.keys()]).toEqual(["users/ada/u1.png", "users/bob/u2.png"]);
+  });
+
+  it("a storage failure still answers success: the item is gone, only the object is left over", async () => {
+    storage.down = true;
+
+    expect(await deleteItem("pic")).toEqual({ success: true, data: null });
+    expect(db.items.some((item) => item.id === "pic")).toBe(false);
+    expect(resetProfile).toHaveBeenCalledOnce();
   });
 });

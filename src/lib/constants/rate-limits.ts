@@ -1,12 +1,14 @@
 import type { Duration } from "@upstash/ratelimit";
 
-/** One sliding-window policy per auth flow. */
+/** One sliding-window policy per auth flow, plus file uploads. */
 export const RATE_LIMITS = {
   signIn: { limit: 5, window: "15 m" },
   register: { limit: 3, window: "1 h" },
   forgotPassword: { limit: 3, window: "1 h" },
   resetPassword: { limit: 5, window: "15 m" },
   resendVerification: { limit: 3, window: "15 m" },
+  /** New file and image items, keyed by IP: each one signs an upload to the bucket. */
+  upload: { limit: 30, window: "1 h" },
 } as const satisfies Record<string, { limit: number; window: Duration }>;
 
 export type RateLimitPolicy = keyof typeof RATE_LIMITS;

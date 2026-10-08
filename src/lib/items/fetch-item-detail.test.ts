@@ -82,6 +82,16 @@ describe("fetchItemDetail (the item drawer's request)", () => {
     });
   });
 
+  it("F10: reports signed-out on the proxy's 401, sending sign-in back to the current page", async () => {
+    vi.stubGlobal("location", { pathname: "/items/snippets", search: "?q=1" });
+    fetchMock.mockResolvedValue(json({ error: "Unauthorized" }, { status: 401 }));
+
+    expect(await fetchItemDetail("hook")).toEqual({
+      status: "signed-out",
+      url: "/sign-in?callbackUrl=%2Fitems%2Fsnippets%3Fq%3D1",
+    });
+  });
+
   it("R9: reports an error on a server failure", async () => {
     fetchMock.mockResolvedValue(json({ error: "boom" }, { status: 500 }));
 

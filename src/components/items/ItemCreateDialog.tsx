@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { createItem } from "@/actions/items";
+import { FileUpload } from "@/components/items/FileUpload";
 import { ItemFormFields } from "@/components/items/ItemFormFields";
 import { useUserSession } from "@/components/session/UserSessionProvider";
 import { TypeIcon } from "@/components/shared/TypeIcon";
@@ -19,10 +20,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { isFileItemType } from "@/lib/constants/files";
 import { CREATABLE_ITEM_TYPE_NAMES, editableFieldsFor } from "@/lib/constants/item-types";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
-import { ITEM_CREATED } from "@/lib/constants/messages/items";
+import { FILE_UPLOAD_FAILED, FILE_UPLOADING, ITEM_CREATED } from "@/lib/constants/messages/items";
 import { ITEM_CREATE_TOAST_ID } from "@/lib/constants/ui";
+import { uploadFile } from "@/lib/items/upload-file";
 import type { FieldErrors } from "@/types/forms";
 import type { ItemDraft } from "@/types/items";
 
@@ -32,6 +35,10 @@ const EMPTY_DRAFT: ItemDraft = { title: "", description: "", content: "", langua
  * The top bar's New Item button and its dialog: a type picker, then the
  * fields that type uses. The server action validates and trims; this only
  * sends.
+ *
+ * File and image items show the upload box instead of body fields: the item
+ * is saved first, then the file goes straight to storage through the signed
+ * link the save returns, with a progress bar.
  *
  * The draft outlives a dismiss, so a stray click outside doesn't lose it, and
  * is cleared once the item is created. As in `ItemDeleteDialog`, the dialog
@@ -48,10 +55,14 @@ export const ItemCreateDialog = () => {
   const [pickedType, setPickedType] = useState<string | null>(null);
   const typeName = pickedType ?? types[0]?.name ?? "";
   const [draft, setDraft] = useState(EMPTY_DRAFT);
+  // File and image items: the picked file, and its upload once the item is saved.
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [creating, startCreating] = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
   const fields = editableFieldsFor(typeName);
+  const fileKind = isFileItemType(typeName) ? typeName : null;
 
   const handleOpenChange = (next: boolean) => {
     if (creating) return;
@@ -61,6 +72,15 @@ export const ItemCreateDialog = () => {
 
   const selectType = (name: string) => {
     setPickedType(name);
+    // A file picked for one kind may not suit the other.
+    setFile(null);
+    setFieldErrors({});
+  };
+
+  const finish = () => {
+    setOpen(false);
+    setDraft(EMPTY_DRAFT);
+    setFile(null);
     setFieldErrors({});
   };
 
@@ -75,17 +95,35 @@ export const ItemCreateDialog = () => {
           ...(fields.includes("content") && { content: draft.content }),
           ...(fields.includes("language") && { language: draft.language }),
           ...(fields.includes("url") && { url: draft.url }),
+          ...(fileKind && file && { file: { name: file.name, size: file.size, mimeType: file.type } }),
         });
         if (result.success) {
+          const { upload } = result.data;
+          if (upload && file) {
+            setProgress(0);
+            const uploaded = await uploadFile(upload, file, setProgress);
+            setProgress(null);
+            // The item is saved either way; see `createItem` for this known gap.
+            if (!uploaded) {
+              toast.error(FILE_UPLOAD_FAILED, { id: ITEM_CREATE_TOAST_ID });
+              finish();
+              return;
+            }
+          }
           toast.success(ITEM_CREATED, { id: ITEM_CREATE_TOAST_ID });
-          setOpen(false);
-          setDraft(EMPTY_DRAFT);
-          setFieldErrors({});
+          finish();
           return;
         }
         toast.error(result.error.message, { id: ITEM_CREATE_TOAST_ID });
+        // The item was saved without its file: it exists, so close as if
+        // created; staying open would invite a retry that saves a duplicate.
+        if (result.error.code === "file-not-uploaded") {
+          finish();
+          return;
+        }
         setFieldErrors(result.error.fieldErrors ?? {});
       } catch {
+        setProgress(null);
         toast.error(SOMETHING_WENT_WRONG, { id: ITEM_CREATE_TOAST_ID });
       }
     });
@@ -141,6 +179,20 @@ export const ItemCreateDialog = () => {
             </div>
           </fieldset>
 
+          {fileKind && (
+            <FileUpload
+              kind={fileKind}
+              file={file}
+              onChange={(picked) => {
+                setFile(picked);
+                setFieldErrors((current) => ({ ...current, file: undefined }));
+              }}
+              progress={progress}
+              disabled={creating}
+              error={fieldErrors.file}
+            />
+          )}
+
           <ItemFormFields
             idPrefix="item-create"
             typeName={typeName}
@@ -158,8 +210,8 @@ export const ItemCreateDialog = () => {
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={creating || !draft.title.trim()}>
-              {creating ? "Creating…" : "Create"}
+            <Button type="submit" disabled={creating || !draft.title.trim() || (fileKind !== null && !file)}>
+              {progress !== null ? FILE_UPLOADING : creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </form>

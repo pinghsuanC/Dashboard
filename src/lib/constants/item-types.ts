@@ -21,10 +21,18 @@ export const editableFieldsFor = (typeName: string): readonly EditableItemField[
   Object.hasOwn(EDITABLE_FIELDS_BY_TYPE, typeName) ? EDITABLE_FIELDS_BY_TYPE[typeName] : [];
 
 /**
- * The types the New Item dialog offers, in its order. File and image need an
- * upload and custom types don't exist yet, so neither is listed.
+ * The types the New Item dialog offers, in its order. File and image upload
+ * their file after the item is saved. Custom types don't exist yet.
  */
-export const CREATABLE_ITEM_TYPE_NAMES: readonly string[] = ["snippet", "prompt", "command", "note", "link"];
+export const CREATABLE_ITEM_TYPE_NAMES: readonly string[] = [
+  "snippet",
+  "prompt",
+  "command",
+  "note",
+  "link",
+  "file",
+  "image",
+];
 
 export const isCreatableItemType = (name: string): boolean => CREATABLE_ITEM_TYPE_NAMES.includes(name);
 

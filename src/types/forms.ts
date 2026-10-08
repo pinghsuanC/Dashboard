@@ -25,7 +25,11 @@ export type ActionResult<T> =
         /** For the whole form, shown as a toast. */
         message: string;
         fieldErrors?: FieldErrors;
-        /** Set when the record is gone (or never was the user's), so the client can stop showing it. */
-        code?: "not-found";
+        /**
+         * `not-found`: the record is gone (or never was the user's), so the
+         * client can stop showing it. `file-not-uploaded`: the item was saved,
+         * but its file step failed; the client should treat it as created.
+         */
+        code?: "not-found" | "file-not-uploaded";
       };
     };

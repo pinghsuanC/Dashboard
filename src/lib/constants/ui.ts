@@ -28,6 +28,9 @@ export const AVATAR_INITIALS_MAX = 2;
 /** Toast id for the New Item dialog's Create: a repeat create updates one toast. */
 export const ITEM_CREATE_TOAST_ID = "item-create-toast";
 
+/** Toast id for a refused pick in the upload box: a second bad file replaces the first message. */
+export const FILE_PICK_TOAST_ID = "file-pick-toast";
+
 /** The code and Markdown editors grow with their content up to this height, then scroll. */
 export const EDITOR_MAX_HEIGHT_PX = 400;
 

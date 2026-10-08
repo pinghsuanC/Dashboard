@@ -1,3 +1,5 @@
+import { FILE_DOWNLOAD_PARAM } from "@/lib/constants/files";
+
 /**
  * Every page path the app links or redirects to. `src/proxy.ts` can't import
  * these: Next reads its `matcher` statically, so keep the two in step by hand.
@@ -18,12 +20,21 @@ export const ROUTES = {
 
 /** Route handlers: linked from emails, or fetched by the app's own client code. */
 export const API_ROUTES = {
+  /** Every route handler sits under it; the proxy answers these with 401 when signed out. */
+  root: "/api",
   verifyEmail: "/api/auth/verify-email",
   items: "/api/items",
 } as const;
 
 /** `/api/items/<id>`, the item drawer's fetch. Encoded: the id comes from data. */
 export const itemApiHref = (id: string): string => `${API_ROUTES.items}/${encodeURIComponent(id)}`;
+
+/**
+ * `/api/items/<id>/file`, an item's stored file: shown inline for an image,
+ * or with `download` set, always served as a download.
+ */
+export const itemFileHref = (id: string, { download = false } = {}): string =>
+  `${itemApiHref(id)}/file${download ? `?${new URLSearchParams({ [FILE_DOWNLOAD_PARAM.param]: FILE_DOWNLOAD_PARAM.value })}` : ""}`;
 
 /** Where sign-in lands when no safe `callbackUrl` was given. */
 export const DEFAULT_SIGN_IN_REDIRECT = ROUTES.dashboard;

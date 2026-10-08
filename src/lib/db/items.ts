@@ -3,7 +3,8 @@ import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-import type { ItemCounts, ItemCreate, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
+import type { ItemFileFields, ItemFileRef } from "@/types/files";
+import type { DeletedItem, ItemCounts, ItemCreate, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
 
 const itemSummarySelect = {
   id: true,
@@ -203,20 +204,54 @@ const deleteUnusedTags = (tx: Prisma.TransactionClient, userId: string) =>
   tx.tag.deleteMany({ where: { userId, items: { none: {} } } });
 
 /**
- * Deletes one of the signed-in user's items. `false` when it is missing or
+ * Deletes one of the signed-in user's items and returns its stored file's
+ * key, for the caller to delete from storage. `null` when it is missing or
  * not theirs: the user scope is part of the delete itself, so another user's
  * id deletes nothing. Its tag and collection links go with it (cascade); the
  * collections stay, and tags no other item uses are deleted.
  */
-export const deleteItem = async (id: string): Promise<boolean> => {
+export const deleteItem = async (id: string): Promise<DeletedItem | null> => {
   const userId = await requireCurrentUserId();
   return prisma.$transaction(async (tx) => {
+    // Read in the same transaction, so the key is the deleted row's own.
+    const item = await tx.item.findFirst({ where: { id, userId }, select: { fileKey: true } });
+    if (!item) return null;
     // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
     const { count } = await tx.item.deleteMany({ where: { id, userId } });
-    if (count === 0) return false;
+    if (count === 0) return null;
     await deleteUnusedTags(tx, userId);
-    return true;
+    return { fileKey: item.fileKey };
   });
+};
+
+/**
+ * Writes the stored file's key and details onto one of the signed-in user's
+ * items, once its upload link is signed. `null` when the item is missing or
+ * not theirs: the user scope is part of the write.
+ */
+export const setItemFile = async (id: string, file: ItemFileFields): Promise<ItemDetail | null> => {
+  const userId = await requireCurrentUserId();
+  try {
+    const item = await prisma.item.update({ where: { id, userId }, data: file, select: itemDetailSelect });
+    return toItemDetail(item);
+  } catch (error) {
+    if (isRecordNotFound(error)) return null;
+    throw error;
+  }
+};
+
+/**
+ * Where one of the signed-in user's items keeps its file, for the file route.
+ * `null` when the item is missing, not theirs, or holds no file.
+ */
+export const getItemFile = async (id: string): Promise<ItemFileRef | null> => {
+  const userId = await requireCurrentUserId();
+  const item = await prisma.item.findFirst({
+    where: { id, userId },
+    select: { fileKey: true, fileName: true, mimeType: true, fileSize: true },
+  });
+  if (!item?.fileKey) return null;
+  return { ...item, fileKey: item.fileKey };
 };
 
 /**

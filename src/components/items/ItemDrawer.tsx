@@ -1,7 +1,7 @@
 "use client";
 
 import { type CSSProperties, type ReactNode, useState } from "react";
-import { Calendar, Copy, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
+import { Calendar, Copy, Download, FileText, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
 
 import { CodeEditor } from "@/components/items/CodeEditor";
 import { ItemDeleteDialog } from "@/components/items/ItemDeleteDialog";
@@ -18,9 +18,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { isFileItemType } from "@/lib/constants/files";
 import { isCodeItemType, isMarkdownItemType } from "@/lib/constants/item-types";
 import { ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
-import { formatLongDate } from "@/lib/helpers/format";
+import { itemFileHref } from "@/lib/constants/routes";
+import { formatBytes, formatLongDate } from "@/lib/helpers/format";
 import { copyToClipboard } from "@/lib/items/copy-to-clipboard";
 import { cn } from "@/lib/utils";
 import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
@@ -58,6 +60,34 @@ const Section = ({ title, icon, children }: SectionProps) => (
 
 /** Only web links become anchors; anything else stays text. */
 const isWebUrl = (url: string) => /^https?:\/\//i.test(url);
+
+/**
+ * An image item's picture, from the file route. When it can't load (the file
+ * never reached storage, or a seeded item names a file that was never
+ * uploaded) a note replaces the browser's broken-image icon.
+ */
+const ImagePreview = ({ src, alt }: { src: string; alt: string }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <p className="bg-muted text-muted-foreground rounded-lg p-4 text-center text-sm">
+        Preview unavailable: the image couldn&apos;t be loaded.
+      </p>
+    );
+  }
+  return (
+    // Served by our own route, sandboxed; next/image would proxy and cache
+    // a private file.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="bg-muted max-h-80 w-full rounded-lg object-contain"
+    />
+  );
+};
 
 /** Collections and dates: shown in both modes, never edited here. */
 const ItemMeta = ({ detail }: { detail: ItemDetail }) => (
@@ -169,15 +199,18 @@ export const ItemDrawer = ({
                 <Pin className={cn(item.isPinned && "fill-current")} />
                 Pin
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={copyText === null}
-                onClick={() => copyText !== null && copyToClipboard(copyText)}
-              >
-                <Copy />
-                Copy
-              </Button>
+              {/* Files and images have no text to copy; they get Download instead. */}
+              {!isFileItemType(type.name) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={copyText === null}
+                  onClick={() => copyText !== null && copyToClipboard(copyText)}
+                >
+                  <Copy />
+                  Copy
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -245,8 +278,26 @@ export const ItemDrawer = ({
               )}
 
               {detail?.fileName && (
-                <Section title="File">
-                  <p className="text-sm break-all">{detail.fileName}</p>
+                <Section title={type.name === "image" ? "Image" : "File"} icon={<FileText className="size-3.5" />}>
+                  {type.name === "image" && (
+                    <ImagePreview src={itemFileHref(detail.id)} alt={detail.fileName} />
+                  )}
+                  <div className="flex items-center gap-3 rounded-lg border p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium break-all">{detail.fileName}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {[detail.fileSize !== null && formatBytes(detail.fileSize), detail.mimeType]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <a href={itemFileHref(detail.id, { download: true })} download={detail.fileName}>
+                        <Download />
+                        Download
+                      </a>
+                    </Button>
+                  </div>
                 </Section>
               )}
 

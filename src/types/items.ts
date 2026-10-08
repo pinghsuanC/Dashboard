@@ -1,3 +1,5 @@
+import type { CheckedFile, UploadTarget } from "@/types/files";
+
 /** The slice of an item type an item row needs for its icon and accent. */
 export interface ItemRowType {
   id: string;
@@ -73,9 +75,34 @@ export interface ItemUpdate {
 
 /**
  * A new item's fields, already validated: the same fields and per-type rules
- * as an edit. The item's type is passed alongside, not inside.
+ * as an edit. The item's type is passed alongside, not inside. File and image
+ * items also carry their stored file's key and details.
  */
-export type ItemCreate = ItemUpdate;
+export interface ItemCreate extends ItemUpdate {
+  fileKey?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+}
+
+/**
+ * The New Item payload once validated, before anything is stored: a file or
+ * image item's picked file is checked and cleaned, but has no key yet.
+ */
+export interface ItemCreateInput extends ItemUpdate {
+  file?: CheckedFile;
+}
+
+/** What a delete removed: enough to clean up the item's stored file. */
+export interface DeletedItem {
+  fileKey: string | null;
+}
+
+/** The New Item outcome: the saved item, and where to send its file when it has one. */
+export interface CreatedItem {
+  item: ItemDetail;
+  upload: UploadTarget | null;
+}
 
 /**
  * An item form's inputs as typed, before the server trims and validates
