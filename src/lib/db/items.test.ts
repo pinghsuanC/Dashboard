@@ -123,6 +123,41 @@ describe("items list view by type (/items/[type])", () => {
   });
 });
 
+describe("image gallery: whether a card has a stored file to show", () => {
+  beforeEach(() => {
+    db.itemTypes.push({ id: "t-image", name: "image", label: "Images", icon: "Image", color: "#ec4899", isSystem: true, userId: null });
+  });
+
+  it("G1: an item with a stored file has hasFile, one whose upload failed does not", async () => {
+    db.items.push(
+      { id: "shown", userId: "ada", typeId: "t-image", title: "Shown", fileKey: "users/ada/a.png", fileName: "a.png", updatedAt: day(2) },
+      { id: "failed", userId: "ada", typeId: "t-image", title: "Failed", updatedAt: day(1) },
+    );
+
+    const items = await getItemsByType("t-image");
+
+    expect(items.map(({ id, hasFile }) => ({ id, hasFile }))).toEqual([
+      { id: "shown", hasFile: true },
+      { id: "failed", hasFile: false },
+    ]);
+  });
+
+  it("G1: the dashboard lists carry the same flag", async () => {
+    db.items.push({ id: "shown", userId: "ada", typeId: "t-image", title: "Shown", fileKey: "users/ada/a.png", updatedAt: day(1) });
+
+    expect((await getRecentItems())[0].hasFile).toBe(true);
+  });
+
+  it("G2: never sends the storage key to the browser", async () => {
+    db.items.push({ id: "shown", userId: "ada", typeId: "t-image", title: "Shown", fileKey: "users/ada/a.png", updatedAt: day(1) });
+
+    const [item] = await getItemsByType("t-image");
+
+    expect(item).not.toHaveProperty("fileKey");
+    expect(JSON.stringify(item)).not.toContain("users/ada/a.png");
+  });
+});
+
 describe("item drawer detail, loaded on click (getItemDetail)", () => {
   beforeEach(() => {
     db.collections.push(
@@ -163,6 +198,7 @@ describe("item drawer detail, loaded on click (getItemDetail)", () => {
       createdAt: day(1),
       updatedAt: day(2),
       tags: ["auth", "hooks", "react"],
+      hasFile: false,
       type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
       collections: [
         { id: "c-auth", name: "Auth" },
@@ -271,6 +307,7 @@ describe("item edit, saved (updateItem)", () => {
       createdAt: day(1),
       updatedAt: day(20),
       tags: ["auth", "react"],
+      hasFile: false,
       type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
       collections: [{ id: "c-react", name: "React Patterns" }],
     });
@@ -483,6 +520,7 @@ describe("item create, saved for the session user (createItem)", () => {
       createdAt: day(20),
       updatedAt: day(20),
       tags: ["auth"],
+      hasFile: false,
       type: { id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6" },
       collections: [],
     });

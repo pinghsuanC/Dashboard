@@ -51,3 +51,11 @@ export const isCodeItemType = (name: string): boolean => CODE_ITEM_TYPE_NAMES.ha
 export const MARKDOWN_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["note", "prompt"]);
 
 export const isMarkdownItemType = (name: string): boolean => MARKDOWN_ITEM_TYPE_NAMES.has(name);
+
+/**
+ * Types whose list page is a thumbnail gallery rather than item cards. Keyed
+ * by name, like the maps above.
+ */
+export const GALLERY_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["image"]);
+
+export const isGalleryItemType = (name: string): boolean => GALLERY_ITEM_TYPE_NAMES.has(name);
