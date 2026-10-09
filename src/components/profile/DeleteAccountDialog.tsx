@@ -15,6 +15,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import type { DeleteAccountState } from "@/types/forms";
+
+/**
+ * Follows `leaveTo` as soon as the action answers, not from an effect: the
+ * cleared cookie makes Next refresh the page, and the layout's redirect to
+ * sign-in would unmount the dialog before an effect ran.
+ */
+const deleteAndLeave = async (): Promise<DeleteAccountState> => {
+  const state = await deleteAccountAction();
+  if (state.leaveTo) window.location.assign(state.leaveTo);
+  return state;
+};
 
 /**
  * Pending lives here, not in a `useFormStatus` leaf, because the dialog needs
@@ -23,14 +35,17 @@ import { Button } from "@/components/ui/button";
  *
  * A plain submit, not `AlertDialogAction`, which closes the dialog on click.
  * The action takes no input; it deletes the session user. On failure it
- * returns a message and the dialog stays open to show it.
+ * returns a message and the dialog stays open to show it. On success it
+ * returns `leaveTo`, loaded as a full page so the signed-out route's
+ * `Clear-Site-Data` reaches the browser; the dialog stays locked meanwhile.
  */
 export const DeleteAccountDialog = () => {
   const [open, setOpen] = useState(false);
-  const [state, formAction, pending] = useActionState(deleteAccountAction, {});
+  const [state, formAction, pending] = useActionState(deleteAndLeave, {});
+  const busy = pending || Boolean(state.leaveTo);
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
+    <AlertDialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
       <AlertDialogTrigger asChild>
         <Button variant="destructive">
           <Trash2 />
@@ -52,9 +67,9 @@ export const DeleteAccountDialog = () => {
         ) : null}
         <form action={formAction}>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-            <Button type="submit" variant="destructive" disabled={pending}>
-              {pending ? "Deleting…" : "Delete account"}
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <Button type="submit" variant="destructive" disabled={busy}>
+              {busy ? "Deleting…" : "Delete account"}
             </Button>
           </AlertDialogFooter>
         </form>

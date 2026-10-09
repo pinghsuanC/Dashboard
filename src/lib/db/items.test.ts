@@ -650,8 +650,9 @@ describe("file and image items: the stored file's key (F6)", () => {
     expect(db.items.map((item) => item.id)).toContain("bobs-pic");
   });
 
-  it("getItemFile gives the file route the key, name, type and size", async () => {
+  it("getItemFile gives the file route the item type, key, name, type and size", async () => {
     expect(await getItemFile("pic")).toEqual({
+      typeName: "image",
       fileKey: "users/ada/u1.png",
       fileName: "pic.png",
       mimeType: "image/png",

@@ -40,8 +40,9 @@ export interface ItemFileFields {
   mimeType: string;
 }
 
-/** What the file route needs of an item: where its file is and how to name it. */
+/** What the file route needs of an item: its type (which decides caching), where its file is and how to name it. */
 export interface ItemFileRef {
+  typeName: string;
   fileKey: string;
   fileName: string | null;
   mimeType: string | null;

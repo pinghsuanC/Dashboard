@@ -26,8 +26,8 @@ vi.mock("@/auth", () => ({
   signIn: vi.fn(async (_provider: string, { redirectTo }: { redirectTo: string }) => {
     throw new RedirectError(redirectTo);
   }),
-  signOut: vi.fn(async ({ redirectTo }: { redirectTo: string }) => {
-    throw new RedirectError(redirectTo);
+  signOut: vi.fn(async ({ redirectTo }: { redirectTo?: string }) => {
+    if (redirectTo) throw new RedirectError(redirectTo);
   }),
 }));
 vi.mock("@/services/auth/session", () => ({
@@ -245,10 +245,9 @@ describe("delete account", () => {
     signedInAs("ada");
   });
 
-  it("R7: removes the user with their data and email-keyed tokens, then signs out to sign-in", async () => {
-    const url = await redirectOf(() => deleteAccountAction());
+  it("R7: removes the user with their data and email-keyed tokens", async () => {
+    await deleteAccountAction();
 
-    expect(url).toBe("/sign-in?deleted=1");
     expect(db.users.map((user) => user.id)).toEqual(["bob"]);
     expect(db.items.map((item) => item.id)).toEqual(["bob-1"]);
     expect(db.collections.map((collection) => collection.id)).toEqual(["bob-c"]);
@@ -260,9 +259,8 @@ describe("delete account", () => {
     db.itemTypes.push({ id: "ada-recipe", userId: "ada" });
     db.items.push({ id: "ada-2", userId: "ada", typeId: "ada-recipe" });
 
-    const url = await redirectOf(() => deleteAccountAction());
+    await deleteAccountAction();
 
-    expect(url).toBe("/sign-in?deleted=1");
     expect(db.users.some((user) => user.id === "ada")).toBe(false);
     expect(db.itemTypes.map((type) => type.id)).toEqual(["snippet"]);
   });
@@ -270,9 +268,28 @@ describe("delete account", () => {
   it("R7: deletes only the signed-in user, whatever the request carries", async () => {
     // useActionState calls it with (state, formData); a tampered form names bob.
     const submit = deleteAccountAction as (...args: unknown[]) => Promise<unknown>;
-    await redirectOf(() => submit({}, form({ userId: "bob", id: "bob", email: "bob@example.test" })));
+    await submit({}, form({ userId: "bob", id: "bob", email: "bob@example.test" }));
 
     expect(db.users.map((user) => user.id)).toEqual(["bob"]);
+  });
+
+  // A redirect from the action is followed on the server, so the browser would
+  // never see the signed-out route's Clear-Site-Data; the dialog navigates.
+  it("R11: ends the session without redirecting, and hands the dialog the signed-out route with the deleted flag", async () => {
+    const state = await deleteAccountAction();
+
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
+    expect(state).toEqual({ leaveTo: "/api/auth/signed-out?deleted=1" });
+  });
+
+  it("R11: signs out only after the delete, never before", async () => {
+    vi.mocked(signOut).mockImplementationOnce(async () => {
+      expect(db.users.some((user) => user.id === "ada")).toBe(false);
+    });
+
+    await deleteAccountAction();
+
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 
   it("R6/R7: on a database failure, keeps the user signed in and returns a message", async () => {

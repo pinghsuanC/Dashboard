@@ -153,6 +153,11 @@ export const signInWithGitHub = async (formData: FormData) => {
   await signIn("github", { redirectTo: safeCallbackUrl(formData.get("callbackUrl")) });
 };
 
+/**
+ * Ends the session without redirecting: call it through
+ * `signOutAndClearCache()`, which then loads the signed-out route in the
+ * browser so its `Clear-Site-Data` reaches the browser.
+ */
 export const signOutAction = async () => {
-  await signOut({ redirectTo: ROUTES.signIn });
+  await signOut({ redirect: false });
 };
