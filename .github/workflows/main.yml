@@ -38,7 +38,9 @@ jobs:
         run: npm run test
         
       - name: Audit dependencies
-        run: npm audit --omit=dev
+        # High and critical advisories in production dependencies fail the run,
+        # except the reviewed ones allowlisted (with reasons) in audit-ci.jsonc.
+        run: npx -y audit-ci@7.1.0 --config audit-ci.jsonc
     
     ## prisma checks
       - name: Prisma schema valid

@@ -26,6 +26,7 @@ Deferred work, to pick up in the polishing phase.
 
 - **Attachments for every item type.** Let any item (a snippet, a note, ...) carry its own uploaded files, owned by one item, never shared. An `Attachment` table (`userId`, `itemId`, `key`, `name`, `size`, `mimeType`, cascading with its item) replaces the `Item.file*` columns; the storage service is reused as is. Open questions: do the File and Image types stay (as items with a required attachment)? Max attachments per item, and 5 MB per file or per item? Which file types attachments allow? Do it early, before production holds many uploads, so the migration moves little data.
 - **Delete a user's R2 files with their account.** Deleting an account cascades their items in the database but leaves their uploads in R2. Delete everything under the `users/{userId}/` prefix (after the database delete succeeds), so the bucket holds no orphans.
+- **Mitigate ignored audit warnings.** CI's dependency audit allowlists reviewed advisories in `audit-ci.jsonc` (braces via the shadcn CLI, deepmerge-ts and mysql2 via the Prisma CLI). Two gaps remain: a fix landing goes unnoticed until someone reads the unused-entry warning, and a reviewed package reaching the app another way is still accepted. Add a `.github/dependabot.yml` (npm and GitHub Actions, weekly, skipping Prisma 8) so fixes arrive as PRs, and scope each entry to its dependency path (e.g. `GHSA-vfj7-8cjw-p6xm|shadcn>fast-glob>micromatch>braces`) so a new path fails CI.
 
 ## Learn More
 
