@@ -10,10 +10,24 @@ concurrency:
 on:
   pull_request:
     branches: [main]
-    # labeled: adding the automerge label starts a run that can merge
-    types: [opened, synchronize, reopened, labeled]
 
 jobs:
+  # Labels every new PR automerge; remove the label before CI finishes to keep
+  # the PR open. A label added with github.token starts no new run, which is
+  # why the automerge job reads the labels itself instead of from the event.
+  label:
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add automerge label
+        run: gh pr edit "$PR" --repo "$REPO" --add-label automerge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+
   build:
     runs-on: ubuntu-latest
 
@@ -51,19 +65,29 @@ jobs:
       - name: Prisma schema formatted
         run: npx prisma format --check
 
-  # Merges a PR labeled automerge once every check job has passed. Merging
-  # deploys to production and runs its migrations, so leave the label off a
-  # PR with a migration and merge that one by hand.
+  # Merges the PR once every check job has passed, if it still has the
+  # automerge label. Merging deploys to production and runs its migrations, so
+  # a PR that adds one is left open to merge by hand.
   automerge:
     needs: [build]
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'automerge')
     runs-on: ubuntu-latest
     permissions:
       contents: write        # only this job may merge; build stays read-only
       pull-requests: write
     steps:
       - name: Merge PR
-        run: gh pr merge ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --merge --delete-branch
+        run: |
+          if ! gh pr view "$PR" --repo "$REPO" --json labels -q '.labels[].name' | grep -qx automerge; then
+            echo "::notice::No automerge label; leaving the PR open."
+            exit 0
+          fi
+          if gh pr diff "$PR" --repo "$REPO" --name-only | grep -q '^prisma/migrations/'; then
+            echo "::notice::PR adds a migration; merge it by hand."
+            exit 0
+          fi
+          gh pr merge "$PR" --repo "$REPO" --merge --delete-branch
         env:
           GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
 
