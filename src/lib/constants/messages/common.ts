@@ -1,6 +1,9 @@
 /** For failures the user can't fix: retrying is the only advice. */
 export const SOMETHING_WENT_WRONG = "Something went wrong. Please try again.";
 
+/** A form's toast when its fields failed validation; each field shows its own error. */
+export const FIELDS_INVALID = "Check the highlighted fields";
+
 /** API routes: nothing the signed-in user may see has that id. */
 export const NOT_FOUND = "Not found";
 

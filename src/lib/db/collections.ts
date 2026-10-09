@@ -1,6 +1,8 @@
+import { Prisma } from "@/generated/prisma/client";
+import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-import type { SessionCollection } from "@/types/collections";
+import type { CollectionCreate, SessionCollection } from "@/types/collections";
 import type { ItemRowType } from "@/types/items";
 
 /** Distinct types, most frequent first; ties keep first-seen order. */
@@ -50,3 +52,28 @@ export const getSessionCollections = async (): Promise<SessionCollection[]> => {
     types: rankTypesByUse(items.map(({ item }) => item.type)),
   }));
 };
+
+/**
+ * Creates a collection for the signed-in user, slugged from its name, in the
+ * shape the session holds: a new collection has no items yet. Answers null
+ * when the user already has a collection with that slug (`[userId, slug]`
+ * is unique), so names differing only in case or punctuation can't both
+ * exist. Another user's slugs never clash.
+ */
+export const createCollection = async (fields: CollectionCreate): Promise<SessionCollection | null> => {
+  const userId = await requireCurrentUserId();
+  try {
+    const collection = await prisma.collection.create({
+      data: { ...fields, userId, slug: slugify(fields.name) },
+      select: { id: true, name: true, slug: true, description: true, isFavorite: true, updatedAt: true },
+    });
+    return { ...collection, itemCount: 0, types: [] };
+  } catch (error) {
+    if (isUniqueViolation(error)) return null;
+    throw error;
+  }
+};
+
+// Prisma's answer when a write breaks a unique index.
+const isUniqueViolation = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";

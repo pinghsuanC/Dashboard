@@ -1,11 +1,11 @@
-import { FolderPlus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
+import { CollectionCreateDialog } from "@/components/collections/CollectionCreateDialog";
 import { ItemCreateDialog } from "@/components/items/ItemCreateDialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-/** Search and New Collection are display only; the trigger and New Item are live. */
+/** Search is display only; the trigger, New Collection and New Item are live. */
 export const TopBar = () => {
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
@@ -25,10 +25,7 @@ export const TopBar = () => {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <Button variant="outline" className="hidden sm:inline-flex">
-          <FolderPlus />
-          New Collection
-        </Button>
+        <CollectionCreateDialog />
         <ItemCreateDialog />
       </div>
     </header>

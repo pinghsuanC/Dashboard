@@ -5,12 +5,11 @@ import { unstable_rethrow } from "next/navigation";
 
 import { isFileItemType } from "@/lib/constants/files";
 import { isCreatableItemType } from "@/lib/constants/item-types";
-import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import {
   FILE_REQUIRED,
   FILE_UPLOAD_UNAVAILABLE,
   ITEM_NOT_FOUND,
-  ITEM_SAVE_INVALID,
   ITEM_TYPE_INVALID,
   itemSavedWithoutFile,
 } from "@/lib/constants/messages/items";
@@ -60,7 +59,7 @@ export const updateItem = async (
     if (!parsed.success) {
       return {
         success: false,
-        error: { message: ITEM_SAVE_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
+        error: { message: FIELDS_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
       };
     }
 
@@ -148,7 +147,7 @@ export const createItem = async (
   if (!parsed.success) {
     return {
       success: false,
-      error: { message: ITEM_SAVE_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
+      error: { message: FIELDS_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
     };
   }
   // The file is the file step's; the item is saved without it.

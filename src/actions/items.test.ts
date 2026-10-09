@@ -2,14 +2,13 @@ import { redirect } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BYTES_PER_MB } from "@/lib/constants/files";
-import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import {
   FILE_REQUIRED,
   FILE_UPLOAD_UNAVAILABLE,
   fileTooLarge,
   ITEM_NOT_FOUND,
   ITEM_TYPE_INVALID,
-  ITEM_SAVE_INVALID,
   ITEM_TITLE_REQUIRED,
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
@@ -73,7 +72,7 @@ describe("updateItem action: validation (A2)", () => {
 
     expect(result).toEqual({
       success: false,
-      error: { message: ITEM_SAVE_INVALID, fieldErrors: { title: ITEM_TITLE_REQUIRED } },
+      error: { message: FIELDS_INVALID, fieldErrors: { title: ITEM_TITLE_REQUIRED } },
     });
     expect(itemRow("note").title).toBe("Standup");
     expect(resetProfile).not.toHaveBeenCalled();
@@ -242,7 +241,7 @@ describe("createItem action: validation (R6)", () => {
 
     expect(result).toEqual({
       success: false,
-      error: { message: ITEM_SAVE_INVALID, fieldErrors: { title: ITEM_TITLE_REQUIRED } },
+      error: { message: FIELDS_INVALID, fieldErrors: { title: ITEM_TITLE_REQUIRED } },
     });
     expect(db.items).toHaveLength(2);
     expect(resetProfile).not.toHaveBeenCalled();
@@ -379,7 +378,7 @@ describe("createItem action: file and image items (F7)", () => {
 
     expect(result).toEqual({
       success: false,
-      error: { message: ITEM_SAVE_INVALID, fieldErrors: { file: fileTooLarge(MAX) } },
+      error: { message: FIELDS_INVALID, fieldErrors: { file: fileTooLarge(MAX) } },
     });
     expect(created()).toEqual([]);
     expect(storage.signed.size).toBe(0);
