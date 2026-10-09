@@ -42,3 +42,4 @@
 - **2026-10-08** — Image gallery: `/items/images` shows 16:9 thumbnail tiles in a 3-column grid with a subtle hover zoom and a matching skeleton; items carry `hasFile` (never the storage key), and a missing or unloadable image shows a placeholder.
 - **2026-10-08** — File list: `/items/files` shows a single-column list with an extension icon, file name over the item title, size, upload date and a download button, stacking on mobile, with a matching skeleton; item summaries carry `fileName`, `fileSize` and `createdAt` (never the storage key).
 - **2026-10-09** — Image cache: image previews cached by ETag (304, no R2 read); cache busted on sign-out and account deletion.
+- **2026-10-09** — Collection create: New Collection dialog (name, description, favourite star) with a `createCollection` action, slug from the name, duplicate names as a field error; sidebar, cards and stats refresh on save.

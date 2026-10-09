@@ -9,6 +9,8 @@ import { Prisma } from "@/generated/prisma/client";
  *   whose custom types still have items fails, as it can in Postgres.
  * Items hold their tags by name; `db.tags` holds the `Tag` rows an item edit
  * connects or creates, unique on `[userId, slug]` as in the schema.
+ * Collections are unique on `[userId, slug]` too: a clashing create throws
+ * Prisma's `P2002`.
  */
 
 interface UserRow {
@@ -190,6 +192,14 @@ const recordNotFound = () =>
   new Prisma.PrismaClientKnownRequestError("No record was found for an update.", {
     code: "P2025",
     clientVersion: "fake",
+  });
+
+// Prisma's error for a write that breaks a unique index.
+const uniqueViolation = (target: string[]) =>
+  new Prisma.PrismaClientKnownRequestError(`Unique constraint failed on the fields: (${target.join(", ")})`, {
+    code: "P2002",
+    clientVersion: "fake",
+    meta: { target },
   });
 
 type TagConnectOrCreate = {
@@ -532,6 +542,22 @@ export const fakePrisma = {
             ),
           ),
       ),
+    // Like the unique index on [userId, slug]; another user's slug never clashes.
+    create: ({ data, select }: { data: Omit<CollectionRow, "id" | "updatedAt">; select?: Select }) =>
+      query(() => {
+        if (db.collections.some((row) => row.userId === data.userId && row.slug === data.slug)) {
+          throw uniqueViolation(["userId", "slug"]);
+        }
+        const collection: CollectionRow = {
+          id: `collection-${db.collections.length + 1}`,
+          description: null,
+          isFavorite: false,
+          ...data,
+          updatedAt: new Date(),
+        };
+        db.collections.push(collection);
+        return pick(collection, select);
+      }),
   },
   verificationToken: {
     findUnique: ({ where }: { where: { token: string } }) =>

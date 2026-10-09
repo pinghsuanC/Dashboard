@@ -17,6 +17,20 @@ export interface SessionCollection {
   types: ItemRowType[];
 }
 
+/** The New Collection payload once validated; the slug is derived from the name when stored. */
+export interface CollectionCreate {
+  name: string;
+  description: string | null;
+  isFavorite: boolean;
+}
+
+/** The New Collection dialog's fields as typed, before validation. */
+export interface CollectionDraft {
+  name: string;
+  description: string;
+  isFavorite: boolean;
+}
+
 /** What a collection card shows. */
 export type CollectionSummary = Omit<SessionCollection, "updatedAt">;
 

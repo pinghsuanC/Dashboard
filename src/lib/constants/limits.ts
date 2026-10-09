@@ -36,3 +36,8 @@ export const ITEM_TITLE_MAX_LENGTH = 200;
 export const ITEM_DESCRIPTION_MAX_LENGTH = 500;
 /** Snippet, prompt, command and note bodies. Far above real use; stops runaway pastes. */
 export const ITEM_CONTENT_MAX_LENGTH = 50_000;
+
+// ─── Collections ───
+
+export const COLLECTION_NAME_MAX_LENGTH = 100;
+export const COLLECTION_DESCRIPTION_MAX_LENGTH = 500;
