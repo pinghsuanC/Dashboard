@@ -10,6 +10,15 @@ export interface FormState {
   toast?: string;
 }
 
+/**
+ * What the delete-account action returns. On success the session is already
+ * ended and `leaveTo` is where the dialog sends the browser, as a full page
+ * load, so that response's headers (`Clear-Site-Data`) reach it.
+ */
+export interface DeleteAccountState extends FormState {
+  leaveTo?: string;
+}
+
 export type FormAction = (state: FormState, formData: FormData) => Promise<FormState>;
 
 /**

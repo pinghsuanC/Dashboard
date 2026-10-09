@@ -23,6 +23,7 @@ export const API_ROUTES = {
   /** Every route handler sits under it; the proxy answers these with 401 when signed out. */
   root: "/api",
   verifyEmail: "/api/auth/verify-email",
+  signedOut: "/api/auth/signed-out",
   items: "/api/items",
 } as const;
 
@@ -73,6 +74,12 @@ export const FLAGS = {
 } as const;
 
 export type Flag = (typeof FLAGS)[keyof typeof FLAGS];
+
+/**
+ * The only flags the signed-out route carries on to sign-in. A fixed list,
+ * so its query can't be used to send the browser anywhere else.
+ */
+export const SIGNED_OUT_FORWARDED_FLAGS: readonly Flag[] = [FLAGS.deleted];
 
 /** A flag as search params, e.g. for `signInHref(url, flagParams(FLAGS.reset))`. */
 export const flagParams = (flag: Flag): Record<string, string> => ({ [flag.param]: flag.value });

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { LogOut, Settings } from "lucide-react";
 
-import { signOutAction } from "@/actions/auth";
 import { useUserSession } from "@/components/session/UserSessionProvider";
 import { UserAvatar } from "@/components/shared/UserAvatar";
 import {
@@ -12,12 +11,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { signOutAndClearCache } from "@/lib/auth/sign-out-and-clear-cache";
 import { ROUTES } from "@/lib/constants/routes";
 
 /**
  * Client component reading the user session, so a local profile change (or a
- * `resetProfile()`) shows here without a reload. Sign-out is still a server
- * action: the form posts to it and the server clears the cookie.
+ * `resetProfile()`) shows here without a reload. Sign-out runs the server
+ * action that clears the cookie, then a full load of the signed-out route.
  */
 export const SidebarUser = () => {
   const { user } = useUserSession();
@@ -56,9 +56,9 @@ export const SidebarUser = () => {
       </SidebarMenuItem>
 
       <SidebarMenuItem>
-        {/* A server-action form, so sign-out clears the cookie on the server
-            and redirects without any client-side session code. */}
-        <form action={signOutAction}>
+        {/* The server action clears the cookie; the browser then loads the
+            signed-out route itself, so its Clear-Site-Data reaches it. */}
+        <form action={signOutAndClearCache}>
           <SidebarMenuButton
             type="submit"
             tooltip="Sign out"

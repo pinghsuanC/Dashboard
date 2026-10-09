@@ -3,9 +3,8 @@
 import { usePathname } from "next/navigation";
 import { type ReactNode, createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
-import { signOutAction } from "@/actions/auth";
 import { ItemDrawer } from "@/components/items/ItemDrawer";
-import { ROUTES } from "@/lib/constants/routes";
+import { signOutAndClearCache } from "@/lib/auth/sign-out-and-clear-cache";
 import { fetchItemDetail } from "@/lib/items/fetch-item-detail";
 import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
 
@@ -65,7 +64,7 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
             // Cards only carry ids the server just loaded for this user, so
             // a 404 means a tampered request: end the session. If the action
             // itself can't be reached, sign-in is still where this ends.
-            signOutAction().catch(() => window.location.assign(ROUTES.signIn));
+            void signOutAndClearCache();
             break;
         }
       });

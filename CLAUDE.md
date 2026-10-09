@@ -34,7 +34,7 @@ Load-bearing; do not drop or soften. Other sections point here instead of repeat
 - The item drawer route (`GET /api/items/[id]`) answers 404 for a missing item and another user's item alike, and the drawer signs the user out on a 404.
 - Services start with `import "server-only"` (except `services/prisma.ts`); only `services/` and `lib/db/` import the database client.
 - Storage keys are built only by `newFileKey()` (`users/{userId}/{uuid}{ext}`), never from a file name or client input; every storage function takes the session's `userId` and refuses a key outside that folder. The client never sends a key: the server resolves it from the item.
-- Stored files are served only through `GET /api/items/[id]/file`, with `FILE_RESPONSE_SECURITY_HEADERS` (sandbox CSP, `nosniff`) and `Cache-Control: private, no-store`; never make the bucket public or link to it directly.
+- Stored files are served only through `GET /api/items/[id]/file`, with `FILE_RESPONSE_SECURITY_HEADERS` (sandbox CSP, `nosniff`) and `Cache-Control: private, no-store`, except image caching: images use `private, no-cache` with an `ETag` (a hash of `fileKey`, never the raw key) so the browser revalidates, and the session and ownership checks still run before any `304`. Never make the bucket public or link to it directly.
 - `proxy.ts` answers a signed-out `/api/*` request (except `/api/auth/*`, which must stay public) with a JSON 401, not a redirect; routes still check the session themselves.
 
 ## Version pins

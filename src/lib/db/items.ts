@@ -252,10 +252,11 @@ export const getItemFile = async (id: string): Promise<ItemFileRef | null> => {
   const userId = await requireCurrentUserId();
   const item = await prisma.item.findFirst({
     where: { id, userId },
-    select: { fileKey: true, fileName: true, mimeType: true, fileSize: true },
+    select: { fileKey: true, fileName: true, mimeType: true, fileSize: true, type: { select: { name: true } } },
   });
   if (!item?.fileKey) return null;
-  return { ...item, fileKey: item.fileKey };
+  const { type, ...file } = item;
+  return { ...file, typeName: type.name, fileKey: item.fileKey };
 };
 
 /**

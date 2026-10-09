@@ -41,3 +41,4 @@
 - **2026-10-08** — Rate limit keys: buckets keyed by subject through one helper; uploads limited per user across IPs, register adds a per-email limit from any IP; sign-in and resend stay email plus IP.
 - **2026-10-08** — Image gallery: `/items/images` shows 16:9 thumbnail tiles in a 3-column grid with a subtle hover zoom and a matching skeleton; items carry `hasFile` (never the storage key), and a missing or unloadable image shows a placeholder.
 - **2026-10-08** — File list: `/items/files` shows a single-column list with an extension icon, file name over the item title, size, upload date and a download button, stacking on mobile, with a matching skeleton; item summaries carry `fileName`, `fileSize` and `createdAt` (never the storage key).
+- **2026-10-09** — Image cache: image previews cached by ETag (304, no R2 read); cache busted on sign-out and account deletion.

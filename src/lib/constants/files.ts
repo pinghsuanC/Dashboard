@@ -10,6 +10,15 @@ export const FILE_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set<FileItemKind>([
 export const isFileItemType = (name: string): name is FileItemKind => FILE_ITEM_TYPE_NAMES.has(name);
 
 /**
+ * Item types whose stored file the browser may keep and revalidate by ETag.
+ * Images are viewed over and over (gallery, drawer); other files are
+ * downloaded once and stay out of the browser cache.
+ */
+export const REVALIDATED_FILE_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set<FileItemKind>(["image"]);
+
+export const isRevalidatedFileItemType = (name: string): boolean => REVALIDATED_FILE_ITEM_TYPE_NAMES.has(name);
+
+/**
  * What each file item type accepts. `types` maps each allowed extension to
  * the MIME types a browser may report for it; the first is the one the file
  * is stored and served as. Both kinds are capped at 5 MB for now, kept apart
@@ -71,6 +80,17 @@ export const FILE_KEY_ROOT = "users";
 
 /** Query flag on the file route that serves the file as a download. */
 export const FILE_DOWNLOAD_PARAM = { param: "download", value: "1" } as const;
+
+/**
+ * `Cache-Control` for stored files. Always `private`, so no shared cache
+ * (Vercel edge, a proxy) keeps one user's file for another. A revalidated
+ * file may be kept by the browser but is rechecked on every use, so the
+ * session and ownership checks still run; any other file is never kept.
+ */
+export const FILE_CACHE_CONTROL = {
+  revalidated: "private, no-cache",
+  notStored: "private, no-store",
+} as const;
 
 /**
  * Sent with every stored file the app serves. `sandbox` puts the file in a

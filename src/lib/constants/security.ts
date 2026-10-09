@@ -36,3 +36,10 @@ export const TOKEN_BYTES = 32;
 
 /** Hosts that get `http://` links instead of `https://`: local development only. */
 export const LOCAL_HOST_PATTERN = /^(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+/**
+ * `Clear-Site-Data` sent once the user signs out: drops every response the
+ * browser cached for the site (revalidated images), so none stays readable
+ * from the disk cache after sign-out.
+ */
+export const SIGNED_OUT_CLEAR_SITE_DATA = '"cache"';

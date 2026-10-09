@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as registerRoute } from "@/app/api/auth/register/route";
-import { signIn } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/auth-errors";
 import { resendVerificationLink } from "@/lib/auth/email-verification";
 import { requestPasswordReset, resetPassword } from "@/lib/auth/password-reset";
@@ -14,6 +14,7 @@ import {
   requestPasswordResetAction,
   resetPasswordAction,
   signInWithCredentials,
+  signOutAction,
 } from "./auth";
 
 // Next's redirect() works by throwing; the tests read the target off the error.
@@ -194,5 +195,15 @@ describe("reset password", () => {
   it("R10: under the limit, the reset goes through", async () => {
     await expect(resetPasswordAction({}, resetForm())).rejects.toThrow(RedirectError);
     expect(resetPassword).toHaveBeenCalled();
+  });
+});
+
+describe("sign-out", () => {
+  // A redirect from an action is followed on the server, so the browser would
+  // never see the signed-out route's Clear-Site-Data; the caller navigates.
+  it("R10: ends the session without redirecting, so the browser can load the signed-out route itself", async () => {
+    await signOutAction();
+
+    expect(signOut).toHaveBeenCalledWith({ redirect: false });
   });
 });

@@ -9,11 +9,11 @@ import { signInHref } from "@/lib/auth/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth/auth-schemas";
 import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
-import { FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
+import { API_ROUTES, FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
 import { deleteAccount } from "@/lib/db/users";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { requireCurrentUser } from "@/services/auth/session";
-import type { FormState } from "@/types/forms";
+import type { DeleteAccountState, FormState } from "@/types/forms";
 
 const PASSWORD_CHANGED = withFlag(ROUTES.profile, FLAGS.passwordChanged);
 
@@ -61,10 +61,15 @@ export const changePasswordAction = async (
  * `deleteAccount` takes the user from the session, never a submitted id: a
  * user can only delete themselves. Signs out only once the delete succeeded;
  * a failure keeps the user signed in, on the dialog, with a message.
+ *
+ * Signs out without redirecting: the dialog loads `leaveTo`, the signed-out
+ * route, in the browser so its `Clear-Site-Data` reaches it (a redirect from
+ * here would be followed on the server), and that route goes on to
+ * `/sign-in?deleted=1`.
  */
-export const deleteAccountAction = async (): Promise<FormState> => {
+export const deleteAccountAction = async (): Promise<DeleteAccountState> => {
   if (!(await deleteAccount())) return { error: SOMETHING_WENT_WRONG };
 
-  await signOut({ redirectTo: withFlag(ROUTES.signIn, FLAGS.deleted) });
-  return {};
+  await signOut({ redirect: false });
+  return { leaveTo: withFlag(API_ROUTES.signedOut, FLAGS.deleted) };
 };
