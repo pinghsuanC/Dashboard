@@ -44,3 +44,4 @@
 - **2026-10-09** — Image cache: image previews cached by ETag (304, no R2 read); cache busted on sign-out and account deletion.
 - **2026-10-09** — Collection create: New Collection dialog (name, description, favourite star) with a `createCollection` action, slug from the name, duplicate names as a field error; sidebar, cards and stats refresh on save.
 - **2026-10-11** — Item collections: collection picker in the New Item dialog and the drawer edit form.
+- **2026-10-11** — Collection pages: `/collections` grid of every collection and `/collections/[slug]` with Items, Files and Images sections in their type layouts, streamed behind a skeleton; slug URLs checked before querying; names capped at 50 characters.

@@ -31,5 +31,5 @@ export const proxy = auth((req) => {
 // Routes still check the session themselves: this only verifies the JWT, and
 // a revoked session (`sessionVersion`) is only seen by `getCurrentUser()`.
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/api/((?!auth/).*)"],
+  matcher: ["/dashboard/:path*", "/profile/:path*", "/collections/:path*", "/api/((?!auth/).*)"],
 };

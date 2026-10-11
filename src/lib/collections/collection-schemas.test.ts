@@ -36,6 +36,11 @@ describe("collection create validation: name (S1)", () => {
     expect(errorsFor({})).toEqual({ name: COLLECTION_NAME_REQUIRED });
   });
 
+  it("CP10: caps names at 50 characters, so collection URLs stay short", () => {
+    expect(parse({ name: "a".repeat(50) }).name).toHaveLength(50);
+    expect(errorsFor({ name: "a".repeat(51) })).toEqual({ name: COLLECTION_NAME_TOO_LONG });
+  });
+
   it("accepts a name at the limit and rejects one past it", () => {
     expect(parse({ name: "a".repeat(COLLECTION_NAME_MAX_LENGTH) }).name).toHaveLength(COLLECTION_NAME_MAX_LENGTH);
     expect(errorsFor({ name: "a".repeat(COLLECTION_NAME_MAX_LENGTH + 1) })).toEqual({

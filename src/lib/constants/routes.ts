@@ -12,9 +12,9 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   dashboard: "/dashboard",
   profile: "/profile",
+  collections: "/collections",
   // Linked from the app already, not built yet (see routes.test.ts).
   settings: "/settings",
-  collections: "/collections",
   items: "/items",
 } as const;
 
@@ -40,8 +40,12 @@ export const itemFileHref = (id: string, { download = false } = {}): string =>
 /** Where sign-in lands when no safe `callbackUrl` was given. */
 export const DEFAULT_SIGN_IN_REDIRECT = ROUTES.dashboard;
 
-/** `/collections/react-patterns`. One place, so cards and the sidebar agree. */
-export const collectionHref = (slug: string): string => `${ROUTES.collections}/${slug}`;
+/**
+ * `/collections/react-patterns`. One place, so cards and the sidebar agree.
+ * A stored slug needs no encoding; it is encoded anyway, like `itemApiHref`,
+ * so a malformed one can't add path segments or a query.
+ */
+export const collectionHref = (slug: string): string => `${ROUTES.collections}/${encodeURIComponent(slug)}`;
 
 /**
  * `/items/snippets`: routes are plural, the stored type `name` is not. Every

@@ -41,5 +41,9 @@ export const ITEM_COLLECTION_LIMIT = 50;
 
 // ─── Collections ───
 
-export const COLLECTION_NAME_MAX_LENGTH = 100;
+/**
+ * Short enough for a readable URL. Also bounds the slug, which comes from the
+ * name and is never longer, so `/collections/[slug]` turns away longer segments.
+ */
+export const COLLECTION_NAME_MAX_LENGTH = 50;
 export const COLLECTION_DESCRIPTION_MAX_LENGTH = 500;

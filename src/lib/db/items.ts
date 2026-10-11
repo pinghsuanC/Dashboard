@@ -99,6 +99,22 @@ export const getItemsByType = async (typeId: string): Promise<ItemSummary[]> => 
   return items.map(toItemSummary);
 };
 
+/**
+ * Every item in one of the user's collections, newest first, for
+ * `/collections/[slug]`. Unbounded, like the type lists; fetched by the page on
+ * each visit. The user scope is on the items, so another user's collection id
+ * lists nothing.
+ */
+export const getCollectionItems = async (collectionId: string): Promise<ItemSummary[]> => {
+  const userId = await requireCurrentUserId();
+  const items = await prisma.item.findMany({
+    where: { userId, collections: { some: { collectionId } } },
+    orderBy: newestFirst,
+    select: itemSummarySelect,
+  });
+  return items.map(toItemSummary);
+};
+
 const itemDetailSelect = {
   ...itemSummarySelect,
   content: true,

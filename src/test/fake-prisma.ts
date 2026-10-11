@@ -382,8 +382,9 @@ export const fakePrisma = {
     /**
      * Returns rows in the shape the item select asks for: the type and tag
      * relations nested as Prisma nests them. Honours `where` (userId,
-     * isPinned, typeId), `orderBy`, `take`, and top-level `select` keys, so a field
-     * the code doesn't select never comes back.
+     * isPinned, typeId, and `collections: { some: { collectionId } }`, read
+     * from the item's `collectionIds`), `orderBy`, `take`, and top-level
+     * `select` keys, so a field the code doesn't select never comes back.
      */
     findMany: ({
       where,
@@ -391,7 +392,12 @@ export const fakePrisma = {
       take,
       select,
     }: {
-      where: { userId: string; isPinned?: boolean; typeId?: string };
+      where: {
+        userId: string;
+        isPinned?: boolean;
+        typeId?: string;
+        collections?: { some: { collectionId: string } };
+      };
       orderBy?: OrderBy;
       take?: number;
       select: ItemSelect;
@@ -402,7 +408,9 @@ export const fakePrisma = {
             (row) =>
               row.userId === where.userId &&
               (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned) &&
-              (where.typeId === undefined || row.typeId === where.typeId),
+              (where.typeId === undefined || row.typeId === where.typeId) &&
+              (where.collections === undefined ||
+                Boolean(row.collectionIds?.includes(where.collections.some.collectionId))),
           )
           .sort(compareBy(orderBy))
           .slice(0, take ?? Infinity)
@@ -584,6 +592,19 @@ export const fakePrisma = {
             ),
           ),
       ),
+    // Only the lookup on the `[userId, slug]` unique the collection page uses.
+    findUnique: ({
+      where,
+      select,
+    }: {
+      where: { userId_slug: { userId: string; slug: string } };
+      select?: Select;
+    }) =>
+      query(() => {
+        const { userId, slug } = where.userId_slug;
+        const row = db.collections.find((collection) => collection.userId === userId && collection.slug === slug);
+        return row ? pick(row, select) : null;
+      }),
     // Like the unique index on [userId, slug]; another user's slug never clashes.
     create: ({ data, select }: { data: Omit<CollectionRow, "id" | "updatedAt">; select?: Select }) =>
       query(() => {

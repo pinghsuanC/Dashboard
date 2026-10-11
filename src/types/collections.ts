@@ -31,6 +31,9 @@ export interface CollectionDraft {
   isFavorite: boolean;
 }
 
+/** What a collection page's header shows; its items load separately. */
+export type CollectionHeader = Pick<SessionCollection, "id" | "name" | "slug" | "description" | "isFavorite">;
+
 /** What a collection card shows. */
 export type CollectionSummary = Omit<SessionCollection, "updatedAt">;
 

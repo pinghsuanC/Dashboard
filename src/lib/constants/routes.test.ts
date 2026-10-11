@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { collectionHref, itemTypeHref, itemTypeNameFromSegment, ROUTES } from "./routes";
 
 // Linked from the app before their pages exist. Remove an entry when its page lands.
-const NOT_BUILT_YET = new Set<string>([ROUTES.settings, ROUTES.collections, ROUTES.items]);
+const NOT_BUILT_YET = new Set<string>([ROUTES.settings, ROUTES.items]);
 
 const APP_DIR = join(process.cwd(), "src", "app");
 
@@ -57,6 +57,10 @@ describe("route builders", () => {
 
   it("R5: collection routes are the slug under /collections", () => {
     expect(collectionHref("react-patterns")).toBe("/collections/react-patterns");
+  });
+
+  it("CP9: a collection route encodes its slug, so a malformed one can't change the path", () => {
+    expect(collectionHref("a b/../c?d")).toBe("/collections/a%20b%2F..%2Fc%3Fd");
   });
 
   it("R6: an item type URL segment reads back as the type name it was built from", () => {
