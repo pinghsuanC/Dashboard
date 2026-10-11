@@ -1,8 +1,10 @@
+import { cache } from "react";
+
 import { Prisma } from "@/generated/prisma/client";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-import type { CollectionCreate, SessionCollection } from "@/types/collections";
+import type { CollectionCreate, CollectionHeader, SessionCollection } from "@/types/collections";
 import type { ItemRowType } from "@/types/items";
 
 /** Distinct types, most frequent first; ties keep first-seen order. */
@@ -73,6 +75,20 @@ export const createCollection = async (fields: CollectionCreate): Promise<Sessio
     throw error;
   }
 };
+
+/**
+ * One of the signed-in user's collections by slug, for its page header.
+ * Looked up on the `[userId, slug]` unique, so another user's slug finds
+ * nothing: `null` means missing or not theirs, and callers can't tell which.
+ * Request-cached, so the page and its `generateMetadata` share one query.
+ */
+export const getCollectionBySlug = cache(async (slug: string): Promise<CollectionHeader | null> => {
+  const userId = await requireCurrentUserId();
+  return prisma.collection.findUnique({
+    where: { userId_slug: { userId, slug } },
+    select: { id: true, name: true, slug: true, description: true, isFavorite: true },
+  });
+});
 
 // Prisma's answer when a write breaks a unique index.
 const isUniqueViolation = (error: unknown) =>

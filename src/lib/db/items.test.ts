@@ -7,6 +7,7 @@ import { db, resetDb } from "@/test/fake-prisma";
 import {
   createItem,
   deleteItem,
+  getCollectionItems,
   getItemDetail,
   getItemFile,
   getItemTypeName,
@@ -801,5 +802,59 @@ describe("item collections: linked on create and edit (C2-C4)", () => {
 
     expect(await updateItem("bobs-item", { title: "B", collectionIds: ["c-react"] })).toBeNull();
     expect(itemRow("bobs-item").collectionIds).toEqual([]);
+  });
+});
+
+describe("collection page items (getCollectionItems, CP3)", () => {
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-ada", userId: "ada", name: "Ada's", slug: "adas" },
+      { id: "c-other", userId: "ada", name: "Other", slug: "other" },
+      { id: "c-bob", userId: "bob", name: "Bob's", slug: "bobs" },
+    );
+    db.items.push(
+      { id: "old", userId: "ada", typeId: "t-snippet", title: "Old", collectionIds: ["c-ada"], updatedAt: day(1) },
+      { id: "new", userId: "ada", typeId: "t-snippet", title: "New", collectionIds: ["c-ada", "c-other"], updatedAt: day(5) },
+      { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", collectionIds: ["c-ada"], updatedAt: day(3) },
+      { id: "alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", collectionIds: ["c-ada"], updatedAt: day(3) },
+      { id: "elsewhere", userId: "ada", typeId: "t-snippet", title: "Elsewhere", collectionIds: ["c-other"], updatedAt: day(9) },
+      { id: "loose", userId: "ada", typeId: "t-snippet", title: "Loose", updatedAt: day(9) },
+      { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", collectionIds: ["c-bob"], updatedAt: day(9) },
+    );
+  });
+
+  it("CP3: returns the collection's items, newest first, title breaking ties", async () => {
+    expect((await getCollectionItems("c-ada")).map((item) => item.id)).toEqual(["new", "alpha", "beta", "old"]);
+  });
+
+  it("CP3: an item in several collections shows in each of them", async () => {
+    expect((await getCollectionItems("c-other")).map((item) => item.id)).toEqual(["elsewhere", "new"]);
+  });
+
+  it("CP4: another user's collection id lists nothing, even with its exact id", async () => {
+    expect(await getCollectionItems("c-bob")).toEqual([]);
+    // Bob, who owns it, gets his item: the empty list above is the user scope.
+    vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
+    expect((await getCollectionItems("c-bob")).map((item) => item.id)).toEqual(["bobs"]);
+  });
+
+  it("CP3: carries what the item cards show, without bodies or the storage key", async () => {
+    db.items.push({
+      id: "file",
+      userId: "ada",
+      typeId: "t-snippet",
+      title: "With file",
+      content: "body",
+      fileKey: "users/ada/x.png",
+      fileName: "x.png",
+      collectionIds: ["c-ada"],
+      updatedAt: day(20),
+    });
+
+    const [item] = await getCollectionItems("c-ada");
+
+    expect(item).toMatchObject({ id: "file", title: "With file", hasFile: true, fileName: "x.png", type: { id: "t-snippet", color: "#3b82f6" } });
+    expect(item).not.toHaveProperty("content");
+    expect(item).not.toHaveProperty("fileKey");
   });
 });

@@ -13,3 +13,12 @@ export const slugify = (text: string): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+
+/**
+ * Whether `value` has the shape `slugify` produces (lowercase letters and
+ * digits, single hyphens between them) and fits `maxLength`. Such a string
+ * needs no URL encoding, so a route segment can be checked with this before
+ * any query runs.
+ */
+export const isSlug = (value: string, maxLength: number): boolean =>
+  value.length <= maxLength && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(value);

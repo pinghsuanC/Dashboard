@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { createCollection, getSessionCollections } from "./collections";
+import { createCollection, getCollectionBySlug, getSessionCollections } from "./collections";
 
 class RedirectError extends Error {}
 
@@ -91,5 +91,48 @@ describe("createCollection", () => {
     db.down = true;
 
     await expect(createCollection(fields)).rejects.toThrow();
+  });
+});
+
+describe("collection page header (getCollectionBySlug)", () => {
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-ada-react", userId: "ada", name: "React Patterns", slug: "react-patterns", description: "Hooks", isFavorite: true, updatedAt },
+      { id: "c-bob-react", userId: "bob", name: "Bob's React", slug: "react-patterns", description: "Not Ada's", isFavorite: false, updatedAt },
+      { id: "c-bob-only", userId: "bob", name: "Bob only", slug: "bob-only", updatedAt },
+    );
+  });
+
+  it("CP4: finds the signed-in user's collection by slug, with what the header shows", async () => {
+    expect(await getCollectionBySlug("react-patterns")).toEqual({
+      id: "c-ada-react",
+      name: "React Patterns",
+      slug: "react-patterns",
+      description: "Hooks",
+      isFavorite: true,
+    });
+  });
+
+  it("CP4: a slug another user also has finds the signed-in user's own collection, never theirs", async () => {
+    vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
+
+    expect((await getCollectionBySlug("react-patterns"))?.id).toBe("c-bob-react");
+  });
+
+  it("CP4: a slug only another user has finds nothing", async () => {
+    expect(await getCollectionBySlug("bob-only")).toBeNull();
+    // Bob, who owns it, does find it: the null above is the user scope, not a missing row.
+    vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
+    expect((await getCollectionBySlug("bob-only"))?.id).toBe("c-bob-only");
+  });
+
+  it("CP4: an unknown slug finds nothing", async () => {
+    expect(await getCollectionBySlug("no-such-collection")).toBeNull();
+  });
+
+  it("CP4: a signed-out caller is sent away before anything is read", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(getCollectionBySlug("react-patterns")).rejects.toBeInstanceOf(RedirectError);
   });
 });
