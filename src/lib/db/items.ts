@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
@@ -159,24 +160,50 @@ const tagLinks = (userId: string, names: string[]) =>
   });
 
 /**
+ * Throws `CollectionNotFoundError` unless every id is one of the user's
+ * collections. The foreign key only checks that a collection exists, not
+ * whose it is, so this runs inside the write's transaction, before it.
+ */
+const assertOwnCollections = async (tx: Prisma.TransactionClient, userId: string, ids: string[]) => {
+  if (ids.length === 0) return;
+  const owned = await tx.collection.findMany({ where: { id: { in: ids }, userId }, select: { id: true } });
+  // The ids are deduplicated by the schema, so a count tells them apart.
+  if (owned.length !== ids.length) throw new CollectionNotFoundError();
+};
+
+// One link per collection id; `skipDuplicates` leaves a link that is already
+// there as it was, `addedAt` included.
+const collectionLinks = (ids: string[]) => ({
+  createMany: { data: ids.map((collectionId) => ({ collectionId })), skipDuplicates: true },
+});
+
+/**
  * Saves an edit to one of the signed-in user's items and returns it as the
  * drawer shows it. `null` when the item is missing or not theirs: the user
  * scope is part of the write itself, so another user's id changes nothing.
- * An edit that sends tags also deletes the tags it left unused.
+ * An edit that sends tags also deletes the tags it left unused. One that
+ * sends collection ids makes them the item's collections, and throws
+ * `CollectionNotFoundError`, writing nothing, if one isn't the user's.
  */
 export const updateItem = async (
   id: string,
-  { tags, ...fields }: ItemUpdate,
+  { tags, collectionIds, ...fields }: ItemUpdate,
 ): Promise<ItemDetail | null> => {
   const userId = await requireCurrentUserId();
   try {
     const item = await prisma.$transaction(async (tx) => {
+      if (collectionIds) await assertOwnCollections(tx, userId, collectionIds);
       const saved = await tx.item.update({
         where: { id, userId },
         data: {
           ...fields,
           // Drop every link, then link the new names.
           tags: tags && { deleteMany: {}, create: tagLinks(userId, tags) },
+          // Drop the links not chosen, then add the new ones.
+          collections: collectionIds && {
+            deleteMany: { collectionId: { notIn: collectionIds } },
+            ...collectionLinks(collectionIds),
+          },
         },
         select: itemDetailSelect,
       });
@@ -263,11 +290,12 @@ export const getItemFile = async (id: string): Promise<ItemFileRef | null> => {
  * Creates an item of a built-in type for the signed-in user and returns it as
  * the drawer shows it. The owner comes from the session, never the input.
  * `null` when no built-in type has that name: a user-owned type, even one
- * named like a built-in, is never used.
+ * named like a built-in, is never used. Throws `CollectionNotFoundError`,
+ * saving nothing, if a collection id isn't one of the user's.
  */
 export const createItem = async (
   typeName: string,
-  { tags, ...fields }: ItemCreate,
+  { tags, collectionIds, ...fields }: ItemCreate,
 ): Promise<ItemDetail | null> => {
   const userId = await requireCurrentUserId();
   const type = await prisma.itemType.findFirst({
@@ -276,14 +304,18 @@ export const createItem = async (
   });
   if (!type) return null;
 
-  const item = await prisma.item.create({
-    data: {
-      ...fields,
-      userId,
-      typeId: type.id,
-      tags: tags && { create: tagLinks(userId, tags) },
-    },
-    select: itemDetailSelect,
+  const item = await prisma.$transaction(async (tx) => {
+    if (collectionIds) await assertOwnCollections(tx, userId, collectionIds);
+    return tx.item.create({
+      data: {
+        ...fields,
+        userId,
+        typeId: type.id,
+        tags: tags && { create: tagLinks(userId, tags) },
+        collections: collectionIds && collectionLinks(collectionIds),
+      },
+      select: itemDetailSelect,
+    });
   });
   return toItemDetail(item);
 };

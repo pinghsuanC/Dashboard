@@ -9,6 +9,7 @@ import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/c
 import {
   FILE_REQUIRED,
   FILE_UPLOAD_UNAVAILABLE,
+  ITEM_COLLECTION_NOT_FOUND,
   ITEM_NOT_FOUND,
   ITEM_TYPE_INVALID,
   itemSavedWithoutFile,
@@ -21,6 +22,7 @@ import {
   updateItem as saveItem,
 } from "@/lib/db/items";
 import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
+import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemCreateSchemaFor, itemUpdateSchemaFor } from "@/lib/items/item-schemas";
 import { FileMissingError, StorageNotConfiguredError, UploadRateLimitedError } from "@/lib/items/upload-errors";
@@ -34,6 +36,11 @@ import type { CreatedItem, ItemDetail } from "@/types/items";
 
 const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } } as const;
 const INVALID_TYPE = { success: false, error: { message: ITEM_TYPE_INVALID } } as const;
+// A chosen collection is missing or another user's: answered alike, on the field.
+const COLLECTION_GONE = {
+  success: false,
+  error: { message: FIELDS_INVALID, fieldErrors: { collectionIds: ITEM_COLLECTION_NOT_FOUND } },
+} as const;
 
 /**
  * Saves the item drawer's edit. Called directly by the drawer, not through
@@ -70,6 +77,7 @@ export const updateItem = async (
   } catch (error) {
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
+    if (error instanceof CollectionNotFoundError) return COLLECTION_GONE;
     console.error("Item update failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }
@@ -159,6 +167,8 @@ export const createItem = async (
   } catch (error) {
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
+    // Nothing was saved, so a file item's upload is never signed either.
+    if (error instanceof CollectionNotFoundError) return COLLECTION_GONE;
     console.error("Item create failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }

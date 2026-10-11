@@ -21,7 +21,7 @@ interface ItemEditFormProps {
   onSaved: (item: ItemDetail) => void;
   /** The item no longer exists (or isn't the user's): stop showing it. */
   onGone: () => void;
-  /** Read-only details shown under the fields (collections, dates). */
+  /** Read-only details shown under the fields (dates). */
   children?: ReactNode;
 }
 
@@ -32,7 +32,11 @@ const toDraft = (item: ItemDetail): ItemDraft => ({
   language: item.language ?? "",
   url: item.url ?? "",
   tags: item.tags.join(", "),
+  collectionIds: item.collections.map((collection) => collection.id),
 });
+
+// Order-blind: picking and unpicking the same collection is no change.
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
 
 /**
  * The item drawer in edit mode: controlled inputs for the fields this item's
@@ -42,7 +46,7 @@ const toDraft = (item: ItemDetail): ItemDraft => ({
 export const ItemEditForm = ({ item, onCancel, onSaved, onGone, children }: ItemEditFormProps) => {
   const fields = editableFieldsFor(item.type.name);
   const [draft, setDraft] = useState(() => toDraft(item));
-  const initialTags = toDraft(item).tags;
+  const initial = toDraft(item);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, startSaving] = useTransition();
 
@@ -54,7 +58,9 @@ export const ItemEditForm = ({ item, onCancel, onSaved, onGone, children }: Item
           title: draft.title,
           description: draft.description,
           // Left out when untouched, so a save doesn't relink the same tags.
-          ...(draft.tags !== initialTags && { tags: draft.tags.split(",") }),
+          ...(draft.tags !== initial.tags && { tags: draft.tags.split(",") }),
+          // Likewise, so an untouched picker doesn't rewrite the links.
+          ...(!sameIds(draft.collectionIds, initial.collectionIds) && { collectionIds: draft.collectionIds }),
           ...(fields.includes("content") && { content: draft.content }),
           ...(fields.includes("language") && { language: draft.language }),
           ...(fields.includes("url") && { url: draft.url }),

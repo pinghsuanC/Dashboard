@@ -10,7 +10,8 @@ import { Prisma } from "@/generated/prisma/client";
  * Items hold their tags by name; `db.tags` holds the `Tag` rows an item edit
  * connects or creates, unique on `[userId, slug]` as in the schema.
  * Collections are unique on `[userId, slug]` too: a clashing create throws
- * Prisma's `P2002`.
+ * Prisma's `P2002`. Items hold their collection links as `collectionIds`,
+ * written through the nested `collections` writes of item create and edit.
  */
 
 interface UserRow {
@@ -207,15 +208,42 @@ type TagConnectOrCreate = {
   create: { userId: string; name: string; slug: string };
 };
 
+type CollectionLinks = {
+  createMany: { data: { collectionId: string }[]; skipDuplicates?: boolean };
+};
+
 /**
- * The item edit's write: scalar fields, and tags replaced through
- * `{ deleteMany: {}, create: [{ tag: { connectOrCreate } }] }`, the only
- * nested tag write the code makes.
+ * The item edit's write: scalar fields, tags replaced through
+ * `{ deleteMany: {}, create: [{ tag: { connectOrCreate } }] }`, and
+ * collections through `{ deleteMany: { collectionId: { notIn } }, createMany }`,
+ * the only nested writes the code makes.
  */
 type ItemUpdateData = {
   [K in "title" | "description" | "content" | "language" | "url"]?: ItemRow[K];
 } & {
   tags?: { deleteMany?: Record<string, never>; create: { tag: { connectOrCreate: TagConnectOrCreate } }[] };
+  collections?: CollectionLinks & { deleteMany?: { collectionId: { notIn: string[] } } };
+};
+
+// Like Prisma, a write naming a field the model doesn't have is rejected, so
+// a stray key (such as `collectionIds`) can't pass here and fail for real.
+const ITEM_WRITE_KEYS = new Set([
+  "userId", "typeId", "title", "description", "content", "language", "url",
+  "fileKey", "fileName", "fileSize", "mimeType", "isPinned", "isFavorite", "tags", "collections",
+]);
+const checkItemWriteKeys = (data: object) => {
+  const unknown = Object.keys(data).find((key) => !ITEM_WRITE_KEYS.has(key));
+  if (unknown) throw new Error(`Unknown argument \`${unknown}\``);
+};
+
+// Every linked collection must exist, as the foreign key requires. Ownership
+// isn't a database rule, so the code has to check it.
+const linkedCollectionIds = (links: CollectionLinks | undefined, kept: string[] = []) => {
+  const added = links?.createMany.data.map(({ collectionId }) => collectionId) ?? [];
+  if (added.some((id) => !db.collections.some((collection) => collection.id === id))) {
+    throw new Error('violates foreign key constraint "CollectionItem_collectionId_fkey"');
+  }
+  return [...new Set([...kept, ...added])];
 };
 
 // The user's tag with that slug, created if there is none; returns its name.
@@ -402,7 +430,8 @@ export const fakePrisma = {
       query(() => {
         const row = db.items.find((item) => item.id === where.id && item.userId === where.userId);
         if (!row) throw recordNotFound();
-        const { tags, ...fields } = data;
+        checkItemWriteKeys(data);
+        const { tags, collections, ...fields } = data;
         for (const [key, value] of Object.entries(fields)) {
           if (value !== undefined) (row as unknown as Record<string, unknown>)[key] = value;
         }
@@ -411,6 +440,12 @@ export const fakePrisma = {
           const kept = tags.deleteMany ? [] : (row.tags ?? []);
           const added = tags.create.map(({ tag }) => connectOrCreateTag(tag.connectOrCreate));
           row.tags = [...new Set([...kept, ...added])];
+        }
+        if (collections) {
+          // Without `deleteMany`, Prisma adds links alongside the old ones.
+          const notIn = collections.deleteMany?.collectionId.notIn;
+          const kept = (row.collectionIds ?? []).filter((id) => !collections.deleteMany || notIn?.includes(id));
+          row.collectionIds = linkedCollectionIds(collections, kept);
         }
         row.updatedAt = new Date();
         return shapeItem(row, select);
@@ -428,6 +463,7 @@ export const fakePrisma = {
         typeId: string;
         title: string;
         tags?: { create: { tag: { connectOrCreate: TagConnectOrCreate } }[] };
+        collections?: CollectionLinks;
       };
       select: ItemSelect;
     }) =>
@@ -435,7 +471,8 @@ export const fakePrisma = {
         if (!db.itemTypes.some((type) => type.id === data.typeId)) {
           throw new Error('violates foreign key constraint "Item_typeId_fkey"');
         }
-        const { tags, ...fields } = data;
+        checkItemWriteKeys(data);
+        const { tags, collections, ...fields } = data;
         const now = new Date();
         const row: ItemRow = {
           id: `item-${db.items.length + 1}`,
@@ -451,6 +488,7 @@ export const fakePrisma = {
           userId: data.userId,
           typeId: data.typeId,
           tags: [...new Set(tags?.create.map(({ tag }) => connectOrCreateTag(tag.connectOrCreate)) ?? [])],
+          collectionIds: linkedCollectionIds(collections),
         };
         db.items.push(row);
         return shapeItem(row, select);
@@ -518,11 +556,15 @@ export const fakePrisma = {
      * Membership comes from the fake items' `collectionIds`; `items` returns
      * one join row per member with its type, as the collection select nests it.
      */
-    findMany: ({ where, select }: { where?: { userId?: string }; select?: Select }) =>
+    findMany: ({ where, select }: { where?: { userId?: string; id?: { in: string[] } }; select?: Select }) =>
       query(() =>
         db.collections
           // An absent filter matches every row, as in Prisma.
-          .filter((row) => where?.userId === undefined || row.userId === where.userId)
+          .filter(
+            (row) =>
+              (where?.userId === undefined || row.userId === where.userId) &&
+              (where?.id === undefined || where.id.in.includes(row.id)),
+          )
           .map((row) =>
             pick(
               {

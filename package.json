@@ -32,6 +32,7 @@
     "@upstash/redis": "^1.39.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.3.0",
     "lucide-react": "^1.47.0",
     "monaco-editor": "^0.57.0",
