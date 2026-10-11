@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
@@ -714,5 +715,91 @@ describe("file and image items: the stored file's key (F6)", () => {
       fileSize: 300,
       mimeType: "image/svg+xml",
     });
+  });
+});
+
+describe("item collections: linked on create and edit (C2-C4)", () => {
+  const itemRow = (id: string) => db.items.find((item) => item.id === id)!;
+
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-react", userId: "ada", name: "React Patterns" },
+      { id: "c-ai", userId: "ada", name: "AI Prompts" },
+      { id: "c-bobs", userId: "bob", name: "Bob's" },
+    );
+    db.items.push({ id: "hook", userId: "ada", typeId: "t-snippet", title: "Hook", tags: [], collectionIds: ["c-react"] });
+  });
+
+  it("C2: a new item with no collections is in none", async () => {
+    const item = await createItem("snippet", { title: "T" });
+
+    expect(item?.collections).toEqual([]);
+  });
+
+  it("C2: a new item is linked to each chosen collection, one or many", async () => {
+    const one = await createItem("snippet", { title: "One", collectionIds: ["c-ai"] });
+    const many = await createItem("snippet", { title: "Many", collectionIds: ["c-react", "c-ai"] });
+
+    expect(itemRow(one!.id).collectionIds).toEqual(["c-ai"]);
+    expect(many?.collections).toEqual([
+      { id: "c-ai", name: "AI Prompts" },
+      { id: "c-react", name: "React Patterns" },
+    ]);
+  });
+
+  it("C3: an edit replaces the item's collections with the chosen ones", async () => {
+    const item = await updateItem("hook", { title: "Hook", collectionIds: ["c-ai"] });
+
+    expect(itemRow("hook").collectionIds).toEqual(["c-ai"]);
+    expect(item?.collections).toEqual([{ id: "c-ai", name: "AI Prompts" }]);
+  });
+
+  it("C3: an edit can keep a collection and add another", async () => {
+    await updateItem("hook", { title: "Hook", collectionIds: ["c-react", "c-ai"] });
+
+    expect(itemRow("hook").collectionIds).toEqual(["c-react", "c-ai"]);
+  });
+
+  it("C3: an empty list takes the item out of every collection, and the collections stay", async () => {
+    await updateItem("hook", { title: "Hook", collectionIds: [] });
+
+    expect(itemRow("hook").collectionIds).toEqual([]);
+    expect(db.collections).toHaveLength(3);
+  });
+
+  it("C3: an edit that leaves the ids out keeps the item's collections", async () => {
+    await updateItem("hook", { title: "Renamed" });
+
+    expect(itemRow("hook").collectionIds).toEqual(["c-react"]);
+  });
+
+  it("C4: a create naming another user's collection is refused and saves no item", async () => {
+    await expect(createItem("snippet", { title: "T", collectionIds: ["c-ai", "c-bobs"] })).rejects.toBeInstanceOf(
+      CollectionNotFoundError,
+    );
+    expect(db.items.map((item) => item.id)).toEqual(["hook"]);
+  });
+
+  it("C4: a create naming a missing collection is refused the same way", async () => {
+    await expect(createItem("snippet", { title: "T", collectionIds: ["no-such"] })).rejects.toBeInstanceOf(
+      CollectionNotFoundError,
+    );
+    expect(db.items).toHaveLength(1);
+  });
+
+  it("C4: an edit naming another user's or a missing collection changes nothing", async () => {
+    for (const id of ["c-bobs", "no-such"]) {
+      await expect(updateItem("hook", { title: "Changed", collectionIds: [id] })).rejects.toBeInstanceOf(
+        CollectionNotFoundError,
+      );
+    }
+    expect(itemRow("hook")).toMatchObject({ title: "Hook", collectionIds: ["c-react"] });
+  });
+
+  it("C4: an edit to another user's item stays not found, even with valid collections", async () => {
+    db.items.push({ id: "bobs-item", userId: "bob", typeId: "t-snippet", title: "B", collectionIds: [] });
+
+    expect(await updateItem("bobs-item", { title: "B", collectionIds: ["c-react"] })).toBeNull();
+    expect(itemRow("bobs-item").collectionIds).toEqual([]);
   });
 });

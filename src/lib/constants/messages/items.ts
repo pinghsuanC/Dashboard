@@ -1,4 +1,5 @@
 import {
+  ITEM_COLLECTION_LIMIT,
   ITEM_CONTENT_MAX_LENGTH,
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_TITLE_MAX_LENGTH,
@@ -18,6 +19,9 @@ export const ITEM_CONTENT_TOO_LONG = `Content must be at most ${ITEM_CONTENT_MAX
 export const ITEM_URL_REQUIRED = "URL is required";
 export const ITEM_URL_INVALID = "Enter a valid http or https URL";
 export const ITEM_TAG_INVALID = "Each tag needs at least one letter or number";
+export const ITEM_COLLECTIONS_TOO_MANY = `Choose at most ${ITEM_COLLECTION_LIMIT} collections`;
+/** A chosen collection is missing or not the user's: both read as gone. */
+export const ITEM_COLLECTION_NOT_FOUND = "A chosen collection no longer exists. Pick again.";
 
 /** Item edit: save outcome. */
 export const ITEM_SAVED = "Item saved";

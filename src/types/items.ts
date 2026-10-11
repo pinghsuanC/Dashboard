@@ -71,7 +71,8 @@ export interface ItemDetail extends ItemSummary {
 
 /**
  * An item edit, already validated. A field left `undefined` is not written;
- * `null` clears it. `tags` replaces the item's tags by name.
+ * `null` clears it. `tags` replaces the item's tags by name, and
+ * `collectionIds` its collections by id.
  */
 export interface ItemUpdate {
   title: string;
@@ -80,6 +81,7 @@ export interface ItemUpdate {
   language?: string | null;
   url?: string | null;
   tags?: string[];
+  collectionIds?: string[];
 }
 
 /**
@@ -115,7 +117,8 @@ export interface CreatedItem {
 
 /**
  * An item form's inputs as typed, before the server trims and validates
- * them. `tags` is the comma-separated text.
+ * them. `tags` is the comma-separated text; `collectionIds` the picked
+ * collections.
  */
 export interface ItemDraft {
   title: string;
@@ -124,7 +127,11 @@ export interface ItemDraft {
   language: string;
   url: string;
   tags: string;
+  collectionIds: string[];
 }
+
+/** The draft fields typed into a text input. */
+export type ItemDraftTextField = Exclude<keyof ItemDraft, "collectionIds">;
 
 /** What the item drawer does next depends on which of these comes back. */
 export type ItemDetailResult =

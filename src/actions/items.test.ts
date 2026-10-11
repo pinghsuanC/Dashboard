@@ -7,6 +7,7 @@ import {
   FILE_REQUIRED,
   FILE_UPLOAD_UNAVAILABLE,
   fileTooLarge,
+  ITEM_COLLECTION_NOT_FOUND,
   ITEM_NOT_FOUND,
   ITEM_TYPE_INVALID,
   ITEM_TITLE_REQUIRED,
@@ -523,5 +524,64 @@ describe("deleteItem action: the stored file goes too (F8)", () => {
     expect(await deleteItem("pic")).toEqual({ success: true, data: null });
     expect(db.items.some((item) => item.id === "pic")).toBe(false);
     expect(resetProfile).toHaveBeenCalledOnce();
+  });
+});
+
+describe("item collections: the actions (C5)", () => {
+  const collectionGone = {
+    success: false,
+    error: { message: FIELDS_INVALID, fieldErrors: { collectionIds: ITEM_COLLECTION_NOT_FOUND } },
+  };
+
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-work", userId: "ada", name: "Work" },
+      { id: "c-bobs", userId: "bob", name: "Bob's" },
+    );
+  });
+
+  it("C5: createItem saves the item in the chosen collections and refreshes the session", async () => {
+    const result = await createItem("note", { title: "Retro", collectionIds: ["c-work"] });
+
+    expect(result).toMatchObject({ success: true, data: { item: { collections: [{ id: "c-work", name: "Work" }] } } });
+    expect(db.items[2].collectionIds).toEqual(["c-work"]);
+    expect(resetProfile).toHaveBeenCalledOnce();
+  });
+
+  it("C5: updateItem moves the item between collections", async () => {
+    itemRow("note").collectionIds = ["c-work"];
+
+    const result = await updateItem("note", { title: "Standup", collectionIds: [] });
+
+    expect(result).toMatchObject({ success: true, data: { collections: [] } });
+    expect(itemRow("note").collectionIds).toEqual([]);
+  });
+
+  it("C5: createItem with another user's collection answers a field error and saves nothing", async () => {
+    expect(await createItem("note", { title: "Retro", collectionIds: ["c-bobs"] })).toEqual(collectionGone);
+    expect(db.items).toHaveLength(2);
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("C5: a file item with a missing collection is refused before any upload is signed", async () => {
+    db.itemTypes.push({ id: "t-image", name: "image", label: "Images", icon: "Image", color: "#ec4899", isSystem: true, userId: null });
+
+    const result = await createItem("image", {
+      title: "Shot",
+      collectionIds: ["no-such"],
+      file: { name: "a.png", size: 10, mimeType: "image/png" },
+    });
+
+    expect(result).toEqual(collectionGone);
+    expect(db.items).toHaveLength(2);
+    expect(checkRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("C5: updateItem with another user's or a missing collection answers the same and changes nothing", async () => {
+    for (const id of ["c-bobs", "no-such"]) {
+      expect(await updateItem("note", { title: "Changed", collectionIds: [id] })).toEqual(collectionGone);
+    }
+    expect(itemRow("note").title).toBe("Standup");
+    expect(resetProfile).not.toHaveBeenCalled();
   });
 });

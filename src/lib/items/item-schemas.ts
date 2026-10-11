@@ -3,12 +3,14 @@ import { z } from "zod";
 import { isFileItemType } from "@/lib/constants/files";
 import { editableFieldsFor } from "@/lib/constants/item-types";
 import {
+  ITEM_COLLECTION_LIMIT,
   ITEM_CONTENT_MAX_LENGTH,
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_TITLE_MAX_LENGTH,
 } from "@/lib/constants/limits";
 import {
   FILE_REQUIRED,
+  ITEM_COLLECTIONS_TOO_MANY,
   ITEM_CONTENT_TOO_LONG,
   ITEM_DESCRIPTION_TOO_LONG,
   ITEM_TAG_INVALID,
@@ -63,6 +65,14 @@ const tags = z
   })
   .optional();
 
+// Trimmed, blanks and repeats dropped, then capped. Only the shape is checked
+// here: whether each id is one of the user's collections is the write's check.
+const collectionIds = z
+  .array(z.string())
+  .transform((ids) => [...new Set(ids.map((id) => id.trim()).filter(Boolean))])
+  .pipe(z.array(z.string()).max(ITEM_COLLECTION_LIMIT, ITEM_COLLECTIONS_TOO_MANY))
+  .optional();
+
 // Accepts anything and keeps nothing: a field this type doesn't edit.
 const ignored = z.unknown().transform(() => undefined).optional();
 
@@ -73,6 +83,7 @@ const itemFieldsFor = (typeName: string) => {
     title,
     description: optionalText(ITEM_DESCRIPTION_MAX_LENGTH, ITEM_DESCRIPTION_TOO_LONG),
     tags,
+    collectionIds,
     content: fields.includes("content")
       ? optionalText(ITEM_CONTENT_MAX_LENGTH, ITEM_CONTENT_TOO_LONG)
       : ignored,
@@ -82,8 +93,8 @@ const itemFieldsFor = (typeName: string) => {
 };
 
 /**
- * The item edit payload for one item type. Title, description and tags are
- * common; content, language and url are validated only where the type edits
+ * The item edit payload for one item type. Title, description, tags and
+ * collection ids are common; content, language and url are validated only where the type edits
  * them (`editableFieldsFor`) and dropped otherwise, so a hand-built request
  * can't write a field its type doesn't show. A type that edits its URL must
  * keep one.

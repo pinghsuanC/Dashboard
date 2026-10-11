@@ -29,7 +29,15 @@ import { uploadFile } from "@/lib/items/upload-file";
 import type { FieldErrors } from "@/types/forms";
 import type { ItemDraft } from "@/types/items";
 
-const EMPTY_DRAFT: ItemDraft = { title: "", description: "", content: "", language: "", url: "", tags: "" };
+const EMPTY_DRAFT: ItemDraft = {
+  title: "",
+  description: "",
+  content: "",
+  language: "",
+  url: "",
+  tags: "",
+  collectionIds: [],
+};
 
 /**
  * The top bar's New Item button and its dialog: a type picker, then the
@@ -92,6 +100,7 @@ export const ItemCreateDialog = () => {
           title: draft.title,
           description: draft.description,
           tags: draft.tags.split(","),
+          collectionIds: draft.collectionIds,
           ...(fields.includes("content") && { content: draft.content }),
           ...(fields.includes("language") && { language: draft.language }),
           ...(fields.includes("url") && { url: draft.url }),

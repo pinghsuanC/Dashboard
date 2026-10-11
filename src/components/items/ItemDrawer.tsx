@@ -89,10 +89,13 @@ const ImagePreview = ({ src, alt }: { src: string; alt: string }) => {
   );
 };
 
-/** Collections and dates: shown in both modes, never edited here. */
-const ItemMeta = ({ detail }: { detail: ItemDetail }) => (
+/**
+ * Collections and dates, read-only. Edit mode leaves the collections out: the
+ * form's picker shows and changes them.
+ */
+const ItemMeta = ({ detail, showCollections = true }: { detail: ItemDetail; showCollections?: boolean }) => (
   <>
-    {detail.collections.length > 0 && (
+    {showCollections && detail.collections.length > 0 && (
       <Section title="Collections" icon={<Folder className="size-3.5" />}>
         <div className="flex flex-wrap gap-1.5">
           {detail.collections.map((collection) => (
@@ -180,7 +183,7 @@ export const ItemDrawer = ({
             }}
             onGone={() => onGone(detail.id)}
           >
-            <ItemMeta detail={detail} />
+            <ItemMeta detail={detail} showCollections={false} />
           </ItemEditForm>
         ) : (
           <>

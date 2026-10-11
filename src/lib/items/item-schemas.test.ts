@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ITEM_COLLECTION_LIMIT,
   ITEM_CONTENT_MAX_LENGTH,
   ITEM_DESCRIPTION_MAX_LENGTH,
   ITEM_TITLE_MAX_LENGTH,
 } from "@/lib/constants/limits";
 import {
+  ITEM_COLLECTIONS_TOO_MANY,
   ITEM_CONTENT_TOO_LONG,
   ITEM_DESCRIPTION_TOO_LONG,
   ITEM_TAG_INVALID,
@@ -196,5 +198,50 @@ describe("item create validation: same rules as an edit, per type (R2)", () => {
 
   it("tags are trimmed, blanks dropped and one kept per slug", () => {
     expect(create("note", { title: "T", tags: [" React ", "", "react", "hooks"] }).data?.tags).toEqual(["React", "hooks"]);
+  });
+});
+
+describe("item collections: the chosen collection ids (C1)", () => {
+  const create = (input: unknown) => itemCreateSchemaFor("note").safeParse(input);
+
+  it("C1: keeps the ids on an edit and on a create", () => {
+    expect(parse("note", { title: "T", collectionIds: ["c1", "c2"] }).collectionIds).toEqual(["c1", "c2"]);
+    expect(create({ title: "T", collectionIds: ["c1"] }).data?.collectionIds).toEqual(["c1"]);
+  });
+
+  it("C1: trims ids, drops blank ones and keeps one of each", () => {
+    expect(parse("note", { title: "T", collectionIds: [" c1 ", "", "c2", "c1"] }).collectionIds).toEqual(["c1", "c2"]);
+  });
+
+  it("C1: an empty list stays empty, so an edit can clear the collections", () => {
+    expect(parse("note", { title: "T", collectionIds: [] }).collectionIds).toEqual([]);
+  });
+
+  it("C1: left out, it is undefined, so an edit leaves the collections alone", () => {
+    expect(parse("note", { title: "T" })).not.toHaveProperty("collectionIds");
+  });
+
+  it("C1: every item type takes collections, file and image items included", () => {
+    expect(parse("link", { title: "T", url: "https://x.dev", collectionIds: ["c1"] }).collectionIds).toEqual(["c1"]);
+    const image = itemCreateSchemaFor("image").safeParse({
+      title: "T",
+      collectionIds: ["c1"],
+      file: { name: "a.png", size: 10, mimeType: "image/png" },
+    });
+    expect(image.data?.collectionIds).toEqual(["c1"]);
+  });
+
+  it(`C1: caps the list at ${ITEM_COLLECTION_LIMIT} collections, counted after repeats are dropped`, () => {
+    const ids = Array.from({ length: ITEM_COLLECTION_LIMIT }, (_, n) => `c${n}`);
+
+    expect(parse("note", { title: "T", collectionIds: [...ids, "c0"] }).collectionIds).toHaveLength(ITEM_COLLECTION_LIMIT);
+    expect(errorsFor("note", { title: "T", collectionIds: [...ids, "one-more"] })).toEqual({
+      collectionIds: ITEM_COLLECTIONS_TOO_MANY,
+    });
+  });
+
+  it("C1: rejects ids that aren't a list of strings", () => {
+    expect(errorsFor("note", { title: "T", collectionIds: "c1" })).toHaveProperty("collectionIds");
+    expect(errorsFor("note", { title: "T", collectionIds: [1] })).toHaveProperty("collectionIds");
   });
 });

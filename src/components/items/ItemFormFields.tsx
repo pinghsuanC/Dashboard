@@ -1,6 +1,7 @@
 import type { ReactNode, Ref } from "react";
 
 import { CodeEditor } from "@/components/items/CodeEditor";
+import { CollectionPicker } from "@/components/items/CollectionPicker";
 import { MarkdownEditor } from "@/components/items/MarkdownEditor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import {
   ITEM_TITLE_MAX_LENGTH,
 } from "@/lib/constants/limits";
 import type { FieldErrors } from "@/types/forms";
-import type { EditableItemField, ItemDraft } from "@/types/items";
+import type { EditableItemField, ItemDraft, ItemDraftTextField } from "@/types/items";
 
 interface ItemFormFieldsProps {
   /** Prefixes the input ids, so the drawer and the dialog never share one. */
@@ -25,7 +26,7 @@ interface ItemFormFieldsProps {
   /** Body fields the item's type uses (`editableFieldsFor`). */
   fields: readonly EditableItemField[];
   draft: ItemDraft;
-  onChange: (key: keyof ItemDraft, value: string) => void;
+  onChange: <K extends keyof ItemDraft>(key: K, value: ItemDraft[K]) => void;
   fieldErrors: FieldErrors;
   /** Lines in the content box or editor: tall in the drawer, shorter in the dialog. */
   contentRows?: number;
@@ -66,8 +67,8 @@ const Field = ({ id, label, error, hint, children }: FieldProps) => {
 
 /**
  * The item form's inputs, shared by the drawer's edit mode and the New Item
- * dialog: title, description and tags for every type, and the body fields
- * the type uses. Controlled; the parent owns the draft and the submit.
+ * dialog: title, description, tags and collections for every type, and the
+ * body fields the type uses. Controlled; the parent owns the draft and the submit.
  */
 export const ItemFormFields = ({
   idPrefix,
@@ -79,7 +80,7 @@ export const ItemFormFields = ({
   contentRows = 10,
   titleRef,
 }: ItemFormFieldsProps) => {
-  const bind = (key: keyof ItemDraft) => ({
+  const bind = (key: ItemDraftTextField) => ({
     id: `${idPrefix}-${key}`,
     value: draft[key],
     onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -180,6 +181,18 @@ export const ItemFormFields = ({
       >
         {(describedBy) => (
           <Input {...bind("tags")} placeholder="react, hooks" aria-describedby={describedBy} />
+        )}
+      </Field>
+
+      <Field id={`${idPrefix}-collectionIds`} label="Collections" error={fieldErrors.collectionIds}>
+        {(describedBy) => (
+          <CollectionPicker
+            id={`${idPrefix}-collectionIds`}
+            value={draft.collectionIds}
+            onChange={(ids) => onChange("collectionIds", ids)}
+            ariaDescribedBy={describedBy}
+            ariaInvalid={Boolean(fieldErrors.collectionIds)}
+          />
         )}
       </Field>
     </>
