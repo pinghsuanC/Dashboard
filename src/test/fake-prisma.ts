@@ -621,6 +621,46 @@ export const fakePrisma = {
         db.collections.push(collection);
         return pick(collection, select);
       }),
+    // By `{ id, userId }` (collection edit): no match throws P2025, and a slug
+    // another of the user's collections has throws P2002, as the unique does.
+    // Like Prisma, a filter left out matches every row.
+    update: ({
+      where,
+      data,
+      select,
+    }: {
+      where: { id: string; userId?: string };
+      data: Pick<CollectionRow, "name" | "slug" | "description" | "isFavorite">;
+      select?: Select;
+    }) =>
+      query(() => {
+        const row = db.collections.find(
+          (collection) => collection.id === where.id && (where.userId === undefined || collection.userId === where.userId),
+        );
+        if (!row) throw recordNotFound();
+        if (db.collections.some((other) => other !== row && other.userId === row.userId && other.slug === data.slug)) {
+          throw uniqueViolation(["userId", "slug"]);
+        }
+        Object.assign(row, data, { updatedAt: new Date() });
+        return pick(row, select);
+      }),
+    // One by `{ id, userId }` (collection delete). The links on the items go
+    // with it, as the cascade drops `CollectionItem` rows; the items stay.
+    // Like Prisma, a filter left out matches every row.
+    deleteMany: ({ where }: { where: { id?: string; userId?: string } }) =>
+      query(() => {
+        if ("id" in where && typeof where.id !== "string") {
+          throw new Error("Argument `id`: Expected String");
+        }
+        const matches = (row: CollectionRow) =>
+          (where.userId === undefined || row.userId === where.userId) && (where.id === undefined || row.id === where.id);
+        const deleted = new Set(db.collections.filter(matches).map((row) => row.id));
+        db.collections = db.collections.filter((row) => !deleted.has(row.id));
+        for (const item of db.items) {
+          if (item.collectionIds) item.collectionIds = item.collectionIds.filter((id) => !deleted.has(id));
+        }
+        return { count: deleted.size };
+      }),
   },
   verificationToken: {
     findUnique: ({ where }: { where: { token: string } }) =>

@@ -1,6 +1,6 @@
 import { COLLECTION_DESCRIPTION_MAX_LENGTH, COLLECTION_NAME_MAX_LENGTH } from "@/lib/constants/limits";
 
-/** Collection create: validation (collection-schemas.ts). */
+/** Collection create and edit: validation (collection-schemas.ts). */
 export const COLLECTION_NAME_REQUIRED = "Name is required";
 export const COLLECTION_NAME_TOO_LONG = `Name must be at most ${COLLECTION_NAME_MAX_LENGTH} characters`;
 export const COLLECTION_NAME_INVALID = "Name needs at least one letter or number";
@@ -10,3 +10,8 @@ export const COLLECTION_DESCRIPTION_TOO_LONG = `Description must be at most ${CO
 export const COLLECTION_CREATED = "Collection created";
 /** Names are matched by slug, so "React Patterns" and "react-patterns" clash. */
 export const COLLECTION_NAME_TAKEN = "You already have a collection with this name";
+
+/** Collection edit and delete: outcome. A missing collection and another user's answer alike. */
+export const COLLECTION_UPDATED = "Collection updated";
+export const COLLECTION_DELETED = "Collection deleted";
+export const COLLECTION_NOT_FOUND = "This collection no longer exists";

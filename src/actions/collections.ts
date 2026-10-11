@@ -2,20 +2,26 @@
 
 import { unstable_rethrow } from "next/navigation";
 
+import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { collectionCreateSchema } from "@/lib/collections/collection-schemas";
-import { COLLECTION_NAME_TAKEN } from "@/lib/constants/messages/collections";
+import { COLLECTION_NAME_TAKEN, COLLECTION_NOT_FOUND } from "@/lib/constants/messages/collections";
 import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
-import { createCollection as saveNewCollection } from "@/lib/db/collections";
+import {
+  deleteCollection as removeCollection,
+  createCollection as saveNewCollection,
+  updateCollection as saveCollection,
+} from "@/lib/db/collections";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
-import type { SessionCollection } from "@/types/collections";
+import type { CollectionHeader, SessionCollection } from "@/types/collections";
 import type { ActionResult } from "@/types/forms";
 
 const NAME_TAKEN = {
   success: false,
   error: { message: FIELDS_INVALID, fieldErrors: { name: COLLECTION_NAME_TAKEN } },
 } as const;
+const NOT_FOUND = { success: false, error: { message: COLLECTION_NOT_FOUND, code: "not-found" } } as const;
 
 /**
  * Saves the New Collection dialog. Called directly, like `createItem`: the
@@ -47,6 +53,65 @@ export const createCollection = async (input: unknown): Promise<ActionResult<Ses
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
     console.error("Collection create failed:", error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/**
+ * Saves the collection page's edit dialog. Takes the same fields as create,
+ * and the slug follows the new name, so success returns the new header for
+ * the page to move to its URL.
+ *
+ * A missing collection and another user's answer alike. Both success and
+ * not-found refresh the page and session, as `updateItem` does, so the
+ * sidebar and cards show the change or drop a collection that's gone.
+ */
+export const updateCollection = async (
+  collectionId: string,
+  input: unknown,
+): Promise<ActionResult<CollectionHeader>> => {
+  // First and outside the try, as in `createCollection`.
+  await requireCurrentUserId();
+  if (typeof collectionId !== "string") return NOT_FOUND;
+
+  const parsed = collectionCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { message: FIELDS_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
+    };
+  }
+
+  try {
+    const collection = await saveCollection(collectionId, parsed.data);
+    resetProfile();
+    return collection ? { success: true, data: collection } : NOT_FOUND;
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    if (error instanceof CollectionNameTakenError) return NAME_TAKEN;
+    console.error("Collection update failed:", error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/**
+ * Deletes one of the session user's collections, after the page's confirm.
+ * Only the collection goes; its items stay, without the link. A missing
+ * collection and another user's answer alike, and both refresh the page
+ * and session, so the sidebar, cards and stats drop it.
+ */
+export const deleteCollection = async (collectionId: string): Promise<ActionResult<null>> => {
+  await requireCurrentUserId();
+  if (typeof collectionId !== "string") return NOT_FOUND;
+  try {
+    const deleted = await removeCollection(collectionId);
+    resetProfile();
+    return deleted ? { success: true, data: null } : NOT_FOUND;
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    console.error("Collection delete failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }
 };
