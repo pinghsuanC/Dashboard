@@ -9,3 +9,15 @@ export class CollectionNotFoundError extends Error {
     this.name = "CollectionNotFoundError";
   }
 }
+
+/**
+ * A collection edit chose a name whose slug another of the user's
+ * collections already has (`[userId, slug]` is unique). The edit action
+ * answers it as a `name` field error, like a clashing create.
+ */
+export class CollectionNameTakenError extends Error {
+  constructor() {
+    super("Another of the user's collections has this slug");
+    this.name = "CollectionNameTakenError";
+  }
+}

@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { Prisma } from "@/generated/prisma/client";
+import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
@@ -89,6 +90,44 @@ export const getCollectionBySlug = cache(async (slug: string): Promise<Collectio
     select: { id: true, name: true, slug: true, description: true, isFavorite: true },
   });
 });
+
+/**
+ * Saves the edit dialog's fields on one of the signed-in user's collections,
+ * re-slugged from the new name, and returns its new header. `null` when it
+ * is missing or not theirs: the user scope is part of the write, so another
+ * user's id changes nothing. A slug another of the user's collections has
+ * throws `CollectionNameTakenError`; its own slug is no clash. Its items stay.
+ */
+export const updateCollection = async (id: string, fields: CollectionCreate): Promise<CollectionHeader | null> => {
+  const userId = await requireCurrentUserId();
+  try {
+    return await prisma.collection.update({
+      where: { id, userId },
+      data: { ...fields, slug: slugify(fields.name) },
+      select: { id: true, name: true, slug: true, description: true, isFavorite: true },
+    });
+  } catch (error) {
+    if (isRecordNotFound(error)) return null;
+    if (isUniqueViolation(error)) throw new CollectionNameTakenError();
+    throw error;
+  }
+};
+
+/**
+ * Deletes one of the signed-in user's collections; `false` when it is
+ * missing or not theirs. Only the collection goes: its item links are
+ * dropped by the cascade, and the items themselves stay.
+ */
+export const deleteCollection = async (id: string): Promise<boolean> => {
+  const userId = await requireCurrentUserId();
+  // `deleteMany`, not `delete`: no match is a count of 0, not a P2025 throw.
+  const { count } = await prisma.collection.deleteMany({ where: { id, userId } });
+  return count > 0;
+};
+
+// Prisma's answer when an update's `where` matches no row.
+const isRecordNotFound = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 
 // Prisma's answer when a write breaks a unique index.
 const isUniqueViolation = (error: unknown) =>

@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 
-import { CollectionCreateDialog } from "@/components/collections/CollectionCreateDialog";
+import { CollectionDialog } from "@/components/collections/CollectionDialog";
 import { ItemCreateDialog } from "@/components/items/ItemCreateDialog";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -25,7 +25,7 @@ export const TopBar = () => {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <CollectionCreateDialog />
+        <CollectionDialog />
         <ItemCreateDialog />
       </div>
     </header>

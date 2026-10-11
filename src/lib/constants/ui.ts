@@ -31,6 +31,12 @@ export const ITEM_CREATE_TOAST_ID = "item-create-toast";
 /** Toast id for the New Collection dialog's Create: a repeat create updates one toast. */
 export const COLLECTION_CREATE_TOAST_ID = "collection-create-toast";
 
+/** Toast id for the collection edit dialog's Save: a repeat save updates one toast. */
+export const COLLECTION_SAVE_TOAST_ID = "collection-save-toast";
+
+/** Toast id for the collection page's Delete. */
+export const COLLECTION_DELETE_TOAST_ID = "collection-delete-toast";
+
 /** Toast id for a refused pick in the upload box: a second bad file replaces the first message. */
 export const FILE_PICK_TOAST_ID = "file-pick-toast";
 

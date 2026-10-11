@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { createCollection, getCollectionBySlug, getSessionCollections } from "./collections";
+import {
+  createCollection,
+  deleteCollection,
+  getCollectionBySlug,
+  getSessionCollections,
+  updateCollection,
+} from "./collections";
+import { getItemDetail } from "./items";
 
 class RedirectError extends Error {}
 
@@ -134,5 +142,103 @@ describe("collection page header (getCollectionBySlug)", () => {
     vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
 
     await expect(getCollectionBySlug("react-patterns")).rejects.toBeInstanceOf(RedirectError);
+  });
+});
+
+describe("collection edit (updateCollection)", () => {
+  const fields = { name: "Ada's Notes", description: "Renamed", isFavorite: true };
+
+  it("UC1: saves the fields on the user's collection, re-slugs it from the new name, and returns the header", async () => {
+    expect(await updateCollection("c-ada", fields)).toEqual({
+      id: "c-ada",
+      name: "Ada's Notes",
+      slug: "ada-s-notes",
+      description: "Renamed",
+      isFavorite: true,
+    });
+    expect(db.collections.find((row) => row.id === "c-ada")).toMatchObject({ ...fields, slug: "ada-s-notes", userId: "ada" });
+  });
+
+  it("UC1: its items stay in it", async () => {
+    await updateCollection("c-ada", fields);
+
+    expect(db.items.find((item) => item.id === "a1")?.collectionIds).toEqual(["c-ada"]);
+  });
+
+  it("UC2: keeping its own name (or one that slugs the same) is not a clash", async () => {
+    expect(await updateCollection("c-ada", { name: "ADAS", description: null, isFavorite: false })).toMatchObject({
+      slug: "adas",
+      name: "ADAS",
+    });
+  });
+
+  it("UC3: a name that slugs to another of the user's collections throws CollectionNameTakenError and changes nothing", async () => {
+    db.collections.push({ id: "c-ada-2", userId: "ada", name: "Docs", slug: "docs", updatedAt });
+
+    await expect(updateCollection("c-ada-2", { name: "ADAS!", description: null, isFavorite: false })).rejects.toBeInstanceOf(
+      CollectionNameTakenError,
+    );
+    expect(db.collections.find((row) => row.id === "c-ada-2")).toMatchObject({ name: "Docs", slug: "docs" });
+  });
+
+  it("UC3: another user's collection of the same name doesn't clash", async () => {
+    expect(await updateCollection("c-ada", { name: "Bobs", description: null, isFavorite: false })).toMatchObject({
+      slug: "bobs",
+    });
+  });
+
+  it("UC4: another user's collection is not found and is left unchanged", async () => {
+    expect(await updateCollection("c-bob", fields)).toBeNull();
+    expect(db.collections.find((row) => row.id === "c-bob")).toMatchObject({ name: "Bob's", slug: "bobs", userId: "bob" });
+  });
+
+  it("UC4: a missing collection is not found", async () => {
+    expect(await updateCollection("no-such-collection", fields)).toBeNull();
+  });
+
+  it("UC5: a signed-out caller is sent away before anything is written", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(updateCollection("c-ada", fields)).rejects.toBeInstanceOf(RedirectError);
+    expect(db.collections.find((row) => row.id === "c-ada")?.name).toBe("Ada's");
+  });
+});
+
+describe("collection delete (deleteCollection)", () => {
+  it("DC1: deletes the user's collection and answers true", async () => {
+    expect(await deleteCollection("c-ada")).toBe(true);
+    expect(db.collections.map((row) => row.id)).toEqual(["c-bob"]);
+  });
+
+  it("DC2: keeps its items, which no longer list it when opened", async () => {
+    await deleteCollection("c-ada");
+
+    expect(db.items.map((item) => item.id)).toEqual(["a1", "b1"]);
+    expect(await getItemDetail("a1")).toMatchObject({ id: "a1", title: "Ada's note", collections: [] });
+  });
+
+  it("DC2: it drops out of the user session's collections", async () => {
+    await deleteCollection("c-ada");
+
+    expect(await getSessionCollections()).toEqual([]);
+  });
+
+  it("DC3: another user's collection is not found and stays, with its items", async () => {
+    expect(await deleteCollection("c-bob")).toBe(false);
+    expect(db.collections.map((row) => row.id)).toEqual(["c-ada", "c-bob"]);
+    vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
+    expect((await getItemDetail("b1"))?.collections).toEqual([{ id: "c-bob", name: "Bob's" }]);
+  });
+
+  it("DC3: a missing collection is not found", async () => {
+    expect(await deleteCollection("no-such-collection")).toBe(false);
+    expect(db.collections).toHaveLength(2);
+  });
+
+  it("DC4: a signed-out caller is sent away before anything is deleted", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(deleteCollection("c-ada")).rejects.toBeInstanceOf(RedirectError);
+    expect(db.collections).toHaveLength(2);
   });
 });
