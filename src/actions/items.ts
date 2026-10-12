@@ -25,7 +25,7 @@ import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemCreateSchemaFor, itemUpdateSchemaFor } from "@/lib/items/item-schemas";
-import { FileMissingError, StorageNotConfiguredError, UploadRateLimitedError } from "@/lib/items/upload-errors";
+import { FileMissingError, StorageNotConfiguredError } from "@/lib/items/upload-errors";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { checkRateLimit } from "@/services/rate-limit";
@@ -129,12 +129,14 @@ const deleteStoredFile = async (userId: string, fileKey: string) => {
  * picks which fields are validated and written. Success refreshes the page
  * and session, so card lists and counts show the new item.
  *
- * A file or image item is saved first, then `uploadItemFile` signs its upload
- * and writes the file details onto it; success returns the signed link the
- * browser then PUTs the file to. If that file step throws (over the upload
- * limit, storage unavailable), the item is kept without a file and the answer
- * carries `code: "file-not-uploaded"`, so the dialog treats it as created; the
- * user can delete it and upload again.
+ * A file or image item counts one try against the upload limit before
+ * anything is saved: over it, nothing is written and the wait is the message.
+ * Then the item is saved, and `uploadItemFile` signs its upload and writes the
+ * file details onto it; success returns the signed link the browser then
+ * PUTs the file to. If that file step throws (no file, storage unavailable),
+ * the item is kept without a file and the answer carries
+ * `code: "file-not-uploaded"`, so the dialog treats it as created; the user
+ * can delete it and upload again.
  *
  * Known gap: an upload that fails after the link is signed (network drop, tab
  * closed) leaves an item whose file was never stored; its file route answers
@@ -160,6 +162,13 @@ export const createItem = async (
   }
   // The file is the file step's; the item is saved without it.
   const { file, ...fields } = parsed.data;
+
+  if (isFileItemType(typeName)) {
+    // Per user alone (`upload` is `perIp: false`): users behind one NAT don't
+    // share a bucket, and switching IP (a VPN) doesn't get a fresh one.
+    const limit = await checkRateLimit("upload", await headers(), userId);
+    if (!limit.success) return { success: false, error: { message: rateLimitMessage(limit.reset) } };
+  }
 
   let item: ItemDetail | null;
   try {
@@ -190,10 +199,9 @@ export const createItem = async (
 
 /**
  * The file step of a just-saved file or image item: checks its parsed file,
- * counts one try against the upload limit, signs the upload link for a new
- * key in the user's folder, and only then writes the file details onto the
- * item. Throws `FileMissingError`, `UploadRateLimitedError`, or whatever
- * storage throws; `createItem` turns each into a message.
+ * signs the upload link for a new key in the user's folder, and only then
+ * writes the file details onto the item. Throws `FileMissingError` or
+ * whatever storage throws; `createItem` turns each into a message.
  */
 const uploadItemFile = async (
   userId: string,
@@ -201,11 +209,6 @@ const uploadItemFile = async (
   file: CheckedFile | undefined,
 ): Promise<CreatedItem> => {
   if (!file) throw new FileMissingError();
-
-  // Per user alone (`upload` is `perIp: false`): users behind one NAT don't
-  // share a bucket, and switching IP (a VPN) doesn't get a fresh one.
-  const limit = await checkRateLimit("upload", await headers(), userId);
-  if (!limit.success) throw new UploadRateLimitedError(limit.reset);
 
   const fileKey = newFileKey(userId, file.ext);
   const upload = await createUploadUrl(userId, fileKey, file.contentType, file.size);
@@ -222,7 +225,6 @@ const uploadItemFile = async (
 
 /** Why a file step failed, worded for the user; the details go to the log. */
 const fileStepFailure = (error: unknown): string => {
-  if (error instanceof UploadRateLimitedError) return rateLimitMessage(error.reset);
   if (error instanceof FileMissingError) return FILE_REQUIRED;
   if (error instanceof StorageNotConfiguredError) {
     console.error("File upload unavailable; missing settings:", error.missing.join(", "));

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signIn, signOut } from "@/auth";
 import { signInHref } from "@/lib/auth/auth-redirect";
 import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
+import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { changePasswordAction, deleteAccountAction } from "./account";
@@ -35,6 +36,8 @@ vi.mock("@/services/auth/session", () => ({
   requireCurrentUserId: vi.fn(),
 }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+vi.mock("@/services/rate-limit", () => ({ checkRateLimit: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "1.1.1.1" }) }));
 // Real bcrypt at the lowest cost.
 vi.mock("@/lib/constants/security", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/constants/security")>()),
@@ -112,6 +115,7 @@ beforeEach(() => {
   vi.mocked(requireCurrentUser).mockReset();
   vi.mocked(signIn).mockClear();
   vi.mocked(signOut).mockClear();
+  vi.mocked(checkRateLimit).mockReset().mockResolvedValue({ success: true, remaining: 1, reset: Date.now() });
 });
 
 describe("change password", () => {
@@ -221,6 +225,31 @@ describe("change password", () => {
     await redirectOf(() => changePasswordAction({}, passwordForm()));
 
     expect(db.passwordResetTokens.map((token) => token.token)).toEqual(["r-bob"]);
+  });
+
+  // A stolen session cookie must not get unlimited guesses at the password.
+  it("R10: over the limit, answers with the wait as a toast and neither checks nor changes the password", async () => {
+    vi.mocked(checkRateLimit).mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 10 * 60_000 });
+    const before = storedHash("ada");
+
+    const state = await changePasswordAction({}, passwordForm());
+
+    expect(state.toast).toMatch(/too many attempts/i);
+    expect(state.fieldErrors).toBeUndefined();
+    expect(storedHash("ada")).toBe(before);
+    expect(storedVersion("ada")).toBe(0);
+  });
+
+  it("R10: counts tries per signed-in user, whatever the IP", async () => {
+    await changePasswordAction({}, passwordForm({ currentPassword: "not-it-123" }));
+
+    expect(checkRateLimit).toHaveBeenCalledWith("changePassword", expect.any(Headers), "ada");
+  });
+
+  it("R10: invalid input doesn't use up a try", async () => {
+    await changePasswordAction({}, passwordForm({ password: "short", confirmPassword: "short" }));
+
+    expect(checkRateLimit).not.toHaveBeenCalled();
   });
 });
 

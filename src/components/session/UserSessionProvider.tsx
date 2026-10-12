@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import {
   type SetStateAction,
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useMemo,
   useState,
-  useTransition,
 } from "react";
 
 import type { UserSession } from "@/types/session";
@@ -29,8 +29,6 @@ interface UserSessionContextValue extends UserSession {
   setSearchItems: Setter<UserSession["searchItems"]>;
   /** Reloads the whole session from the server, e.g. after a profile edit. */
   resetProfile: () => void;
-  /** True while a reset is in flight. */
-  isResetting: boolean;
 }
 
 const UserSessionContext = createContext<UserSessionContextValue | null>(null);
@@ -54,7 +52,6 @@ interface UserSessionProviderProps {
  */
 export const UserSessionProvider = ({ session, children }: UserSessionProviderProps) => {
   const router = useRouter();
-  const [isResetting, startTransition] = useTransition();
   const [state, setState] = useState(session);
   const [loadedFrom, setLoadedFrom] = useState(session);
 
@@ -95,8 +92,8 @@ export const UserSessionProvider = ({ session, children }: UserSessionProviderPr
   }, [router]);
 
   const value = useMemo(
-    () => ({ ...state, ...setters, resetProfile, isResetting }),
-    [state, setters, resetProfile, isResetting],
+    () => ({ ...state, ...setters, resetProfile }),
+    [state, setters, resetProfile],
   );
 
   return <UserSessionContext value={value}>{children}</UserSessionContext>;

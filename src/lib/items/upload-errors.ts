@@ -1,6 +1,7 @@
 // Why a file or image item's file step failed. Thrown by the storage service
 // and `uploadItemFile`, and turned into a message by `createItem`; none of
-// them carries user-facing wording.
+// them carries user-facing wording. Over the upload limit is not one of them:
+// `createItem` checks that before saving anything.
 
 /**
  * Thrown by the storage service when an `R2_*` setting is missing, before any
@@ -11,14 +12,6 @@ export class StorageNotConfiguredError extends Error {
   constructor(public readonly missing: readonly string[]) {
     super(`File storage is not configured: ${missing.join(", ")} missing`);
     this.name = "StorageNotConfiguredError";
-  }
-}
-
-/** The caller is over the upload limit; `reset` is when it lifts, in ms since the epoch. */
-export class UploadRateLimitedError extends Error {
-  constructor(public readonly reset: number) {
-    super("Over the upload rate limit");
-    this.name = "UploadRateLimitedError";
   }
 }
 

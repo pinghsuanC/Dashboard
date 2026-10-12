@@ -333,7 +333,7 @@ export const getItemFile = async (id: string): Promise<ItemFileRef | null> => {
  */
 export const createItem = async (
   typeName: string,
-  { tags, collectionIds, ...fields }: ItemCreate,
+  { title, description, content, language, url, tags, collectionIds }: ItemCreate,
 ): Promise<ItemDetail | null> => {
   const userId = await requireCurrentUserId();
   const type = await prisma.itemType.findFirst({
@@ -346,7 +346,12 @@ export const createItem = async (
     if (collectionIds) await assertOwnCollections(tx, userId, collectionIds);
     return tx.item.create({
       data: {
-        ...fields,
+        // Named, not spread: file fields are only ever `setItemFile`'s.
+        title,
+        description,
+        content,
+        language,
+        url,
         userId,
         typeId: type.id,
         tags: tags && { create: tagLinks(userId, tags) },

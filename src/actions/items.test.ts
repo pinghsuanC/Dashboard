@@ -408,23 +408,21 @@ describe("createItem action: file and image items (F7)", () => {
     expect(storage.signed.size).toBe(0);
   });
 
-  it("is rate limited after the save: the item stays without a file, and the wait is the message", async () => {
+  it("is rate limited before the save: nothing is saved or signed, and the wait is the message", async () => {
     vi.mocked(checkRateLimit).mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 10 * 60_000 });
 
     const result = await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } });
 
-    expect(result).toEqual({
-      success: false,
-      error: { message: expect.stringContaining("Too many attempts"), code: "file-not-uploaded" },
-    });
+    // No "file-not-uploaded" code: no item was saved for the dialog to keep.
+    expect(result).toEqual({ success: false, error: { message: expect.stringContaining("Too many attempts") } });
     expect(checkRateLimit).toHaveBeenCalledWith("upload", expect.any(Headers), "ada");
-    expect(created()).toEqual([expect.objectContaining({ title: "Logo" })]);
-    expect(created()[0].fileKey ?? null).toBeNull();
+    expect(created()).toEqual([]);
     expect(storage.signed.size).toBe(0);
+    expect(resetProfile).not.toHaveBeenCalled();
   });
 
   it("a saved item whose file step failed still refreshes the lists", async () => {
-    vi.mocked(checkRateLimit).mockResolvedValue({ success: false, remaining: 0, reset: Date.now() + 10 * 60_000 });
+    storage.unconfigured = true;
 
     await createItem("image", { title: "Logo", file: { name: "a.png", size: 10, mimeType: "image/png" } });
 
@@ -486,7 +484,6 @@ describe("createItem action: file and image items (F7)", () => {
       success: false,
       error: { message: SOMETHING_WENT_WRONG },
     });
-    expect(checkRateLimit).not.toHaveBeenCalled();
     expect(storage.signed.size).toBe(0);
   });
 });
@@ -574,7 +571,7 @@ describe("item collections: the actions (C5)", () => {
 
     expect(result).toEqual(collectionGone);
     expect(db.items).toHaveLength(2);
-    expect(checkRateLimit).not.toHaveBeenCalled();
+    expect(storage.signed.size).toBe(0);
   });
 
   it("C5: updateItem with another user's or a missing collection answers the same and changes nothing", async () => {

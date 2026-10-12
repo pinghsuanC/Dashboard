@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 
@@ -7,12 +8,14 @@ import { signIn, signOut } from "@/auth";
 import { changePassword } from "@/lib/auth/account";
 import { signInHref } from "@/lib/auth/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth/auth-schemas";
+import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
 import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { API_ROUTES, FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
 import { deleteAccount } from "@/lib/db/users";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { requireCurrentUser } from "@/services/auth/session";
+import { checkRateLimit } from "@/services/rate-limit";
 import type { DeleteAccountState, FormState } from "@/types/forms";
 
 const PASSWORD_CHANGED = withFlag(ROUTES.settings, FLAGS.passwordChanged);
@@ -26,13 +29,18 @@ export const changePasswordAction = async (
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> => {
-  const { email } = await requireCurrentUser();
+  const { id, email } = await requireCurrentUser();
   const parsed = changePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
   });
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error) };
+
+  // Per user alone (`perIp: false`), before the bcrypt compare: a stolen
+  // session cookie gets no more guesses from a fresh IP.
+  const limit = await checkRateLimit("changePassword", await headers(), id);
+  if (!limit.success) return { toast: rateLimitMessage(limit.reset) };
 
   const result = await changePassword(parsed.data.currentPassword, parsed.data.password);
   if (result === "wrong-password") {
