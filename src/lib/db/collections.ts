@@ -3,6 +3,7 @@ import { cache } from "react";
 import { Prisma } from "@/generated/prisma/client";
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { COLLECTIONS_PER_PAGE } from "@/lib/constants/limits";
+import { isRecordNotFound, isUniqueViolation } from "@/lib/db/prisma-errors";
 import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
@@ -164,11 +165,3 @@ export const deleteCollection = async (id: string): Promise<boolean> => {
   const { count } = await prisma.collection.deleteMany({ where: { id, userId } });
   return count > 0;
 };
-
-// Prisma's answer when an update's `where` matches no row.
-const isRecordNotFound = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
-
-// Prisma's answer when a write breaks a unique index.
-const isUniqueViolation = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";

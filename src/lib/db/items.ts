@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { DASHBOARD_RECENT_ITEMS_LIMIT, ITEMS_PER_PAGE, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
+import { isRecordNotFound } from "@/lib/db/prisma-errors";
 import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
@@ -254,10 +255,6 @@ export const updateItem = async (
     throw error;
   }
 };
-
-// Prisma's answer when an update's `where` matches no row.
-const isRecordNotFound = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 
 /**
  * Deletes the user's tags that no item links any more, so they don't pile up

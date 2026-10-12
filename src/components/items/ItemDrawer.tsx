@@ -19,7 +19,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { isFileItemType } from "@/lib/constants/files";
-import { isCodeItemType, isMarkdownItemType } from "@/lib/constants/item-types";
+import { isCodeItemType, isGalleryItemType, isMarkdownItemType } from "@/lib/constants/item-types";
 import { ITEM_LOAD_FAILED } from "@/lib/constants/messages/items";
 import { itemFileHref } from "@/lib/constants/routes";
 import { formatBytes, formatLongDate } from "@/lib/helpers/format";
@@ -281,8 +281,8 @@ export const ItemDrawer = ({
               )}
 
               {detail?.fileName && (
-                <Section title={type.name === "image" ? "Image" : "File"} icon={<FileText className="size-3.5" />}>
-                  {type.name === "image" && (
+                <Section title={isGalleryItemType(type.name) ? "Image" : "File"} icon={<FileText className="size-3.5" />}>
+                  {isGalleryItemType(type.name) && (
                     <ImagePreview src={itemFileHref(detail.id)} alt={detail.fileName} />
                   )}
                   <div className="flex items-center gap-3 rounded-lg border p-3">
