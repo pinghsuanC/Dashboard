@@ -38,6 +38,7 @@ export const config = {
     "/profile/:path*",
     "/settings/:path*",
     "/collections/:path*",
+    "/items/:path*",
     "/api/((?!auth/).*)",
   ],
 };

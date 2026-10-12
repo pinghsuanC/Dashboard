@@ -86,15 +86,10 @@ export interface ItemUpdate {
 
 /**
  * A new item's fields, already validated: the same fields and per-type rules
- * as an edit. The item's type is passed alongside, not inside. File and image
- * items also carry their stored file's key and details.
+ * as an edit. The item's type is passed alongside, not inside. Never the file
+ * fields: only `setItemFile` writes those, with a key from `newFileKey()`.
  */
-export interface ItemCreate extends ItemUpdate {
-  fileKey?: string;
-  fileName?: string;
-  fileSize?: number;
-  mimeType?: string;
-}
+export type ItemCreate = ItemUpdate;
 
 /**
  * The New Item payload once validated, before anything is stored: a file or

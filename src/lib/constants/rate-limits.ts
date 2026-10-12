@@ -17,6 +17,12 @@ export const RATE_LIMITS = {
   resetPassword: { limit: 5, window: "15 m" },
   resendVerification: { limit: 3, window: "15 m" },
   /**
+   * Settings' change password, keyed by the session user alone: the one
+   * password check outside sign-in, so a stolen session cookie can't guess the
+   * current password without limit from however many IPs.
+   */
+  changePassword: { limit: 5, window: "15 m", perIp: false },
+  /**
    * New file and image items, keyed by the session user alone: each one signs
    * an upload to the bucket. No IP, so a VPN gets no fresh bucket, and users
    * behind one NAT still count separately.

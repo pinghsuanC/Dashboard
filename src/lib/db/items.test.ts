@@ -686,23 +686,24 @@ describe("file and image items: the stored file's key (F6)", () => {
     expect(db.items.find((item) => item.id === "bobs-pic")).toMatchObject({ fileKey: "users/bob/u2.png" });
   });
 
-  it("creating a file item saves its key and file details", async () => {
-    await createItem("image", {
+  // Only setItemFile writes file fields, with a key newFileKey() built.
+  it("creating an item never writes file fields, even when the input carries them", async () => {
+    const withFile = {
       title: "Logo",
-      fileKey: "users/ada/u3.svg",
+      fileKey: "users/bob/u3.svg",
       fileName: "logo.svg",
       fileSize: 300,
       mimeType: "image/svg+xml",
-    });
+    } as unknown as Parameters<typeof createItem>[1];
 
-    expect(db.items.at(-1)).toMatchObject({
-      userId: "ada",
-      typeId: "t-image",
-      fileKey: "users/ada/u3.svg",
-      fileName: "logo.svg",
-      fileSize: 300,
-      mimeType: "image/svg+xml",
-    });
+    await createItem("image", withFile);
+
+    const saved = db.items.at(-1)!;
+    expect(saved).toMatchObject({ userId: "ada", typeId: "t-image", title: "Logo" });
+    expect(saved.fileKey ?? null).toBeNull();
+    expect(saved.fileName ?? null).toBeNull();
+    expect(saved.fileSize ?? null).toBeNull();
+    expect(saved.mimeType ?? null).toBeNull();
   });
 });
 
