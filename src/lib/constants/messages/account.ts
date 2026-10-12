@@ -1,4 +1,4 @@
-/** Messages for the profile page's account actions. */
+/** Messages for the settings page's account actions. */
 export const ACCOUNT_MESSAGES = {
   // Validation (auth-schemas.ts, change password)
   enterCurrentPassword: "Enter your current password",
@@ -8,5 +8,5 @@ export const ACCOUNT_MESSAGES = {
   githubOnlyAccount: "This account signs in with GitHub.",
 } as const;
 
-/** Toast on `/profile?password=changed`. */
+/** Toast on `/settings?password=changed`. */
 export const PASSWORD_CHANGED_TOAST = { id: "password-changed", title: "Password updated" } as const;

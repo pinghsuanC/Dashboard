@@ -120,10 +120,10 @@ describe("change password", () => {
     signedInAs("ada");
   });
 
-  it("R4: stores the new password, retires the old one, and returns to the profile with the toast flag", async () => {
+  it("R4: stores the new password, retires the old one, and returns to settings with the toast flag", async () => {
     const url = await redirectOf(() => changePasswordAction({}, passwordForm()));
 
-    expect(url).toBe("/profile?password=changed");
+    expect(url).toBe("/settings?password=changed");
     const hashAfter = storedHash("ada")!;
     expect(await compare(NEW_PASSWORD, hashAfter)).toBe(true);
     expect(await compare(OLD_PASSWORD, hashAfter)).toBe(false);
@@ -198,16 +198,16 @@ describe("change password", () => {
     expect(signIn).toHaveBeenCalledWith("credentials", {
       email: "ada@example.test",
       password: NEW_PASSWORD,
-      redirectTo: "/profile?password=changed",
+      redirectTo: "/settings?password=changed",
     });
   });
 
-  it("R8: when signing back in is refused, sends the user to sign in and back to the profile", async () => {
+  it("R8: when signing back in is refused, sends the user to sign in and back to settings", async () => {
     vi.mocked(signIn).mockRejectedValueOnce(new CredentialsSignin());
 
     const url = await redirectOf(() => changePasswordAction({}, passwordForm()));
 
-    expect(url).toBe(signInHref("/profile?password=changed"));
+    expect(url).toBe(signInHref("/settings?password=changed"));
     expect(await compare(NEW_PASSWORD, storedHash("ada")!)).toBe(true);
   });
 
