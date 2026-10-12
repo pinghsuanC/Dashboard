@@ -31,8 +31,9 @@ export const ImageCard = ({ item }: ImageCardProps) => {
     <Card className="group hover:bg-muted/40 has-focus-visible:ring-ring/50 relative gap-0 py-0 transition-colors has-focus-visible:ring-3">
       <div className="bg-muted aspect-video overflow-hidden">
         {showImage ? (
-          // Served by our own signed-in route with `no-store`; next/image would
-          // fetch it again from the server without the user's session.
+          // Served by our own signed-in route (private, revalidated by ETag);
+          // next/image would fetch it again from the server without the
+          // user's session.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={itemFileHref(item.id)}

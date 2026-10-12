@@ -8,6 +8,7 @@ import { SearchPaletteProvider } from "@/components/search/SearchPaletteProvider
 import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SIDEBAR_STATE_COOKIE } from "@/lib/constants/ui";
 import { getUserSession } from "@/lib/session/user-session";
 
 const AppLayout = async ({ children }: LayoutProps<"/">) => {
@@ -15,7 +16,7 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
   // server means the sidebar renders in the right state instead of flashing
   // open and snapping shut after hydration.
   const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
+  const defaultOpen = cookieStore.get(SIDEBAR_STATE_COOKIE)?.value !== "false";
 
   // The one place the user session is loaded. This layout runs on a full page
   // load (e.g. right after sign-in) and on a reset, not on navigation, and

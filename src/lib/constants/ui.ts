@@ -22,6 +22,14 @@ export const ITEM_SAVE_TOAST_ID = "item-save-toast";
 /** Toast id for the item drawer's Delete: a repeat delete updates one toast. */
 export const ITEM_DELETE_TOAST_ID = "item-delete-toast";
 
+/**
+ * The cookie shadcn's `SidebarProvider` keeps its open state in, read by the
+ * `(app)` layout so the sidebar renders closed without a flash. Mirrors the
+ * private `SIDEBAR_COOKIE_NAME` in `components/ui/sidebar.tsx` (generated, so
+ * not imported from there); keep the two in step if shadcn renames it.
+ */
+export const SIDEBAR_STATE_COOKIE = "sidebar_state";
+
 /** Letters in an avatar's initials: "Ada Byron King" -> "AB". */
 export const AVATAR_INITIALS_MAX = 2;
 
