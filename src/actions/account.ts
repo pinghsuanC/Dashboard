@@ -15,10 +15,10 @@ import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { requireCurrentUser } from "@/services/auth/session";
 import type { DeleteAccountState, FormState } from "@/types/forms";
 
-const PASSWORD_CHANGED = withFlag(ROUTES.profile, FLAGS.passwordChanged);
+const PASSWORD_CHANGED = withFlag(ROUTES.settings, FLAGS.passwordChanged);
 
 /**
- * Back to the profile page with a one-shot flag, which shows a toast. The
+ * Back to the settings page with a one-shot flag, which shows a toast. The
  * change signs out every session, this one included, so it signs this device
  * back in with the new password: a fresh cookie carrying the new version.
  */

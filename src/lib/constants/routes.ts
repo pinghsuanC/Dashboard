@@ -80,7 +80,7 @@ export const FLAGS = {
   deleted: { param: "deleted", value: "1" },
   /** `/forgot-password?sent=1` after a reset request, whether or not the email exists. */
   sent: { param: "sent", value: "1" },
-  /** `/profile?password=changed` after a password change. */
+  /** `/settings?password=changed` after a password change. */
   passwordChanged: { param: "password", value: "changed" },
 } as const;
 
@@ -95,6 +95,6 @@ export const SIGNED_OUT_FORWARDED_FLAGS: readonly Flag[] = [FLAGS.deleted];
 /** A flag as search params, e.g. for `signInHref(url, flagParams(FLAGS.reset))`. */
 export const flagParams = (flag: Flag): Record<string, string> => ({ [flag.param]: flag.value });
 
-/** `path` with one flag set: `/profile?password=changed`. */
+/** `path` with one flag set: `/settings?password=changed`. */
 export const withFlag = (path: string, flag: Flag): string =>
   `${path}?${new URLSearchParams(flagParams(flag))}`;

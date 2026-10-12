@@ -24,6 +24,7 @@ describe("proxy: which paths it guards (P1)", () => {
   it("guards the app's pages", () => {
     expect(matches("/dashboard")).toBe(true);
     expect(matches("/profile")).toBe(true);
+    expect(matches("/settings")).toBe(true);
   });
 
   it("guards the app's API routes", () => {

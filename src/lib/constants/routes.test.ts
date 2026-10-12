@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { collectionHref, itemTypeHref, itemTypeNameFromSegment, pageHref, ROUTES } from "./routes";
 
 // Linked from the app before their pages exist. Remove an entry when its page lands.
-const NOT_BUILT_YET = new Set<string>([ROUTES.settings, ROUTES.items]);
+const NOT_BUILT_YET = new Set<string>([ROUTES.items]);
 
 const APP_DIR = join(process.cwd(), "src", "app");
 

@@ -9,7 +9,7 @@ import type { ChangePasswordResult } from "@/types/auth";
  * Checks the signed-in user's current password, then stores the new one. The
  * user comes from the session, never an argument, so no one can change
  * another account's password. A user without a password (GitHub-only) gets
- * "no-password": the profile page hides the form for them, but the action can
+ * "no-password": the settings page hides the form for them, but the action can
  * still be called directly. A database failure is "error", so the form can
  * say so instead of crashing; a signed-out caller is redirected to sign-in.
  *

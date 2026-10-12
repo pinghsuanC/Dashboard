@@ -22,7 +22,9 @@ export const proxy = auth((req) => {
   // callbackUrl brings the user back to the page they asked for. A path, not
   // the full href, so it passes `safeCallbackUrl` on the sign-in page.
   const callbackUrl = req.nextUrl.pathname + req.nextUrl.search;
-  return NextResponse.redirect(new URL(signInHref(callbackUrl), req.nextUrl.origin));
+  return NextResponse.redirect(
+    new URL(signInHref(callbackUrl), req.nextUrl.origin),
+  );
 });
 
 // Literal on purpose: Next reads `matcher` statically and ignores variables.
@@ -31,5 +33,11 @@ export const proxy = auth((req) => {
 // Routes still check the session themselves: this only verifies the JWT, and
 // a revoked session (`sessionVersion`) is only seen by `getCurrentUser()`.
 export const config = {
-  matcher: ["/dashboard/:path*", "/profile/:path*", "/collections/:path*", "/api/((?!auth/).*)"],
+  matcher: [
+    "/dashboard/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+    "/collections/:path*",
+    "/api/((?!auth/).*)",
+  ],
 };
