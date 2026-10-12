@@ -19,9 +19,10 @@ export interface CurrentUser {
 
 /**
  * What the signed-in user's screens show, loaded once and held on the client
- * by `UserSessionProvider`. Items are deliberately not all here: only their
- * counts and the pinned list. Recent items are fetched by the dashboard on
- * every visit, and "view all", editing and creating load what they need.
+ * by `UserSessionProvider`. Item bodies are never here: items come as counts,
+ * the pinned list, and the search palette's summaries (capped). Recent items
+ * are fetched by the dashboard on every visit, and "view all", editing and
+ * creating load what they need.
  * Collections are few, so all of them are here. Display shapes derive from
  * it in `lib/session/session-selectors.ts`.
  */
@@ -34,6 +35,8 @@ export interface UserSession {
   pinnedItems: ItemSummary[];
   /** Every collection, with its item count and types. */
   collections: SessionCollection[];
+  /** The search palette's items, newest first, up to `SEARCH_ITEM_LIMIT`; no bodies. */
+  searchItems: ItemSummary[];
 }
 
 export interface ItemStats {

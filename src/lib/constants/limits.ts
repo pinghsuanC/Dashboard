@@ -23,6 +23,8 @@ export const RESET_RESEND_COOLDOWN_MS = 2 * MINUTE_MS;
 
 /** Recent items on the dashboard. */
 export const RECENT_ITEM_LIMIT = 10;
+/** Items the search palette loads with the session, newest first. Bounds the page load. */
+export const SEARCH_ITEM_LIMIT = 50;
 /** Collection cards on the dashboard. */
 export const RECENT_COLLECTION_LIMIT = 6;
 /** Placeholder cards an item grid shows while its items load. */

@@ -4,6 +4,7 @@ import { ItemDrawerProvider } from "@/components/items/ItemDrawerProvider";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CloseSidebarOnNavigate } from "@/components/layout/CloseSidebarOnNavigate";
 import { TopBar } from "@/components/layout/TopBar";
+import { SearchPaletteProvider } from "@/components/search/SearchPaletteProvider";
 import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,17 +31,20 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
         {/* Above the sidebar and top bar, not just the page, so anything in
             the shell (e.g. search results) can open the item drawer too. */}
         <ItemDrawerProvider>
-          <SidebarProvider defaultOpen={defaultOpen}>
-            <AppSidebar />
-            <CloseSidebarOnNavigate />
+          {/* Inside the drawer provider: picking an item opens the drawer. */}
+          <SearchPaletteProvider>
+            <SidebarProvider defaultOpen={defaultOpen}>
+              <AppSidebar />
+              <CloseSidebarOnNavigate />
 
-            <SidebarInset>
-              <TopBar />
-              {/* A plain div, not <main>: SidebarInset already renders <main>, and
-                  nesting a second one is invalid HTML and a duplicate landmark. */}
-              <div className="flex-1 p-6">{children}</div>
-            </SidebarInset>
-          </SidebarProvider>
+              <SidebarInset>
+                <TopBar />
+                {/* A plain div, not <main>: SidebarInset already renders <main>, and
+                    nesting a second one is invalid HTML and a duplicate landmark. */}
+                <div className="flex-1 p-6">{children}</div>
+              </SidebarInset>
+            </SidebarProvider>
+          </SearchPaletteProvider>
         </ItemDrawerProvider>
       </TooltipProvider>
     </UserSessionProvider>
