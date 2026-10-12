@@ -1,13 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
+import { COLLECTIONS_PER_PAGE } from "@/lib/constants/limits";
 import { requireCurrentUserId } from "@/services/auth/session";
-import { db, resetDb } from "@/test/fake-prisma";
+import { db, fakePrisma, resetDb } from "@/test/fake-prisma";
 
 import {
   createCollection,
   deleteCollection,
   getCollectionBySlug,
+  getCollectionsPage,
   getSessionCollections,
   updateCollection,
 } from "./collections";
@@ -240,5 +242,112 @@ describe("collection delete (deleteCollection)", () => {
 
     await expect(deleteCollection("c-ada")).rejects.toBeInstanceOf(RedirectError);
     expect(db.collections).toHaveLength(2);
+  });
+});
+
+describe("collections page, one page at a time (getCollectionsPage, P1-P3 P7 P8)", () => {
+  const day = (n: number) => new Date(Date.UTC(2026, 0, n));
+  // `n` collections of Ada's, one day apart, c1 oldest.
+  const seed = (n: number) => {
+    for (let i = 1; i <= n; i++) {
+      db.collections.push({ id: `c${i}`, userId: "ada", name: `Collection ${i}`, slug: `collection-${i}`, description: null, isFavorite: false, updatedAt: day(i) });
+    }
+  };
+  const ids = (page: { rows: { id: string }[] }) => page.rows.map((collection) => collection.id);
+  const newest = (from: number, to: number) => Array.from({ length: from - to + 1 }, (_, k) => `c${from - k}`);
+
+  beforeEach(() => {
+    db.collections = [];
+    db.items = [];
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("P1: page 1 is the newest COLLECTIONS_PER_PAGE collections, with the total and page count", async () => {
+    seed(45);
+
+    const page = await getCollectionsPage(1);
+
+    expect(ids(page)).toEqual(newest(45, 45 - COLLECTIONS_PER_PAGE + 1));
+    expect(page).toMatchObject({ page: 1, pageCount: 3, total: 45 });
+  });
+
+  it("P1: a later page carries on where the one before stopped", async () => {
+    seed(45);
+
+    expect(ids(await getCollectionsPage(2))).toEqual(newest(45 - COLLECTIONS_PER_PAGE, 45 - 2 * COLLECTIONS_PER_PAGE + 1));
+    expect(ids(await getCollectionsPage(3))).toEqual(newest(45 - 2 * COLLECTIONS_PER_PAGE, 1));
+  });
+
+  it("P2: only one page of collections is read from the database", async () => {
+    seed(60);
+    const findMany = vi.spyOn(fakePrisma.collection, "findMany");
+
+    await getCollectionsPage(2);
+
+    const read = await Promise.all(findMany.mock.results.map((result) => result.value));
+    expect(read.length).toBeGreaterThan(0);
+    for (const rows of read) expect(rows.length).toBeLessThanOrEqual(COLLECTIONS_PER_PAGE);
+  });
+
+  it("P3: a page past the end comes back as asked with no rows; none at all is page 1 of 1", async () => {
+    expect(await getCollectionsPage(1)).toEqual({ rows: [], page: 1, pageCount: 1, total: 0 });
+    expect(await getCollectionsPage(2)).toEqual({ rows: [], page: 2, pageCount: 1, total: 0 });
+
+    seed(COLLECTIONS_PER_PAGE + 2);
+
+    expect(await getCollectionsPage(9)).toEqual({ rows: [], page: 9, pageCount: 2, total: COLLECTIONS_PER_PAGE + 2 });
+    expect(ids(await getCollectionsPage(2))).toEqual(["c2", "c1"]);
+  });
+
+  it("P7: another user's collections are neither listed nor counted", async () => {
+    seed(2);
+    for (let i = 1; i <= 30; i++) {
+      db.collections.push({ id: `b${i}`, userId: "bob", name: `Bob ${i}`, slug: `bob-${i}`, updatedAt: day(20) });
+    }
+
+    const page = await getCollectionsPage(1);
+
+    expect(ids(page)).toEqual(["c2", "c1"]);
+    expect(page).toMatchObject({ pageCount: 1, total: 2 });
+  });
+
+  it("P8: collections updated at the same moment are ordered by name, then id, so pages never overlap", async () => {
+    for (let i = 1; i <= 30; i++) {
+      const id = `same-${String(i).padStart(2, "0")}`;
+      // The two with the last ids sort first by name, so the name is what orders them.
+      db.collections.push({ id, userId: "ada", name: i > 28 ? `A ${i}` : "Same", slug: id, updatedAt: day(1) });
+    }
+    db.collections.reverse();
+
+    const both = [...ids(await getCollectionsPage(1)), ...ids(await getCollectionsPage(2))];
+
+    expect(both.slice(0, 2)).toEqual(["same-29", "same-30"]);
+    expect(both).toHaveLength(30);
+    expect(new Set(both).size).toBe(30);
+    expect(both.slice(2)).toEqual([...both.slice(2)].sort());
+  });
+
+  it("carries what a collection card shows: item count and types most-used first, never another user's items", async () => {
+    db.itemTypes.push({ id: "t-snippet", userId: null, name: "snippet", label: "Snippet", icon: null, color: "#00f" });
+    seed(1);
+    db.items.push(
+      { id: "n1", userId: "ada", typeId: "t-note", title: "Note", collectionIds: ["c1"] },
+      { id: "s1", userId: "ada", typeId: "t-snippet", title: "Snip 1", collectionIds: ["c1"] },
+      { id: "s2", userId: "ada", typeId: "t-snippet", title: "Snip 2", collectionIds: ["c1"] },
+    );
+
+    const [card] = (await getCollectionsPage(1)).rows;
+
+    expect(card).toMatchObject({ id: "c1", name: "Collection 1", slug: "collection-1", description: null, isFavorite: false, itemCount: 3 });
+    expect(card.types.map((type) => type.id)).toEqual(["t-snippet", "t-note"]);
+    expect(card).not.toHaveProperty("updatedAt");
+  });
+
+  it("a signed-out caller is sent away before anything is read", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(getCollectionsPage(1)).rejects.toBeInstanceOf(RedirectError);
   });
 });

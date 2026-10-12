@@ -1,4 +1,4 @@
-import { RECENT_COLLECTION_LIMIT, SIDEBAR_RECENT_COLLECTION_LIMIT } from "@/lib/constants/limits";
+import { DASHBOARD_COLLECTIONS_LIMIT, SIDEBAR_RECENT_COLLECTION_LIMIT } from "@/lib/constants/limits";
 import type {
   CollectionStats,
   CollectionSummary,
@@ -41,7 +41,7 @@ export const selectPinnedItems = (pinnedItems: ItemSummary[]): ItemSummary[] =>
 /** Most recently updated collections, for the dashboard cards. */
 export const selectRecentCollections = (
   collections: SessionCollection[],
-  limit: number = RECENT_COLLECTION_LIMIT,
+  limit: number = DASHBOARD_COLLECTIONS_LIMIT,
 ): CollectionSummary[] =>
   [...collections]
     .sort(newestCollectionFirst)

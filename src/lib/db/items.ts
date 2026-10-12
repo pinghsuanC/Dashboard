@@ -1,11 +1,13 @@
 import { Prisma } from "@/generated/prisma/client";
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
-import { RECENT_ITEM_LIMIT, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
+import { DASHBOARD_RECENT_ITEMS_LIMIT, ITEMS_PER_PAGE, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
+import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
 import type { ItemFileFields, ItemFileRef } from "@/types/files";
 import type { DeletedItem, ItemCounts, ItemCreate, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
+import type { Paginated } from "@/types/pagination";
 
 const itemSummarySelect = {
   id: true,
@@ -26,10 +28,12 @@ const itemSummarySelect = {
   },
 } satisfies Prisma.ItemSelect;
 
-// Title breaks `updatedAt` ties so the order is stable between requests.
+// Title, then id, break `updatedAt` ties so the order is stable between
+// requests: with `skip`, an unstable order could show a row on two pages.
 const newestFirst = [
   { updatedAt: "desc" },
   { title: "asc" },
+  { id: "asc" },
 ] satisfies Prisma.ItemOrderByWithRelationInput[];
 
 type ItemSummaryRow = Prisma.ItemGetPayload<{
@@ -73,7 +77,7 @@ export const getPinnedItems = async (): Promise<ItemSummary[]> => {
  * it is always current without local upkeep.
  */
 export const getRecentItems = async (
-  limit: number = RECENT_ITEM_LIMIT,
+  limit: number = DASHBOARD_RECENT_ITEMS_LIMIT,
 ): Promise<ItemSummary[]> => {
   const userId = await requireCurrentUserId();
   const items = await prisma.item.findMany({
@@ -102,34 +106,35 @@ export const getSearchItems = async (): Promise<ItemSummary[]> => {
   return items.map(toItemSummary);
 };
 
+/** One page of a user-scoped item listing, newest first, counted with the same filter. */
+const itemPage = (where: Prisma.ItemWhereInput, page: number): Promise<Paginated<ItemSummary>> =>
+  loadPage(
+    page,
+    ITEMS_PER_PAGE,
+    () => prisma.item.count({ where }),
+    async (skip) =>
+      (await prisma.item.findMany({ where, orderBy: newestFirst, skip, take: ITEMS_PER_PAGE, select: itemSummarySelect }))
+        .map(toItemSummary),
+  );
+
 /**
- * Every item of one type, newest first, for `/items/[type]`. Unbounded for
- * now, like the pinned list; fetched by the page on each visit.
+ * One page of one type's items, newest first, for `/items/[type]`: at most
+ * `ITEMS_PER_PAGE` rows plus the total, never the whole type. Fetched by the
+ * page on each visit; a page past the end comes back empty (`isPastLastPage`).
  */
-export const getItemsByType = async (typeId: string): Promise<ItemSummary[]> => {
+export const getItemsByType = async (typeId: string, page: number = 1): Promise<Paginated<ItemSummary>> => {
   const userId = await requireCurrentUserId();
-  const items = await prisma.item.findMany({
-    where: { userId, typeId },
-    orderBy: newestFirst,
-    select: itemSummarySelect,
-  });
-  return items.map(toItemSummary);
+  return itemPage({ userId, typeId }, page);
 };
 
 /**
- * Every item in one of the user's collections, newest first, for
- * `/collections/[slug]`. Unbounded, like the type lists; fetched by the page on
- * each visit. The user scope is on the items, so another user's collection id
- * lists nothing.
+ * One page of the items in one of the user's collections, newest first, for
+ * `/collections/[slug]`, paged like the type lists. The user scope is on the
+ * items, so another user's collection id lists and counts nothing.
  */
-export const getCollectionItems = async (collectionId: string): Promise<ItemSummary[]> => {
+export const getCollectionItems = async (collectionId: string, page: number = 1): Promise<Paginated<ItemSummary>> => {
   const userId = await requireCurrentUserId();
-  const items = await prisma.item.findMany({
-    where: { userId, collections: { some: { collectionId } } },
-    orderBy: newestFirst,
-    select: itemSummarySelect,
-  });
-  return items.map(toItemSummary);
+  return itemPage({ userId, collections: { some: { collectionId } } }, page);
 };
 
 const itemDetailSelect = {

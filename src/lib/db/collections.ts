@@ -2,11 +2,14 @@ import { cache } from "react";
 
 import { Prisma } from "@/generated/prisma/client";
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
+import { COLLECTIONS_PER_PAGE } from "@/lib/constants/limits";
+import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
-import type { CollectionCreate, CollectionHeader, SessionCollection } from "@/types/collections";
+import type { CollectionCreate, CollectionHeader, CollectionSummary, SessionCollection } from "@/types/collections";
 import type { ItemRowType } from "@/types/items";
+import type { Paginated } from "@/types/pagination";
 
 /** Distinct types, most frequent first; ties keep first-seen order. */
 const rankTypesByUse = (types: ItemRowType[]): ItemRowType[] => {
@@ -20,40 +23,77 @@ const rankTypesByUse = (types: ItemRowType[]): ItemRowType[] => {
   return [...tally.values()].sort((a, b) => b.count - a.count).map(({ type }) => type);
 };
 
+// What a collection card shows. Pulls one join row per item (just its type)
+// and tallies in JS: Prisma's `_count` can't group by a relation's field.
+// Move to a raw `GROUP BY` if collections grow to hundreds of items.
+const collectionCardSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  isFavorite: true,
+  items: {
+    select: {
+      item: {
+        select: { type: { select: { id: true, name: true, label: true, icon: true, color: true } } },
+      },
+    },
+  },
+} satisfies Prisma.CollectionSelect;
+
+type CollectionCardRow = Prisma.CollectionGetPayload<{ select: typeof collectionCardSelect }>;
+
+const toCollectionSummary = ({ items, ...collection }: CollectionCardRow): CollectionSummary => ({
+  ...collection,
+  itemCount: items.length,
+  types: rankTypesByUse(items.map(({ item }) => item.type)),
+});
+
+// Name, then id, break `updatedAt` ties, so a page never repeats a row.
+const newestCollectionFirst = [
+  { updatedAt: "desc" },
+  { name: "asc" },
+  { id: "asc" },
+] satisfies Prisma.CollectionOrderByWithRelationInput[];
+
 /**
  * Every collection of the signed-in user, for the user session. Collections
  * are few next to items, so all of them load up front.
- *
- * Pulls one join row per item (just its type) and tallies in JS: Prisma's
- * `_count` can't group by a relation's field. Move to a raw `GROUP BY` if
- * collections grow to hundreds of items.
  */
 export const getSessionCollections = async (): Promise<SessionCollection[]> => {
   const userId = await requireCurrentUserId();
   const collections = await prisma.collection.findMany({
     where: { userId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      description: true,
-      isFavorite: true,
-      updatedAt: true,
-      items: {
-        select: {
-          item: {
-            select: { type: { select: { id: true, name: true, label: true, icon: true, color: true } } },
-          },
-        },
-      },
-    },
+    select: { ...collectionCardSelect, updatedAt: true },
   });
 
-  return collections.map(({ items, ...collection }) => ({
-    ...collection,
-    itemCount: items.length,
-    types: rankTypesByUse(items.map(({ item }) => item.type)),
-  }));
+  return collections.map(({ updatedAt, ...collection }) => ({ ...toCollectionSummary(collection), updatedAt }));
+};
+
+/**
+ * One page of the signed-in user's collections as cards, newest first, for
+ * `/collections`: at most `COLLECTIONS_PER_PAGE` plus the total. The session
+ * holds every collection for the sidebar and search; this page doesn't read
+ * it, so a long list never renders all at once. A page past the end comes
+ * back empty (`isPastLastPage`).
+ */
+export const getCollectionsPage = async (page: number = 1): Promise<Paginated<CollectionSummary>> => {
+  const userId = await requireCurrentUserId();
+  return loadPage(
+    page,
+    COLLECTIONS_PER_PAGE,
+    () => prisma.collection.count({ where: { userId } }),
+    async (skip) =>
+      (
+        await prisma.collection.findMany({
+          where: { userId },
+          orderBy: newestCollectionFirst,
+          skip,
+          take: COLLECTIONS_PER_PAGE,
+          select: collectionCardSelect,
+        })
+      ).map(toCollectionSummary),
+  );
 };
 
 /**

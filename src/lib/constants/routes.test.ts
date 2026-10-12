@@ -3,7 +3,7 @@ import { join, relative, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { collectionHref, itemTypeHref, itemTypeNameFromSegment, ROUTES } from "./routes";
+import { collectionHref, itemTypeHref, itemTypeNameFromSegment, pageHref, ROUTES } from "./routes";
 
 // Linked from the app before their pages exist. Remove an entry when its page lands.
 const NOT_BUILT_YET = new Set<string>([ROUTES.settings, ROUTES.items]);
@@ -72,5 +72,16 @@ describe("route builders", () => {
   it("R7: a segment that is not a plural type route reads as no type", () => {
     expect(itemTypeNameFromSegment("snippet")).toBeNull();
     expect(itemTypeNameFromSegment("s")).toBeNull();
+  });
+});
+
+describe("page links (pageHref, P6)", () => {
+  it("P6: a later page sets the page param", () => {
+    expect(pageHref("/items/snippets", 2)).toBe("/items/snippets?page=2");
+    expect(pageHref(collectionHref("react-patterns"), 3)).toBe("/collections/react-patterns?page=3");
+  });
+
+  it("P6: page 1 is the bare path, so the first page has one URL", () => {
+    expect(pageHref("/collections", 1)).toBe("/collections");
   });
 });
