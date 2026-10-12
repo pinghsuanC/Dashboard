@@ -1,20 +1,17 @@
-"use client";
-
-import { useMemo } from "react";
-
 import { CollectionCard } from "@/components/collections/CollectionCard";
-import { useUserSession } from "@/components/session/UserSessionProvider";
-import { selectRecentCollections } from "@/lib/session/session-selectors";
+import { Pagination } from "@/components/shared/Pagination";
+import { ROUTES } from "@/lib/constants/routes";
+import type { CollectionSummary } from "@/types/collections";
+import type { Paginated } from "@/types/pagination";
 
 /**
- * Every collection, newest first, from the user session: all of them are
- * already loaded there, so the page needs no query and a new collection shows
- * up as soon as the session has it.
+ * One page of collection cards, newest first, with the total across every
+ * page and the page links. Server-rendered from `getCollectionsPage()`, not
+ * the user session: the session holds every collection, and this page only
+ * ever shows one page of them. A new or edited collection shows up when the
+ * save refreshes the route.
  */
-export const CollectionList = () => {
-  const { collections } = useUserSession();
-  const cards = useMemo(() => selectRecentCollections(collections, collections.length), [collections]);
-
+export const CollectionList = ({ rows: cards, total, page, pageCount }: Paginated<CollectionSummary>) => {
   if (cards.length === 0) {
     return (
       <p className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
@@ -26,13 +23,14 @@ export const CollectionList = () => {
   return (
     <section className="flex flex-col gap-3">
       <p className="text-muted-foreground">
-        {cards.length} {cards.length === 1 ? "collection" : "collections"}
+        {total} {total === 1 ? "collection" : "collections"}
       </p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((collection) => (
           <CollectionCard key={collection.id} collection={collection} />
         ))}
       </div>
+      <Pagination path={ROUTES.collections} page={page} pageCount={pageCount} />
     </section>
   );
 };

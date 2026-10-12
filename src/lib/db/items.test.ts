@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
-import { SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
+import { ITEMS_PER_PAGE, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
 import { requireCurrentUserId } from "@/services/auth/session";
-import { db, resetDb } from "@/test/fake-prisma";
+import { db, fakePrisma, resetDb } from "@/test/fake-prisma";
 
 import {
   createItem,
@@ -46,10 +46,11 @@ describe("dashboard recent items, fetched per visit (D3)", () => {
   it("breaks ties on the update time by title", async () => {
     db.items.push(
       { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", updatedAt: day(3) },
-      { id: "alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", updatedAt: day(3) },
+      // Its id sorts after "beta", so only the title can put it first.
+      { id: "z-alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", updatedAt: day(3) },
     );
 
-    expect((await getRecentItems()).map((item) => item.id)).toEqual(["alpha", "beta"]);
+    expect((await getRecentItems()).map((item) => item.id)).toEqual(["z-alpha", "beta"]);
   });
 
   it("never includes another user's items", async () => {
@@ -87,40 +88,24 @@ describe("items list view by type (/items/[type])", () => {
       { id: "note", userId: "ada", typeId: "t-note", title: "Note", updatedAt: day(2) },
     );
 
-    expect((await getItemsByType("t-snippet")).map((item) => item.id)).toEqual(["snip"]);
+    expect((await getItemsByType("t-snippet")).rows.map((item) => item.id)).toEqual(["snip"]);
   });
 
-  it("never includes another user's items of that type", async () => {
+  it("lists newest first, title breaking update-time ties", async () => {
     db.items.push(
-      { id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1) },
-      { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", updatedAt: day(9) },
+      { id: "old", userId: "ada", typeId: "t-note", title: "Old", updatedAt: day(1) },
+      { id: "beta", userId: "ada", typeId: "t-note", title: "Beta", updatedAt: day(2) },
+      // Its id sorts after "beta", so only the title can put it first.
+      { id: "z-alpha", userId: "ada", typeId: "t-note", title: "Alpha", updatedAt: day(2) },
     );
 
-    expect((await getItemsByType("t-snippet")).map((item) => item.id)).toEqual(["mine"]);
-  });
-
-  it("lists every matching item, newest first, title breaking ties", async () => {
-    for (let n = 1; n <= 12; n++) {
-      db.items.push({ id: `i${n}`, userId: "ada", typeId: "t-note", title: `Item ${n}`, updatedAt: day(n) });
-    }
-    db.items.push({ id: "a12", userId: "ada", typeId: "t-note", title: "A tie", updatedAt: day(12) });
-
-    const ids = (await getItemsByType("t-note")).map((item) => item.id);
-
-    expect(ids).toHaveLength(13);
-    expect(ids.slice(0, 3)).toEqual(["a12", "i12", "i11"]);
-  });
-
-  it("returns an empty list when the user has none of that type", async () => {
-    db.items.push({ id: "snip", userId: "ada", typeId: "t-snippet", title: "Snip", updatedAt: day(1) });
-
-    expect(await getItemsByType("t-note")).toEqual([]);
+    expect((await getItemsByType("t-note")).rows.map((item) => item.id)).toEqual(["z-alpha", "beta", "old"]);
   });
 
   it("carries the type each card colours its border with, and leaves bodies out", async () => {
     db.items.push({ id: "n", userId: "ada", typeId: "t-note", title: "N", content: "secret body", updatedAt: day(1) });
 
-    const [item] = await getItemsByType("t-note");
+    const [item] = (await getItemsByType("t-note")).rows;
 
     expect(item.type).toEqual({ id: "t-note", name: "note", label: "Notes", icon: "StickyNote", color: "#fde047" });
     expect(JSON.stringify(item)).not.toContain("secret body");
@@ -138,7 +123,7 @@ describe("image gallery: whether a card has a stored file to show", () => {
       { id: "failed", userId: "ada", typeId: "t-image", title: "Failed", updatedAt: day(1) },
     );
 
-    const items = await getItemsByType("t-image");
+    const items = (await getItemsByType("t-image")).rows;
 
     expect(items.map(({ id, hasFile }) => ({ id, hasFile }))).toEqual([
       { id: "shown", hasFile: true },
@@ -155,7 +140,7 @@ describe("image gallery: whether a card has a stored file to show", () => {
   it("G2: never sends the storage key to the browser", async () => {
     db.items.push({ id: "shown", userId: "ada", typeId: "t-image", title: "Shown", fileKey: "users/ada/a.png", updatedAt: day(1) });
 
-    const [item] = await getItemsByType("t-image");
+    const [item] = (await getItemsByType("t-image")).rows;
 
     expect(item).not.toHaveProperty("fileKey");
     expect(JSON.stringify(item)).not.toContain("users/ada/a.png");
@@ -180,7 +165,7 @@ describe("file list: each row's file name, size and upload date (FL2)", () => {
       updatedAt: day(4),
     });
 
-    const [item] = await getItemsByType("t-file");
+    const [item] = (await getItemsByType("t-file")).rows;
 
     expect(item).toMatchObject({ fileName: "spec.pdf", fileSize: 2048, createdAt: day(3), hasFile: true });
   });
@@ -188,7 +173,7 @@ describe("file list: each row's file name, size and upload date (FL2)", () => {
   it("FL2: an item whose upload failed lists with no name or size", async () => {
     db.items.push({ id: "failed", userId: "ada", typeId: "t-file", title: "Failed", createdAt: day(1), updatedAt: day(1) });
 
-    const [item] = await getItemsByType("t-file");
+    const [item] = (await getItemsByType("t-file")).rows;
 
     expect(item).toMatchObject({ fileName: null, fileSize: null, createdAt: day(1), hasFile: false });
   });
@@ -196,7 +181,7 @@ describe("file list: each row's file name, size and upload date (FL2)", () => {
   it("FL2: the row data still never carries the storage key", async () => {
     db.items.push({ id: "doc", userId: "ada", typeId: "t-file", title: "Spec", fileKey: "users/ada/doc.pdf", fileName: "spec.pdf", updatedAt: day(1) });
 
-    const [item] = await getItemsByType("t-file");
+    const [item] = (await getItemsByType("t-file")).rows;
 
     expect(item).not.toHaveProperty("fileKey");
     expect(JSON.stringify(item)).not.toContain("users/ada/doc.pdf");
@@ -818,7 +803,8 @@ describe("collection page items (getCollectionItems, CP3)", () => {
       { id: "old", userId: "ada", typeId: "t-snippet", title: "Old", collectionIds: ["c-ada"], updatedAt: day(1) },
       { id: "new", userId: "ada", typeId: "t-snippet", title: "New", collectionIds: ["c-ada", "c-other"], updatedAt: day(5) },
       { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", collectionIds: ["c-ada"], updatedAt: day(3) },
-      { id: "alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", collectionIds: ["c-ada"], updatedAt: day(3) },
+      // Its id sorts after "beta", so only the title can put it first.
+      { id: "z-alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", collectionIds: ["c-ada"], updatedAt: day(3) },
       { id: "elsewhere", userId: "ada", typeId: "t-snippet", title: "Elsewhere", collectionIds: ["c-other"], updatedAt: day(9) },
       { id: "loose", userId: "ada", typeId: "t-snippet", title: "Loose", updatedAt: day(9) },
       { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", collectionIds: ["c-bob"], updatedAt: day(9) },
@@ -826,18 +812,18 @@ describe("collection page items (getCollectionItems, CP3)", () => {
   });
 
   it("CP3: returns the collection's items, newest first, title breaking ties", async () => {
-    expect((await getCollectionItems("c-ada")).map((item) => item.id)).toEqual(["new", "alpha", "beta", "old"]);
+    expect((await getCollectionItems("c-ada")).rows.map((item) => item.id)).toEqual(["new", "z-alpha", "beta", "old"]);
   });
 
   it("CP3: an item in several collections shows in each of them", async () => {
-    expect((await getCollectionItems("c-other")).map((item) => item.id)).toEqual(["elsewhere", "new"]);
+    expect((await getCollectionItems("c-other")).rows.map((item) => item.id)).toEqual(["elsewhere", "new"]);
   });
 
   it("CP4: another user's collection id lists nothing, even with its exact id", async () => {
-    expect(await getCollectionItems("c-bob")).toEqual([]);
+    expect((await getCollectionItems("c-bob")).rows).toEqual([]);
     // Bob, who owns it, gets his item: the empty list above is the user scope.
     vi.mocked(requireCurrentUserId).mockResolvedValue("bob");
-    expect((await getCollectionItems("c-bob")).map((item) => item.id)).toEqual(["bobs"]);
+    expect((await getCollectionItems("c-bob")).rows.map((item) => item.id)).toEqual(["bobs"]);
   });
 
   it("CP3: carries what the item cards show, without bodies or the storage key", async () => {
@@ -853,11 +839,131 @@ describe("collection page items (getCollectionItems, CP3)", () => {
       updatedAt: day(20),
     });
 
-    const [item] = await getCollectionItems("c-ada");
+    const [item] = (await getCollectionItems("c-ada")).rows;
 
     expect(item).toMatchObject({ id: "file", title: "With file", hasFile: true, fileName: "x.png", type: { id: "t-snippet", color: "#3b82f6" } });
     expect(item).not.toHaveProperty("content");
     expect(item).not.toHaveProperty("fileKey");
+  });
+});
+
+describe("paginated item lists (getItemsByType, getCollectionItems, P1-P3 P7 P8)", () => {
+  // `n` items of Ada's, one day apart, i1 oldest; all snippets, all in c-ada.
+  const seed = (n: number) => {
+    for (let i = 1; i <= n; i++) {
+      db.items.push({ id: `i${i}`, userId: "ada", typeId: "t-snippet", title: `Item ${i}`, collectionIds: ["c-ada"], updatedAt: day(i) });
+    }
+  };
+  const ids = (page: { rows: { id: string }[] }) => page.rows.map((item) => item.id);
+  // i{from} down to i{to}, the newest-first order the loaders use.
+  const newest = (from: number, to: number) => Array.from({ length: from - to + 1 }, (_, k) => `i${from - k}`);
+
+  beforeEach(() => {
+    db.collections.push({ id: "c-ada", userId: "ada", name: "Ada's", slug: "adas" });
+  });
+  // Puts back the query P2 spies on.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const loaders = [
+    ["type page", (page?: number) => getItemsByType("t-snippet", page)],
+    ["collection page", (page?: number) => getCollectionItems("c-ada", page)],
+  ] as const;
+
+  for (const [name, load] of loaders) {
+    describe(name, () => {
+      it("P1: page 1 is the newest ITEMS_PER_PAGE items, with the total and page count", async () => {
+        seed(50);
+
+        const page = await load(1);
+
+        expect(ids(page)).toEqual(newest(50, 50 - ITEMS_PER_PAGE + 1));
+        expect(page).toMatchObject({ page: 1, pageCount: 3, total: 50 });
+      });
+
+      it("P1: no page asked for is page 1", async () => {
+        seed(30);
+
+        expect(ids(await load())).toEqual(newest(30, 30 - ITEMS_PER_PAGE + 1));
+      });
+
+      it("P1: a later page carries on where the one before stopped, and the last holds the rest", async () => {
+        seed(50);
+
+        expect(ids(await load(2))).toEqual(newest(50 - ITEMS_PER_PAGE, 50 - 2 * ITEMS_PER_PAGE + 1));
+        const last = await load(3);
+        expect(ids(last)).toEqual(newest(50 - 2 * ITEMS_PER_PAGE, 1));
+        expect(last.page).toBe(3);
+      });
+
+      it("P2: only one page of rows is read from the database, however many items there are", async () => {
+        seed(60);
+        const findMany = vi.spyOn(fakePrisma.item, "findMany");
+
+        await load(2);
+
+        const read = await Promise.all(findMany.mock.results.map((result) => result.value));
+        expect(read.length).toBeGreaterThan(0);
+        for (const rows of read) expect(rows.length).toBeLessThanOrEqual(ITEMS_PER_PAGE);
+      });
+
+      it("P3: a page past the end comes back as asked, with no rows and one read, for the page to redirect", async () => {
+        seed(ITEMS_PER_PAGE + 1);
+        const findMany = vi.spyOn(fakePrisma.item, "findMany");
+
+        const page = await load(5);
+
+        expect(page).toEqual({ rows: [], page: 5, pageCount: 2, total: ITEMS_PER_PAGE + 1 });
+        expect(findMany).toHaveBeenCalledTimes(1);
+      });
+
+      it("P3: nothing to list is page 1 of 1 with no rows; a later page of it is past the end", async () => {
+        expect(await load(1)).toEqual({ rows: [], page: 1, pageCount: 1, total: 0 });
+        expect(await load(3)).toEqual({ rows: [], page: 3, pageCount: 1, total: 0 });
+      });
+
+      it("P7: another user's items are neither listed nor counted", async () => {
+        seed(3);
+        for (let i = 1; i <= 30; i++) {
+          db.items.push({ id: `b${i}`, userId: "bob", typeId: "t-snippet", title: `Bob ${i}`, collectionIds: ["c-ada"], updatedAt: day(i) });
+        }
+
+        const page = await load(1);
+
+        expect(ids(page)).toEqual(["i3", "i2", "i1"]);
+        expect(page).toMatchObject({ pageCount: 1, total: 3 });
+      });
+
+      it("P8: items updated at the same moment with the same title split across pages without repeats or gaps", async () => {
+        for (let i = 1; i <= 30; i++) {
+          db.items.push({ id: `same-${String(i).padStart(2, "0")}`, userId: "ada", typeId: "t-snippet", title: "Same", collectionIds: ["c-ada"], updatedAt: day(1) });
+        }
+        // Stored out of id order, so only an id tie-break can make the pages agree.
+        db.items.reverse();
+
+        const both = [...ids(await load(1)), ...ids(await load(2))];
+
+        expect(both).toHaveLength(30);
+        expect(new Set(both).size).toBe(30);
+        expect(both).toEqual([...both].sort());
+      });
+    });
+  }
+
+  it("P7: the collection page counts only that collection's items", async () => {
+    seed(5);
+    db.items.push({ id: "loose", userId: "ada", typeId: "t-snippet", title: "Loose", updatedAt: day(9) });
+
+    expect(await getCollectionItems("c-ada")).toMatchObject({ total: 5 });
+  });
+
+  it("P7: the type page counts only that type's items", async () => {
+    seed(5);
+    db.itemTypes.push({ id: "t-note", name: "note", label: "Notes", icon: "StickyNote", color: "#fde047", isSystem: true, userId: null });
+    db.items.push({ id: "note", userId: "ada", typeId: "t-note", title: "Note", updatedAt: day(9) });
+
+    expect(await getItemsByType("t-snippet")).toMatchObject({ total: 5 });
   });
 });
 
@@ -866,11 +972,12 @@ describe("global search items, loaded with the session (getSearchItems, GS1)", (
     db.items.push(
       { id: "old", userId: "ada", typeId: "t-snippet", title: "Old", updatedAt: day(1) },
       { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", updatedAt: day(3) },
-      { id: "alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", updatedAt: day(3) },
+      // Its id sorts after "beta", so only the title can put it first.
+      { id: "z-alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", updatedAt: day(3) },
       { id: "new", userId: "ada", typeId: "t-snippet", title: "New", isPinned: true, updatedAt: day(5) },
     );
 
-    expect((await getSearchItems()).map((item) => item.id)).toEqual(["new", "alpha", "beta", "old"]);
+    expect((await getSearchItems()).map((item) => item.id)).toEqual(["new", "z-alpha", "beta", "old"]);
   });
 
   it("GS1: never includes another user's items", async () => {

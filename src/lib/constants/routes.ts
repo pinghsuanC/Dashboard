@@ -60,6 +60,13 @@ export const itemTypeHref = (typeName: string): string => `${ROUTES.items}/${typ
 export const itemTypeNameFromSegment = (segment: string): string | null =>
   segment.length > 1 && segment.endsWith("s") ? segment.slice(0, -1) : null;
 
+/** The search param a paginated listing reads its page from: `/items/snippets?page=2`. */
+export const PAGE_PARAM = "page";
+
+/** `path` at one page: `/items/snippets?page=2`. Page 1 is the bare path, so the first page has one URL. */
+export const pageHref = (path: string, page: number): string =>
+  page > 1 ? `${path}?${new URLSearchParams({ [PAGE_PARAM]: String(page) })}` : path;
+
 /**
  * One-shot query flags: an action redirects with one and the page it lands on
  * shows a toast or notice, then drops it from the URL.

@@ -22,15 +22,19 @@ export const RESET_RESEND_COOLDOWN_MS = 2 * MINUTE_MS;
 // ─── Lists ───
 
 /** Recent items on the dashboard. */
-export const RECENT_ITEM_LIMIT = 10;
+export const DASHBOARD_RECENT_ITEMS_LIMIT = 10;
 /** Items the search palette loads with the session, newest first. Bounds the page load. */
 export const SEARCH_ITEM_LIMIT = 50;
 /** Collection cards on the dashboard. */
-export const RECENT_COLLECTION_LIMIT = 6;
+export const DASHBOARD_COLLECTIONS_LIMIT = 6;
 /** Placeholder cards an item grid shows while its items load. */
 export const ITEM_SKELETON_COUNT = 6;
 /** Non-favourite collections in the sidebar. */
 export const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
+/** Items per page on a type page and a collection page: a multiple of 3, so full pages fill the 3-column grids. */
+export const ITEMS_PER_PAGE = 21;
+/** Collection cards per page on `/collections`: a multiple of 3, like `ITEMS_PER_PAGE`. */
+export const COLLECTIONS_PER_PAGE = 21;
 
 // ─── Items ───
 

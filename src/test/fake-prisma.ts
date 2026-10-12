@@ -136,6 +136,13 @@ const compareBy = (orderBy: OrderBy) => (a: object, b: object) => {
   return 0;
 };
 
+type CollectionWhere = { userId?: string; id?: { in: string[] } };
+
+// An absent filter matches every row, as in Prisma.
+const matchesCollection = (where?: CollectionWhere) => (row: CollectionRow) =>
+  (where?.userId === undefined || row.userId === where.userId) &&
+  (where?.id === undefined || where.id.in.includes(row.id));
+
 const findUser = (id: string) => db.users.find((user) => user.id === id);
 
 // Column defaults the schema fills in, so a row read back looks like Postgres's.
@@ -155,6 +162,22 @@ const applyUserData = (user: UserRow, data: UserData) => {
     }
   }
 };
+
+type ItemWhere = {
+  userId: string;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  typeId?: string;
+  collections?: { some: { collectionId: string } };
+};
+
+// The item filters the loaders use; one left out matches every row, as in Prisma.
+const matchesItem = (where: ItemWhere) => (row: ItemRow) =>
+  row.userId === where.userId &&
+  (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned) &&
+  (where.isFavorite === undefined || Boolean(row.isFavorite) === where.isFavorite) &&
+  (where.typeId === undefined || row.typeId === where.typeId) &&
+  (where.collections === undefined || Boolean(row.collectionIds?.includes(where.collections.some.collectionId)));
 
 // The type slice items carry, as the item and collection selects nest it.
 const rowType = ({ id, name, label, icon, color }: ItemTypeRow) => ({ id, name, label, icon, color });
@@ -383,37 +406,27 @@ export const fakePrisma = {
      * Returns rows in the shape the item select asks for: the type and tag
      * relations nested as Prisma nests them. Honours `where` (userId,
      * isPinned, typeId, and `collections: { some: { collectionId } }`, read
-     * from the item's `collectionIds`), `orderBy`, `take`, and top-level
-     * `select` keys, so a field the code doesn't select never comes back.
+     * from the item's `collectionIds`), `orderBy`, `skip`, `take`, and
+     * top-level `select` keys, so a field the code doesn't select never comes back.
      */
     findMany: ({
       where,
       orderBy = [],
+      skip = 0,
       take,
       select,
     }: {
-      where: {
-        userId: string;
-        isPinned?: boolean;
-        typeId?: string;
-        collections?: { some: { collectionId: string } };
-      };
+      where: ItemWhere;
       orderBy?: OrderBy;
+      skip?: number;
       take?: number;
       select: ItemSelect;
     }) =>
       query(() =>
         db.items
-          .filter(
-            (row) =>
-              row.userId === where.userId &&
-              (where.isPinned === undefined || Boolean(row.isPinned) === where.isPinned) &&
-              (where.typeId === undefined || row.typeId === where.typeId) &&
-              (where.collections === undefined ||
-                Boolean(row.collectionIds?.includes(where.collections.some.collectionId))),
-          )
+          .filter(matchesItem(where))
           .sort(compareBy(orderBy))
-          .slice(0, take ?? Infinity)
+          .slice(skip, take === undefined ? undefined : skip + take)
           .map((row) => shapeItem(row, select)),
       ),
     // Only the owner-scoped lookup by id the detail view uses.
@@ -511,15 +524,8 @@ export const fakePrisma = {
         }
         return [...counts].map(([typeId, all]) => ({ typeId, _count: { _all: all } }));
       }),
-    count: ({ where }: { where: { userId: string; isFavorite?: boolean } }) =>
-      query(
-        () =>
-          db.items.filter(
-            (row) =>
-              row.userId === where.userId &&
-              (where.isFavorite === undefined || Boolean(row.isFavorite) === where.isFavorite),
-          ).length,
-      ),
+    // The same filters as `findMany`, plus isFavorite.
+    count: ({ where }: { where: ItemWhere }) => query(() => db.items.filter(matchesItem(where)).length),
     // All of a user's items (account delete), or one by `{ id, userId }`
     // (item delete). Tag and collection links live on the row, so they go
     // with it, as the cascade drops them; the tags and collections stay.
@@ -564,15 +570,24 @@ export const fakePrisma = {
      * Membership comes from the fake items' `collectionIds`; `items` returns
      * one join row per member with its type, as the collection select nests it.
      */
-    findMany: ({ where, select }: { where?: { userId?: string; id?: { in: string[] } }; select?: Select }) =>
+    findMany: ({
+      where,
+      orderBy = [],
+      skip = 0,
+      take,
+      select,
+    }: {
+      where?: CollectionWhere;
+      orderBy?: OrderBy;
+      skip?: number;
+      take?: number;
+      select?: Select;
+    }) =>
       query(() =>
         db.collections
-          // An absent filter matches every row, as in Prisma.
-          .filter(
-            (row) =>
-              (where?.userId === undefined || row.userId === where.userId) &&
-              (where?.id === undefined || where.id.in.includes(row.id)),
-          )
+          .filter(matchesCollection(where))
+          .sort(compareBy(orderBy))
+          .slice(skip, take === undefined ? undefined : skip + take)
           .map((row) =>
             pick(
               {
@@ -592,6 +607,7 @@ export const fakePrisma = {
             ),
           ),
       ),
+    count: ({ where }: { where?: CollectionWhere }) => query(() => db.collections.filter(matchesCollection(where)).length),
     // Only the lookup on the `[userId, slug]` unique the collection page uses.
     findUnique: ({
       where,
