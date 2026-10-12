@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
-import { RECENT_ITEM_LIMIT } from "@/lib/constants/limits";
+import { RECENT_ITEM_LIMIT, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
 import { slugify } from "@/lib/helpers/slugify";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
@@ -80,6 +80,23 @@ export const getRecentItems = async (
     where: { userId },
     orderBy: newestFirst,
     take: limit,
+    select: itemSummarySelect,
+  });
+  return items.map(toItemSummary);
+};
+
+/**
+ * The user's items for the search palette, newest first: the card fields it
+ * matches on, never bodies. Loaded with the user session, so search costs no
+ * request per keystroke; capped so a large library keeps the page load small,
+ * at the cost of not finding the oldest items past the cap.
+ */
+export const getSearchItems = async (): Promise<ItemSummary[]> => {
+  const userId = await requireCurrentUserId();
+  const items = await prisma.item.findMany({
+    where: { userId },
+    orderBy: newestFirst,
+    take: SEARCH_ITEM_LIMIT,
     select: itemSummarySelect,
   });
   return items.map(toItemSummary);

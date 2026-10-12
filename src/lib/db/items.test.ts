@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
+import { SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
@@ -13,6 +14,7 @@ import {
   getItemTypeName,
   getItemsByType,
   getRecentItems,
+  getSearchItems,
   setItemFile,
   updateItem,
 } from "./items";
@@ -856,5 +858,68 @@ describe("collection page items (getCollectionItems, CP3)", () => {
     expect(item).toMatchObject({ id: "file", title: "With file", hasFile: true, fileName: "x.png", type: { id: "t-snippet", color: "#3b82f6" } });
     expect(item).not.toHaveProperty("content");
     expect(item).not.toHaveProperty("fileKey");
+  });
+});
+
+describe("global search items, loaded with the session (getSearchItems, GS1)", () => {
+  it("GS1: returns every item of the user, newest first, title breaking ties", async () => {
+    db.items.push(
+      { id: "old", userId: "ada", typeId: "t-snippet", title: "Old", updatedAt: day(1) },
+      { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", updatedAt: day(3) },
+      { id: "alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", updatedAt: day(3) },
+      { id: "new", userId: "ada", typeId: "t-snippet", title: "New", isPinned: true, updatedAt: day(5) },
+    );
+
+    expect((await getSearchItems()).map((item) => item.id)).toEqual(["new", "alpha", "beta", "old"]);
+  });
+
+  it("GS1: never includes another user's items", async () => {
+    db.items.push(
+      { id: "mine", userId: "ada", typeId: "t-snippet", title: "Mine", updatedAt: day(1) },
+      { id: "bobs", userId: "bob", typeId: "t-snippet", title: "Bob's", updatedAt: day(9) },
+    );
+
+    expect((await getSearchItems()).map((item) => item.id)).toEqual(["mine"]);
+  });
+
+  it("GS1: stops at the search limit, keeping the newest", async () => {
+    for (let n = 1; n <= SEARCH_ITEM_LIMIT + 2; n++) {
+      db.items.push({ id: `i${n}`, userId: "ada", typeId: "t-snippet", title: `Item ${n}`, updatedAt: new Date(Date.UTC(2026, 0, 1, 0, n)) });
+    }
+
+    const items = await getSearchItems();
+
+    expect(items).toHaveLength(SEARCH_ITEM_LIMIT);
+    expect(items[0].id).toBe(`i${SEARCH_ITEM_LIMIT + 2}`);
+    expect(items.map((item) => item.id)).not.toContain("i1");
+  });
+
+  it("GS1: carries what the item cards show (the matched fields), without bodies or the storage key", async () => {
+    db.items.push({
+      id: "img",
+      userId: "ada",
+      typeId: "t-snippet",
+      title: "Diagram",
+      description: "Auth flow",
+      content: "secret body",
+      fileKey: "users/ada/x.png",
+      fileName: "flow.png",
+      tags: ["auth"],
+      updatedAt: day(2),
+    });
+
+    const [item] = await getSearchItems();
+
+    expect(item).toMatchObject({
+      id: "img",
+      title: "Diagram",
+      description: "Auth flow",
+      fileName: "flow.png",
+      tags: ["auth"],
+      hasFile: true,
+      type: { label: "Snippet", icon: "Code" },
+    });
+    expect(JSON.stringify(item)).not.toContain("secret body");
+    expect(JSON.stringify(item)).not.toContain("users/ada/x.png");
   });
 });

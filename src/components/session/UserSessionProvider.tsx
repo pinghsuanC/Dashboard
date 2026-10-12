@@ -26,6 +26,7 @@ interface UserSessionContextValue extends UserSession {
   setItemCounts: Setter<UserSession["itemCounts"]>;
   setPinnedItems: Setter<UserSession["pinnedItems"]>;
   setCollections: Setter<UserSession["collections"]>;
+  setSearchItems: Setter<UserSession["searchItems"]>;
   /** Reloads the whole session from the server, e.g. after a profile edit. */
   resetProfile: () => void;
   /** True while a reset is in flight. */
@@ -84,6 +85,7 @@ export const UserSessionProvider = ({ session, children }: UserSessionProviderPr
       setItemCounts: sliceSetter("itemCounts"),
       setPinnedItems: sliceSetter("pinnedItems"),
       setCollections: sliceSetter("collections"),
+      setSearchItems: sliceSetter("searchItems"),
     }),
     [sliceSetter],
   );

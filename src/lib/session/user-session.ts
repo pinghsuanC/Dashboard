@@ -5,7 +5,7 @@ import { cache } from "react";
 
 import { getSessionCollections } from "@/lib/db/collections";
 import { getSystemItemTypeDefinitions } from "@/lib/db/item-types";
-import { getItemCounts, getPinnedItems } from "@/lib/db/items";
+import { getItemCounts, getPinnedItems, getSearchItems } from "@/lib/db/items";
 import { requireCurrentUser } from "@/services/auth/session";
 import type { UserSession } from "@/types/session";
 
@@ -24,14 +24,15 @@ import type { UserSession } from "@/types/session";
  * the auth check that sends a valid token with a deleted user to sign-in.
  */
 export const getUserSession = cache(async (): Promise<UserSession> => {
-  const [user, itemTypes, itemCounts, pinnedItems, collections] = await Promise.all([
+  const [user, itemTypes, itemCounts, pinnedItems, collections, searchItems] = await Promise.all([
     requireCurrentUser(),
     getSystemItemTypeDefinitions(),
     getItemCounts(),
     getPinnedItems(),
     getSessionCollections(),
+    getSearchItems(),
   ]);
-  return { user, itemTypes, itemCounts, pinnedItems, collections };
+  return { user, itemTypes, itemCounts, pinnedItems, collections, searchItems };
 });
 
 /**

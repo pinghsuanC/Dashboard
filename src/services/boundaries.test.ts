@@ -99,6 +99,7 @@ describe("service boundaries", () => {
       "db",
       "helpers",
       "items",
+      "search",
       "session",
     ]);
     expect(root.filter((entry) => entry.isFile()).map((entry) => entry.name)).toEqual(["utils.ts"]);

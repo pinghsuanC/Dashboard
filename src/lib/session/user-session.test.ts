@@ -227,14 +227,28 @@ describe("user session: item counts, pinned items and collections (S3)", () => {
     });
   });
 
-  it("does not hold all items or recent items: the dashboard fetches those per visit", async () => {
+  it("does not hold recent items: the dashboard fetches those per visit", async () => {
     signedInAs("ada");
 
     const session = await getUserSession();
 
     expect(Object.keys(session).sort()).toEqual(
-      ["collections", "itemCounts", "itemTypes", "pinnedItems", "user"],
+      ["collections", "itemCounts", "itemTypes", "pinnedItems", "searchItems", "user"],
     );
+  });
+
+  it("GS1: holds the user's items for the search palette, newest first, never another user's", async () => {
+    signedInAs("ada");
+
+    const { searchItems } = await getUserSession();
+
+    expect(searchItems.map((item) => item.id)).toEqual(["a4", "a3", "a2", "a1"]);
+    expect(searchItems.find((item) => item.id === "a1")).toMatchObject({
+      title: "useAuth hook",
+      description: "Auth context hook",
+      tags: ["auth", "hooks", "react"],
+      type: { label: "Snippet", icon: "Code" },
+    });
   });
 
   it("leaves item bodies out", async () => {
