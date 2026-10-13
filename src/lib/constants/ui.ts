@@ -45,6 +45,9 @@ export const COLLECTION_SAVE_TOAST_ID = "collection-save-toast";
 /** Toast id for the collection page's Delete. */
 export const COLLECTION_DELETE_TOAST_ID = "collection-delete-toast";
 
+/** Toast id for a failed favourite or pin save: quick repeat clicks share one toast. */
+export const FLAG_TOAST_ID = "flag-toast";
+
 /** Toast id for a refused pick in the upload box: a second bad file replaces the first message. */
 export const FILE_PICK_TOAST_ID = "file-pick-toast";
 

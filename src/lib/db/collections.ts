@@ -179,3 +179,21 @@ export const deleteCollection = async (id: string): Promise<boolean> => {
   const { count } = await prisma.collection.deleteMany({ where: { id, userId } });
   return count > 0;
 };
+
+/**
+ * Stars or unstars one of the signed-in user's collections, writing only the
+ * flag: the name and slug stay, so the page keeps its URL. `false` when it
+ * is missing or not theirs.
+ *
+ * Unlike `setItemFlag` in `items.ts`, the update time moves: the star is
+ * pressed on the collection's own page, so no list in view reorders, and the
+ * sidebar's capped Favorites (newest first) then shows it. Known side effect:
+ * it also moves to the front of `/collections` and the dashboard cards (see
+ * "Fix sorting for items and collections" in the README).
+ */
+export const setCollectionFavorite = async (id: string, isFavorite: boolean): Promise<boolean> => {
+  const userId = await requireCurrentUserId();
+  // `updateMany`, not `update`: no match is a count of 0, not a P2025 throw.
+  const { count } = await prisma.collection.updateMany({ where: { id, userId }, data: { isFavorite } });
+  return count > 0;
+};

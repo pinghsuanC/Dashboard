@@ -28,6 +28,7 @@ describe("proxy: which paths it guards (P1)", () => {
     expect(matches("/collections/work")).toBe(true);
     expect(matches("/items/snippets")).toBe(true);
     expect(matches("/favorites")).toBe(true);
+    expect(matches("/pinned")).toBe(true);
   });
 
   it("guards the app's API routes", () => {

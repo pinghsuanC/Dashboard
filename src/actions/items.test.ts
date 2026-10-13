@@ -19,7 +19,7 @@ import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
 import { resetStorage, storage, upload } from "@/test/fake-storage";
 
-import { createItem, deleteItem, updateItem } from "./items";
+import { createItem, deleteItem, setItemFavorite, setItemPinned, updateItem } from "./items";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -580,5 +580,72 @@ describe("item collections: the actions (C5)", () => {
     }
     expect(itemRow("note").title).toBe("Standup");
     expect(resetProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("setItemFavorite and setItemPinned actions (FP7–FP11)", () => {
+  const NOT_FOUND_RESULT = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } };
+
+  beforeEach(() => {
+    db.items.push({ id: "bob-note", userId: "bob", typeId: "t-note", title: "Bob's", isFavorite: false, isPinned: false, updatedAt: day(1) });
+  });
+
+  describe.each([
+    ["setItemFavorite", setItemFavorite, "isFavorite"],
+    ["setItemPinned", setItemPinned, "isPinned"],
+  ] as const)("%s", (_, set, flag) => {
+    it("FP7: saves the value sent and refreshes the session", async () => {
+      expect(await set("note", true)).toEqual({ success: true, data: null });
+      expect(itemRow("note")[flag]).toBe(true);
+      expect(resetProfile).toHaveBeenCalledOnce();
+
+      expect(await set("note", false)).toEqual({ success: true, data: null });
+      expect(itemRow("note")[flag]).toBe(false);
+    });
+
+    it("FP7: sending the same value twice leaves it set, never flipped back", async () => {
+      await set("note", true);
+      await set("note", true);
+
+      expect(itemRow("note")[flag]).toBe(true);
+    });
+
+    it("FP8: a value that isn't a boolean is invalid and writes nothing", async () => {
+      db.down = true;
+
+      expect(await set("note", "true" as unknown as boolean)).toEqual({
+        success: false,
+        error: { message: FIELDS_INVALID },
+      });
+      expect(resetProfile).not.toHaveBeenCalled();
+    });
+
+    it("FP9: another user's item answers not found, is left unchanged, and refreshes stale lists", async () => {
+      expect(await set("bob-note", true)).toEqual(NOT_FOUND_RESULT);
+      expect(itemRow("bob-note")[flag]).toBe(false);
+      expect(resetProfile).toHaveBeenCalledOnce();
+    });
+
+    it("FP9: a missing item, or an id that isn't a string, answers not found", async () => {
+      expect(await set("gone", true)).toEqual(NOT_FOUND_RESULT);
+      db.down = true;
+      expect(await set(42 as unknown as string, true)).toEqual(NOT_FOUND_RESULT);
+    });
+
+    it("FP10: a database error answers with a retry message", async () => {
+      db.down = true;
+
+      expect(await set("note", true)).toEqual({ success: false, error: { message: SOMETHING_WENT_WRONG } });
+      expect(resetProfile).not.toHaveBeenCalled();
+    });
+
+    it("FP11: a signed-out caller is redirected to sign in, even with an invalid value, and nothing is written", async () => {
+      vi.mocked(requireCurrentUserId).mockImplementation(() => redirect("/sign-in"));
+
+      await expect(set("note", "yes" as unknown as boolean)).rejects.toMatchObject({
+        digest: expect.stringContaining("NEXT_REDIRECT"),
+      });
+      expect(itemRow("note")[flag]).toBeUndefined();
+    });
   });
 });

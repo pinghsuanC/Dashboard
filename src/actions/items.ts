@@ -18,7 +18,9 @@ import {
   createItem as saveNewItem,
   deleteItem as removeItem,
   getItemTypeName,
+  setItemFavorite as saveItemFavorite,
   setItemFile,
+  setItemPinned as saveItemPinned,
   updateItem as saveItem,
 } from "@/lib/db/items";
 import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
@@ -35,6 +37,8 @@ import type { CheckedFile } from "@/types/files";
 import type { CreatedItem, ItemDetail } from "@/types/items";
 
 const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not-found" } } as const;
+// A favourite or pin value that isn't a boolean.
+const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
 const INVALID_TYPE = { success: false, error: { message: ITEM_TYPE_INVALID } } as const;
 // A chosen collection is missing or another user's: answered alike, on the field.
 const COLLECTION_GONE = {
@@ -233,3 +237,41 @@ const fileStepFailure = (error: unknown): string => {
   console.error("File upload step failed:", error);
   return SOMETHING_WENT_WRONG;
 };
+
+/**
+ * Saves the drawer's Favorite or Pin button. The new value is sent, not
+ * flipped here, so a double click or a stale drawer can't undo the user's
+ * choice. A missing item and another user's answer alike. Both success and
+ * not-found refresh the page and session, so cards, counts, the pinned list
+ * and `/favorites` follow.
+ */
+const saveItemFlag = async (
+  save: (id: string, value: boolean) => Promise<boolean>,
+  itemId: string,
+  value: boolean,
+  label: string,
+): Promise<ActionResult<null>> => {
+  // First and outside the try: a signed-out caller is redirected to sign in
+  // whatever they send.
+  await requireCurrentUserId();
+  if (typeof itemId !== "string") return NOT_FOUND;
+  if (typeof value !== "boolean") return INVALID_VALUE;
+  try {
+    const saved = await save(itemId, value);
+    resetProfile();
+    return saved ? { success: true, data: null } : NOT_FOUND;
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    console.error(`Item ${label} failed:`, error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/** Stars or unstars one of the session user's items; see `saveItemFlag`. */
+export const setItemFavorite = async (itemId: string, isFavorite: boolean): Promise<ActionResult<null>> =>
+  saveItemFlag(saveItemFavorite, itemId, isFavorite, "favorite");
+
+/** Pins or unpins one of the session user's items; see `saveItemFlag`. */
+export const setItemPinned = async (itemId: string, isPinned: boolean): Promise<ActionResult<null>> =>
+  saveItemFlag(saveItemPinned, itemId, isPinned, "pin");

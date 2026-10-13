@@ -374,3 +374,41 @@ export const createItem = async (
   });
   return toItemDetail(item);
 };
+
+/**
+ * Writes one flag on one of the signed-in user's items, and nothing else.
+ * `false` when it is missing or not theirs: the user scope is part of both
+ * the read and the write.
+ *
+ * The update time is written back as it was. A star or pin is not an edit,
+ * so it must not move the item up the newest-first lists or across pages,
+ * and `@updatedAt` only stays put when the write sets it. Known gap: an edit
+ * saved between this read and write keeps its changes but gets the older
+ * update time back.
+ */
+const setItemFlag = async (id: string, flag: "isFavorite" | "isPinned", value: boolean): Promise<boolean> => {
+  const userId = await requireCurrentUserId();
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const item = await tx.item.findFirst({ where: { id, userId }, select: { updatedAt: true } });
+      if (!item) return false;
+      await tx.item.update({
+        where: { id, userId },
+        data: { [flag]: value, updatedAt: item.updatedAt },
+        select: { id: true },
+      });
+      return true;
+    });
+  } catch (error) {
+    // Deleted between the read and the write.
+    if (isRecordNotFound(error)) return false;
+    throw error;
+  }
+};
+
+/** Stars or unstars one of the signed-in user's items; see `setItemFlag`. */
+export const setItemFavorite = (id: string, isFavorite: boolean): Promise<boolean> =>
+  setItemFlag(id, "isFavorite", isFavorite);
+
+/** Pins or unpins one of the signed-in user's items; see `setItemFlag`. */
+export const setItemPinned = (id: string, isPinned: boolean): Promise<boolean> => setItemFlag(id, "isPinned", isPinned);

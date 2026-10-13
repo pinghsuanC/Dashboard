@@ -10,6 +10,9 @@ export interface ItemRowType {
   color: string;
 }
 
+/** One or both of the flags the drawer's Favorite and Pin buttons save. */
+export type ItemFlags = Partial<Pick<ItemSummary, "isFavorite" | "isPinned">>;
+
 /**
  * An item as list rows show it, without the body (content, url, file
  * fields). The detail view loads those on demand.

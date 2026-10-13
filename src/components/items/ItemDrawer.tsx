@@ -3,10 +3,12 @@
 import { type CSSProperties, type ReactNode, useState } from "react";
 import { Calendar, Copy, Download, FileText, Folder, Pencil, Pin, Star, Tag } from "lucide-react";
 
+import { setItemFavorite, setItemPinned } from "@/actions/items";
 import { CodeEditor } from "@/components/items/CodeEditor";
 import { ItemDeleteDialog } from "@/components/items/ItemDeleteDialog";
 import { ItemEditForm } from "@/components/items/ItemEditForm";
 import { MarkdownEditor } from "@/components/items/MarkdownEditor";
+import { FlagButton } from "@/components/shared/FlagButton";
 import { TypeIcon } from "@/components/shared/TypeIcon";
 import { ItemContentSkeleton, ItemMetaSkeleton } from "@/components/skeleton/ItemDrawerSkeleton";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +27,7 @@ import { itemFileHref } from "@/lib/constants/routes";
 import { formatBytes, formatLongDate } from "@/lib/helpers/format";
 import { copyToClipboard } from "@/lib/items/copy-to-clipboard";
 import { cn } from "@/lib/utils";
-import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
+import type { ItemDetail, ItemDrawerLoad, ItemFlags, ItemSummary } from "@/types/items";
 
 interface ItemDrawerProps {
   open: boolean;
@@ -35,6 +37,8 @@ interface ItemDrawerProps {
   load: ItemDrawerLoad;
   /** A save succeeded: show this copy from now on. */
   onSaved: (item: ItemDetail) => void;
+  /** Favorite or Pin saved: show the new value from now on. */
+  onFlagSaved: (id: string, flag: ItemFlags) => void;
   /**
    * A delete removed this item, or a save or delete found it gone: close the
    * drawer if it still shows it.
@@ -127,8 +131,8 @@ const ItemMeta = ({ detail, showCollections = true }: { detail: ItemDetail; show
  * header, actions, description and tags immediately; content, collections and
  * dates wait for `load`. Edit, once the body has loaded, swaps the action bar
  * and body for `ItemEditForm`. Delete asks first (`ItemDeleteDialog`).
- * Favorite and Pin show the item's state but stay disabled until the CRUD
- * feature wires them.
+ * Favorite and Pin save at once (`FlagButton`), from the card's summary, so
+ * they work before the body has loaded.
  *
  * Edit mode lives here, so the provider remounts the drawer (by `key`) for
  * each opened item: a new item, or the same one reopened, starts in view mode.
@@ -139,6 +143,7 @@ export const ItemDrawer = ({
   summary,
   load,
   onSaved,
+  onFlagSaved,
   onGone,
 }: ItemDrawerProps) => {
   const [editing, setEditing] = useState(false);
@@ -188,20 +193,37 @@ export const ItemDrawer = ({
         ) : (
           <>
             <div className="flex items-center gap-1 border-b px-6 pb-4">
-              <Button
+              <FlagButton
                 variant="ghost"
                 size="sm"
-                disabled
-                aria-pressed={item.isFavorite}
-                className={cn(item.isFavorite && "text-amber-400")}
+                value={item.isFavorite}
+                save={(isFavorite) => setItemFavorite(item.id, isFavorite)}
+                onSaved={(isFavorite) => onFlagSaved(item.id, { isFavorite })}
+                onGone={() => onGone(item.id)}
+                className={(on) => cn(on && "text-amber-400")}
               >
-                <Star className={cn(item.isFavorite && "fill-amber-400")} />
-                Favorite
-              </Button>
-              <Button variant="ghost" size="sm" disabled aria-pressed={item.isPinned}>
-                <Pin className={cn(item.isPinned && "fill-current")} />
-                Pin
-              </Button>
+                {(on) => (
+                  <>
+                    <Star className={cn(on && "fill-amber-400")} />
+                    {on ? "Favorited" : "Favorite"}
+                  </>
+                )}
+              </FlagButton>
+              <FlagButton
+                variant="ghost"
+                size="sm"
+                value={item.isPinned}
+                save={(isPinned) => setItemPinned(item.id, isPinned)}
+                onSaved={(isPinned) => onFlagSaved(item.id, { isPinned })}
+                onGone={() => onGone(item.id)}
+              >
+                {(on) => (
+                  <>
+                    <Pin className={cn(on && "fill-current")} />
+                    {on ? "Pinned" : "Pin"}
+                  </>
+                )}
+              </FlagButton>
               {/* Files and images have no text to copy; they get Download instead. */}
               {!isFileItemType(type.name) && (
                 <Button

@@ -14,9 +14,12 @@ import {
   getItemFile,
   getItemTypeName,
   getItemsByType,
+  getPinnedItems,
   getRecentItems,
   getSearchItems,
+  setItemFavorite,
   setItemFile,
+  setItemPinned,
   updateItem,
 } from "./items";
 
@@ -1082,5 +1085,126 @@ describe("favourite items for /favorites (getFavoriteItems)", () => {
     vi.mocked(requireCurrentUserId).mockRejectedValue(redirect);
 
     await expect(getFavoriteItems()).rejects.toBe(redirect);
+  });
+});
+
+describe("item favourite and pin flags (setItemFavorite, setItemPinned)", () => {
+  beforeEach(() => {
+    db.items.push(
+      { id: "a1", userId: "ada", typeId: "t-snippet", title: "useAuth", content: "body", isFavorite: false, isPinned: false, updatedAt: day(1), tags: ["react"] },
+      { id: "b1", userId: "bob", typeId: "t-snippet", title: "Bob's", isFavorite: false, isPinned: false, updatedAt: day(1) },
+    );
+  });
+  const row = (id: string) => db.items.find((item) => item.id === id)!;
+
+  it.each([
+    ["setItemFavorite", setItemFavorite, "isFavorite"],
+    ["setItemPinned", setItemPinned, "isPinned"],
+  ] as const)("FP1: %s sets the flag on and off on the user's item and answers true", async (_, set, flag) => {
+    expect(await set("a1", true)).toBe(true);
+    expect(row("a1")[flag]).toBe(true);
+    expect(await set("a1", false)).toBe(true);
+    expect(row("a1")[flag]).toBe(false);
+  });
+
+  it.each([
+    ["setItemFavorite", setItemFavorite, "isFavorite", "isPinned"],
+    ["setItemPinned", setItemPinned, "isPinned", "isFavorite"],
+  ] as const)("FP2: %s changes only its own flag, not the other one or the content", async (_, set, flag, other) => {
+    const before = { ...row("a1") };
+
+    await set("a1", true);
+
+    expect(row("a1")).toEqual({ ...before, [flag]: true });
+    expect(row("a1")[other]).toBe(false);
+  });
+
+  it.each([
+    ["setItemFavorite", setItemFavorite],
+    ["setItemPinned", setItemPinned],
+  ] as const)("FP3: %s keeps the update time, so starring or pinning doesn't reorder the newest-first lists", async (_, set) => {
+    await set("a1", true);
+
+    expect(row("a1").updatedAt).toEqual(day(1));
+  });
+
+  it("FP3: the starred item keeps its place in the recent list", async () => {
+    db.items.push({ id: "a2", userId: "ada", typeId: "t-snippet", title: "Newer", updatedAt: day(2) });
+
+    await setItemFavorite("a1", true);
+
+    expect((await getRecentItems()).map((item) => item.id)).toEqual(["a2", "a1"]);
+  });
+
+  it.each([
+    ["setItemFavorite", setItemFavorite, "isFavorite"],
+    ["setItemPinned", setItemPinned, "isPinned"],
+  ] as const)("FP4: %s answers false for another user's item and leaves it unchanged", async (_, set, flag) => {
+    expect(await set("b1", true)).toBe(false);
+    expect(row("b1")[flag]).toBe(false);
+  });
+
+  it.each([
+    ["setItemFavorite", setItemFavorite],
+    ["setItemPinned", setItemPinned],
+  ] as const)("FP4: %s answers false for a missing item", async (_, set) => {
+    expect(await set("no-such-item", true)).toBe(false);
+  });
+
+  it.each([
+    ["setItemFavorite", setItemFavorite, "isFavorite"],
+    ["setItemPinned", setItemPinned, "isPinned"],
+  ] as const)("FP5: %s sends a signed-out caller away before anything is written", async (_, set, flag) => {
+    const redirect = new Error("NEXT_REDIRECT");
+    vi.mocked(requireCurrentUserId).mockRejectedValue(redirect);
+
+    await expect(set("a1", true)).rejects.toBe(redirect);
+    expect(row("a1")[flag]).toBe(false);
+  });
+
+  it("FP6: the saved flags show in the favourites list and the drawer", async () => {
+    await setItemFavorite("a1", true);
+    await setItemPinned("a1", true);
+
+    expect((await getFavoriteItems()).map((item) => item.id)).toEqual(["a1"]);
+    expect(await getItemDetail("a1")).toMatchObject({ isFavorite: true, isPinned: true });
+  });
+});
+
+describe("pinned items for the session and /pinned (getPinnedItems)", () => {
+  beforeEach(() => {
+    db.items.push(
+      { id: "old", userId: "ada", typeId: "t-snippet", title: "Old pin", isPinned: true, updatedAt: day(1) },
+      { id: "new", userId: "ada", typeId: "t-snippet", title: "New pin", isPinned: true, updatedAt: day(3) },
+      { id: "tie", userId: "ada", typeId: "t-snippet", title: "Another pin", isPinned: true, updatedAt: day(3) },
+      { id: "loose", userId: "ada", typeId: "t-snippet", title: "Not pinned", isPinned: false, updatedAt: day(4) },
+      { id: "bob", userId: "bob", typeId: "t-snippet", title: "Bob's pin", isPinned: true, updatedAt: day(5) },
+    );
+  });
+
+  it("PN1: returns only the signed-in user's pinned items, newest first, the title breaking ties", async () => {
+    expect((await getPinnedItems()).map((item) => item.id)).toEqual(["tie", "new", "old"]);
+  });
+
+  it("PN2: returns every pinned item, not a capped list", async () => {
+    for (let n = 0; n < ITEMS_PER_PAGE + 5; n++) {
+      db.items.push({ id: `p${n}`, userId: "ada", typeId: "t-snippet", title: `Pin ${n}`, isPinned: true, updatedAt: day(2) });
+    }
+
+    expect(await getPinnedItems()).toHaveLength(ITEMS_PER_PAGE + 8);
+  });
+
+  it("PN3: an item unpinned drops out; one pinned joins", async () => {
+    await setItemPinned("old", false);
+    await setItemPinned("loose", true);
+
+    expect((await getPinnedItems()).map((item) => item.id)).toEqual(["loose", "tie", "new"]);
+  });
+
+  it("PN4: a signed-out caller is sent away before anything is read", async () => {
+    const redirect = new Error("NEXT_REDIRECT");
+    vi.mocked(requireCurrentUserId).mockRejectedValue(redirect);
+
+    await expect(getPinnedItems()).rejects.toBe(redirect);
   });
 });
