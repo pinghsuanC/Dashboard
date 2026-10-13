@@ -9,6 +9,7 @@ import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/c
 import {
   deleteCollection as removeCollection,
   createCollection as saveNewCollection,
+  setCollectionFavorite as saveCollectionFavorite,
   updateCollection as saveCollection,
 } from "@/lib/db/collections";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
@@ -22,6 +23,8 @@ const NAME_TAKEN = {
   error: { message: FIELDS_INVALID, fieldErrors: { name: COLLECTION_NAME_TAKEN } },
 } as const;
 const NOT_FOUND = { success: false, error: { message: COLLECTION_NOT_FOUND, code: "not-found" } } as const;
+// A favourite value that isn't a boolean.
+const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
 
 /**
  * Saves the New Collection dialog. Called directly, like `createItem`: the
@@ -112,6 +115,31 @@ export const deleteCollection = async (collectionId: string): Promise<ActionResu
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
     console.error("Collection delete failed:", error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
+};
+
+/**
+ * Saves the collection page's star button. The new value is sent, not flipped
+ * here, as in `setItemFavorite`; the name and slug stay. A missing collection
+ * and another user's answer alike, and both refresh the page and session, so
+ * the sidebar, cards, stats and `/favorites` follow.
+ */
+export const setCollectionFavorite = async (
+  collectionId: string,
+  isFavorite: boolean,
+): Promise<ActionResult<null>> => {
+  await requireCurrentUserId();
+  if (typeof collectionId !== "string") return NOT_FOUND;
+  if (typeof isFavorite !== "boolean") return INVALID_VALUE;
+  try {
+    const saved = await saveCollectionFavorite(collectionId, isFavorite);
+    resetProfile();
+    return saved ? { success: true, data: null } : NOT_FOUND;
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    console.error("Collection favorite failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }
 };

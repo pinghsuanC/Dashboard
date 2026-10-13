@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { File as FileIcon, Image as ImageIcon, LayoutGrid, Star } from "lucide-react";
+import { File as FileIcon, Image as ImageIcon, LayoutGrid } from "lucide-react";
 
 import { CollectionDeleteDialog } from "@/components/collections/CollectionDeleteDialog";
 import { CollectionDialog } from "@/components/collections/CollectionDialog";
+import { CollectionFavoriteButton } from "@/components/collections/CollectionFavoriteButton";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { FileListHeader, FileRow } from "@/components/items/FileRow";
 import { ImageCard } from "@/components/items/ImageCard";
@@ -117,13 +118,11 @@ const CollectionPage = async ({ params, searchParams }: PageProps<"/collections/
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <header className="flex items-start gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="font-heading flex items-center gap-2 text-3xl font-semibold tracking-tight">
-            <span className="min-w-0 truncate">{collection.name}</span>
-            {collection.isFavorite && <Star className="size-5 shrink-0 fill-amber-400 text-amber-400" />}
-          </h1>
+          <h1 className="font-heading truncate text-3xl font-semibold tracking-tight">{collection.name}</h1>
           {collection.description && <p className="text-muted-foreground">{collection.description}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <CollectionFavoriteButton collectionId={collection.id} isFavorite={collection.isFavorite} />
           <CollectionDialog collection={collection} />
           <CollectionDeleteDialog collectionId={collection.id} name={collection.name} />
         </div>

@@ -243,7 +243,7 @@ type CollectionLinks = {
  * the only nested writes the code makes.
  */
 type ItemUpdateData = {
-  [K in "title" | "description" | "content" | "language" | "url"]?: ItemRow[K];
+  [K in "title" | "description" | "content" | "language" | "url" | "isFavorite" | "isPinned" | "updatedAt"]?: ItemRow[K];
 } & {
   tags?: { deleteMany?: Record<string, never>; create: { tag: { connectOrCreate: TagConnectOrCreate } }[] };
   collections?: CollectionLinks & { deleteMany?: { collectionId: { notIn: string[] } } };
@@ -253,7 +253,7 @@ type ItemUpdateData = {
 // a stray key (such as `collectionIds`) can't pass here and fail for real.
 const ITEM_WRITE_KEYS = new Set([
   "userId", "typeId", "title", "description", "content", "language", "url",
-  "fileKey", "fileName", "fileSize", "mimeType", "isPinned", "isFavorite", "tags", "collections",
+  "fileKey", "fileName", "fileSize", "mimeType", "isPinned", "isFavorite", "updatedAt", "tags", "collections",
 ]);
 const checkItemWriteKeys = (data: object) => {
   const unknown = Object.keys(data).find((key) => !ITEM_WRITE_KEYS.has(key));
@@ -439,7 +439,8 @@ export const fakePrisma = {
         return row ? shapeItem(row, select) : null;
       }),
     // Scoped by `{ id, userId }`, as the edit writes it. Like Prisma, an
-    // `undefined` field is left alone, and `@updatedAt` moves.
+    // `undefined` field is left alone, and `@updatedAt` moves unless the
+    // write sets `updatedAt` itself.
     update: ({
       where,
       data,
@@ -469,7 +470,7 @@ export const fakePrisma = {
           const kept = (row.collectionIds ?? []).filter((id) => !collections.deleteMany || notIn?.includes(id));
           row.collectionIds = linkedCollectionIds(collections, kept);
         }
-        row.updatedAt = new Date();
+        if (fields.updatedAt === undefined) row.updatedAt = new Date();
         return shapeItem(row, select);
       }),
     // The item create's write: scalar fields plus tags as
@@ -660,6 +661,15 @@ export const fakePrisma = {
         }
         Object.assign(row, data, { updatedAt: new Date() });
         return pick(row, select);
+      }),
+    // By `{ id, userId }` (favourite toggle): no match is a count of 0. Like
+    // Prisma, `@updatedAt` moves on every matched row.
+    updateMany: ({ where, data }: { where: { id: string; userId: string }; data: Pick<CollectionRow, "isFavorite"> }) =>
+      query(() => {
+        if (typeof where.id !== "string") throw new Error("Argument `id`: Expected String");
+        const rows = db.collections.filter((collection) => collection.id === where.id && collection.userId === where.userId);
+        for (const row of rows) Object.assign(row, data, { updatedAt: new Date() });
+        return { count: rows.length };
       }),
     // One by `{ id, userId }` (collection delete). The links on the items go
     // with it, as the cascade drops `CollectionItem` rows; the items stay.

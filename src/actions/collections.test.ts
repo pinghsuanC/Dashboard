@@ -11,7 +11,7 @@ import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { createCollection, deleteCollection, updateCollection } from "./collections";
+import { createCollection, deleteCollection, setCollectionFavorite, updateCollection } from "./collections";
 
 vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
@@ -284,5 +284,71 @@ describe("deleteCollection action (X1–X4)", () => {
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
     expect(db.collections).toHaveLength(2);
+  });
+});
+
+describe("setCollectionFavorite action (CF6–CF10)", () => {
+  const collection = () => db.collections.find((row) => row.id === "c-react")!;
+
+  beforeEach(() => {
+    db.collections.push(
+      { id: "c-react", userId: "ada", name: "React", slug: "react", description: null, isFavorite: false, updatedAt },
+      { id: "c-bob", userId: "bob", name: "Bob's", slug: "bobs", description: null, isFavorite: false, updatedAt },
+    );
+  });
+
+  it("CF6: saves the value sent, keeps the name and slug, moves the update time, and refreshes the session", async () => {
+    expect(await setCollectionFavorite("c-react", true)).toEqual({ success: true, data: null });
+    expect(collection()).toMatchObject({ isFavorite: true, name: "React", slug: "react" });
+    expect(collection().updatedAt).not.toEqual(updatedAt);
+    expect(resetProfile).toHaveBeenCalledOnce();
+
+    expect(await setCollectionFavorite("c-react", false)).toEqual({ success: true, data: null });
+    expect(collection().isFavorite).toBe(false);
+  });
+
+  it("CF6: sending the same value twice leaves it set, never flipped back", async () => {
+    await setCollectionFavorite("c-react", true);
+    await setCollectionFavorite("c-react", true);
+
+    expect(collection().isFavorite).toBe(true);
+  });
+
+  it("CF7: a value that isn't a boolean is invalid and writes nothing", async () => {
+    db.down = true;
+
+    expect(await setCollectionFavorite("c-react", 1 as unknown as boolean)).toEqual({
+      success: false,
+      error: { message: FIELDS_INVALID },
+    });
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("CF8: another user's collection answers not found, is left unchanged, and refreshes stale lists", async () => {
+    expect(await setCollectionFavorite("c-bob", true)).toEqual(COLLECTION_NOT_FOUND_RESULT);
+    expect(db.collections.find((row) => row.id === "c-bob")?.isFavorite).toBe(false);
+    expect(resetProfile).toHaveBeenCalledOnce();
+  });
+
+  it("CF8: a missing collection, or an id that isn't a string, answers not found", async () => {
+    expect(await setCollectionFavorite("gone", true)).toEqual(COLLECTION_NOT_FOUND_RESULT);
+    db.down = true;
+    expect(await setCollectionFavorite(null as unknown as string, true)).toEqual(COLLECTION_NOT_FOUND_RESULT);
+  });
+
+  it("CF9: a database error answers with a retry message", async () => {
+    db.down = true;
+
+    expect(await setCollectionFavorite("c-react", true)).toEqual({ success: false, error: { message: SOMETHING_WENT_WRONG } });
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("CF10: a signed-out caller is redirected to sign in, even with an invalid value, and nothing is written", async () => {
+    vi.mocked(requireCurrentUserId).mockImplementation(() => redirect("/sign-in"));
+
+    await expect(setCollectionFavorite("c-react", "yes" as unknown as boolean)).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    expect(collection().isFavorite).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ import { type ReactNode, createContext, useCallback, useContext, useMemo, useRef
 import { ItemDrawer } from "@/components/items/ItemDrawer";
 import { signOutAndClearCache } from "@/lib/auth/sign-out-and-clear-cache";
 import { fetchItemDetail } from "@/lib/items/fetch-item-detail";
-import type { ItemDetail, ItemDrawerLoad, ItemSummary } from "@/types/items";
+import type { ItemDetail, ItemDrawerLoad, ItemFlags, ItemSummary } from "@/types/items";
 
 interface ItemDrawerContextValue {
   /** Opens the drawer on this item at once, then loads its body. */
@@ -88,6 +88,20 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
+  // Favorite or Pin saved: patch both halves, checking the id as above. The
+  // body stays loaded, or loading, as it was.
+  const handleFlagSaved = useCallback((id: string, flags: ItemFlags) => {
+    setState((current) =>
+      current?.summary.id === id
+        ? {
+            ...current,
+            summary: { ...current.summary, ...flags },
+            load: current.load.status === "ok" ? { ...current.load, item: { ...current.load.item, ...flags } } : current.load,
+          }
+        : current,
+    );
+  }, []);
+
   const handleGone = useCallback((id: string) => {
     setState((current) => (current?.summary.id === id ? { ...current, open: false } : current));
   }, []);
@@ -105,6 +119,7 @@ export const ItemDrawerProvider = ({ children }: { children: ReactNode }) => {
           summary={state.summary}
           load={state.load}
           onSaved={handleSaved}
+          onFlagSaved={handleFlagSaved}
           onGone={handleGone}
         />
       )}

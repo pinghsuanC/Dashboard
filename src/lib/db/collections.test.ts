@@ -12,6 +12,7 @@ import {
   getCollectionsPage,
   getFavoriteCollections,
   getSessionCollections,
+  setCollectionFavorite,
   updateCollection,
 } from "./collections";
 import { getItemDetail } from "./items";
@@ -400,5 +401,71 @@ describe("favourite collections for /favorites (getFavoriteCollections)", () => 
     vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
 
     await expect(getFavoriteCollections()).rejects.toBeInstanceOf(RedirectError);
+  });
+});
+
+describe("collection favourite flag (setCollectionFavorite)", () => {
+  const row = (id: string) => db.collections.find((collection) => collection.id === id)!;
+
+  it("CF1: sets the flag on and off on the user's collection and answers true", async () => {
+    expect(await setCollectionFavorite("c-ada", true)).toBe(true);
+    expect(row("c-ada").isFavorite).toBe(true);
+    expect(await setCollectionFavorite("c-ada", false)).toBe(true);
+    expect(row("c-ada").isFavorite).toBe(false);
+  });
+
+  it("CF2: changes only the flag and the update time: name, slug and description stay", async () => {
+    const { updatedAt: before, ...fields } = row("c-ada");
+
+    await setCollectionFavorite("c-ada", true);
+
+    const { updatedAt: after, ...saved } = row("c-ada");
+    expect(saved).toEqual({ ...fields, isFavorite: true });
+    expect(after!.getTime()).toBeGreaterThan(before!.getTime());
+  });
+
+  it("CF2: a starred collection becomes the newest favourite, so it reaches the sidebar's capped list", async () => {
+    db.collections.push({
+      id: "c-ada-new",
+      userId: "ada",
+      name: "Newer",
+      slug: "newer",
+      description: null,
+      isFavorite: true,
+      updatedAt: new Date("2026-02-01T00:00:00Z"),
+    });
+
+    await setCollectionFavorite("c-ada", true);
+
+    expect((await getFavoriteCollections()).map((collection) => collection.id)).toEqual(["c-ada", "c-ada-new"]);
+  });
+
+  it("CF2: its items stay in it", async () => {
+    await setCollectionFavorite("c-ada", true);
+
+    expect(db.items.find((item) => item.id === "a1")?.collectionIds).toEqual(["c-ada"]);
+  });
+
+  it("CF3: another user's collection answers false and is left unchanged", async () => {
+    expect(await setCollectionFavorite("c-bob", true)).toBe(false);
+    expect(row("c-bob").isFavorite).toBe(false);
+  });
+
+  it("CF3: a missing collection answers false", async () => {
+    expect(await setCollectionFavorite("no-such-collection", true)).toBe(false);
+  });
+
+  it("CF4: a signed-out caller is sent away before anything is written", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(setCollectionFavorite("c-ada", true)).rejects.toBeInstanceOf(RedirectError);
+    expect(row("c-ada").isFavorite).toBe(false);
+  });
+
+  it("CF5: a starred collection shows in the favourites list and the session", async () => {
+    await setCollectionFavorite("c-ada", true);
+
+    expect((await getFavoriteCollections()).map((collection) => collection.id)).toEqual(["c-ada"]);
+    expect(await getSessionCollections()).toEqual([expect.objectContaining({ id: "c-ada", isFavorite: true })]);
   });
 });

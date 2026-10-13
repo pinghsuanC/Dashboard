@@ -14,6 +14,7 @@ export const ROUTES = {
   profile: "/profile",
   collections: "/collections",
   favorites: "/favorites",
+  pinned: "/pinned",
   // Linked from the app already, not built yet (see routes.test.ts).
   settings: "/settings",
   items: "/items",

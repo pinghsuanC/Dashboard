@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Layers } from "lucide-react";
 
 import { SidebarCollectionNav } from "@/components/layout/SidebarCollectionNav";
+import { SidebarPinnedNav } from "@/components/layout/SidebarPinnedNav";
 import { SidebarTypeNav } from "@/components/layout/SidebarTypeNav";
 import { SidebarUser } from "@/components/layout/SidebarUser";
 import {
@@ -43,6 +44,7 @@ export const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent>
+        <SidebarPinnedNav />
         <SidebarTypeNav />
         <SidebarSeparator />
         <SidebarCollectionNav />
