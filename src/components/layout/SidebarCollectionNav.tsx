@@ -68,6 +68,19 @@ export const SidebarCollectionNav = () => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === ROUTES.favorites}
+                      tooltip="See all favorites"
+                      className="text-sidebar-foreground/70"
+                    >
+                      <Link href={ROUTES.favorites}>
+                        <ArrowRight />
+                        <span>See all favorites</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </>
             )}

@@ -9,6 +9,7 @@ import {
   createItem,
   deleteItem,
   getCollectionItems,
+  getFavoriteItems,
   getItemDetail,
   getItemFile,
   getItemTypeName,
@@ -1029,5 +1030,57 @@ describe("global search items, loaded with the session (getSearchItems, GS1)", (
     });
     expect(JSON.stringify(item)).not.toContain("secret body");
     expect(JSON.stringify(item)).not.toContain("users/ada/x.png");
+  });
+});
+
+describe("favourite items for /favorites (getFavoriteItems)", () => {
+  it("FV1: returns only the signed-in user's favourite items", async () => {
+    db.items.push(
+      { id: "fav", userId: "ada", typeId: "t-snippet", title: "Fav", isFavorite: true, updatedAt: day(1) },
+      { id: "plain", userId: "ada", typeId: "t-snippet", title: "Plain", isFavorite: false, updatedAt: day(2) },
+      { id: "bobs-fav", userId: "bob", typeId: "t-snippet", title: "Bob's", isFavorite: true, updatedAt: day(3) },
+    );
+
+    expect((await getFavoriteItems()).map((item) => item.id)).toEqual(["fav"]);
+  });
+
+  it("FV2: lists the most recently updated first, the title breaking ties", async () => {
+    db.items.push(
+      { id: "old", userId: "ada", typeId: "t-snippet", title: "Old", isFavorite: true, updatedAt: day(1) },
+      { id: "beta", userId: "ada", typeId: "t-snippet", title: "Beta", isFavorite: true, updatedAt: day(5) },
+      // Its id sorts after "beta", so only the title can put it first.
+      { id: "z-alpha", userId: "ada", typeId: "t-snippet", title: "Alpha", isFavorite: true, updatedAt: day(5) },
+      { id: "new", userId: "ada", typeId: "t-snippet", title: "New", isFavorite: true, updatedAt: day(9) },
+    );
+
+    expect((await getFavoriteItems()).map((item) => item.id)).toEqual(["new", "z-alpha", "beta", "old"]);
+  });
+
+  it("FV3: returns every favourite, not one page of them", async () => {
+    for (let n = 1; n <= ITEMS_PER_PAGE + 5; n++) {
+      db.items.push({ id: `f${n}`, userId: "ada", typeId: "t-snippet", title: `F ${n}`, isFavorite: true, updatedAt: day(n) });
+    }
+
+    expect(await getFavoriteItems()).toHaveLength(ITEMS_PER_PAGE + 5);
+  });
+
+  it("FV4: carries the type for the row's icon and badge, never the body or storage key", async () => {
+    db.items.push({
+      id: "f", userId: "ada", typeId: "t-snippet", title: "F", isFavorite: true, updatedAt: day(1),
+      content: "secret body", fileKey: "users/ada/x.png",
+    });
+
+    const [item] = await getFavoriteItems();
+
+    expect(item.type).toMatchObject({ name: "snippet", label: "Snippet", icon: "Code" });
+    expect(JSON.stringify(item)).not.toContain("secret body");
+    expect(JSON.stringify(item)).not.toContain("users/ada/x.png");
+  });
+
+  it("FV5: a signed-out caller is sent away before anything is read", async () => {
+    const redirect = new Error("NEXT_REDIRECT");
+    vi.mocked(requireCurrentUserId).mockRejectedValue(redirect);
+
+    await expect(getFavoriteItems()).rejects.toBe(redirect);
   });
 });

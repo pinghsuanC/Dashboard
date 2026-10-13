@@ -10,6 +10,7 @@ import {
   deleteCollection,
   getCollectionBySlug,
   getCollectionsPage,
+  getFavoriteCollections,
   getSessionCollections,
   updateCollection,
 } from "./collections";
@@ -349,5 +350,55 @@ describe("collections page, one page at a time (getCollectionsPage, P1-P3 P7 P8)
     vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
 
     await expect(getCollectionsPage(1)).rejects.toBeInstanceOf(RedirectError);
+  });
+});
+
+describe("favourite collections for /favorites (getFavoriteCollections)", () => {
+  const at = (day: number) => new Date(Date.UTC(2026, 0, day));
+
+  it("FV1: returns only the signed-in user's favourite collections", async () => {
+    db.collections.push(
+      { id: "c-fav", userId: "ada", name: "Fav", slug: "fav", description: null, isFavorite: true, updatedAt },
+      { id: "c-bob-fav", userId: "bob", name: "Bob fav", slug: "bob-fav", description: null, isFavorite: true, updatedAt },
+    );
+
+    expect((await getFavoriteCollections()).map((collection) => collection.id)).toEqual(["c-fav"]);
+  });
+
+  it("FV2: lists the most recently updated first, the name breaking ties", async () => {
+    db.collections.push(
+      { id: "c-old", userId: "ada", name: "Old", slug: "old", description: null, isFavorite: true, updatedAt: at(1) },
+      { id: "c-beta", userId: "ada", name: "Beta", slug: "beta", description: null, isFavorite: true, updatedAt: at(5) },
+      // Its id sorts after "c-beta", so only the name can put it first.
+      { id: "c-z-alpha", userId: "ada", name: "Alpha", slug: "alpha", description: null, isFavorite: true, updatedAt: at(5) },
+      { id: "c-new", userId: "ada", name: "New", slug: "new", description: null, isFavorite: true, updatedAt: at(9) },
+    );
+
+    expect((await getFavoriteCollections()).map((collection) => collection.id)).toEqual(
+      ["c-new", "c-z-alpha", "c-beta", "c-old"],
+    );
+  });
+
+  it("FV3: returns every favourite, not one page of them", async () => {
+    for (let n = 1; n <= COLLECTIONS_PER_PAGE + 5; n++) {
+      db.collections.push({ id: `c${n}`, userId: "ada", name: `C ${n}`, slug: `c-${n}`, description: null, isFavorite: true, updatedAt: at(n) });
+    }
+
+    expect(await getFavoriteCollections()).toHaveLength(COLLECTIONS_PER_PAGE + 5);
+  });
+
+  it("FV4: each row carries its item count and most-used type", async () => {
+    db.collections.push({ id: "c-fav", userId: "ada", name: "Fav", slug: "fav", description: null, isFavorite: true, updatedAt });
+    db.items.push({ id: "a2", userId: "ada", typeId: "t-note", title: "In fav", collectionIds: ["c-fav"] });
+
+    const [collection] = await getFavoriteCollections();
+
+    expect(collection).toMatchObject({ slug: "fav", itemCount: 1, types: [{ name: "note" }] });
+  });
+
+  it("FV5: a signed-out caller is sent away before anything is read", async () => {
+    vi.mocked(requireCurrentUserId).mockRejectedValue(new RedirectError("/sign-in"));
+
+    await expect(getFavoriteCollections()).rejects.toBeInstanceOf(RedirectError);
   });
 });

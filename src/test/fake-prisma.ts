@@ -136,12 +136,13 @@ const compareBy = (orderBy: OrderBy) => (a: object, b: object) => {
   return 0;
 };
 
-type CollectionWhere = { userId?: string; id?: { in: string[] } };
+type CollectionWhere = { userId?: string; id?: { in: string[] }; isFavorite?: boolean };
 
 // An absent filter matches every row, as in Prisma.
 const matchesCollection = (where?: CollectionWhere) => (row: CollectionRow) =>
   (where?.userId === undefined || row.userId === where.userId) &&
-  (where?.id === undefined || where.id.in.includes(row.id));
+  (where?.id === undefined || where.id.in.includes(row.id)) &&
+  (where?.isFavorite === undefined || Boolean(row.isFavorite) === where.isFavorite);
 
 const findUser = (id: string) => db.users.find((user) => user.id === id);
 

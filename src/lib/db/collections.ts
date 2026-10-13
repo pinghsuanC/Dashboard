@@ -98,6 +98,20 @@ export const getCollectionsPage = async (page: number = 1): Promise<Paginated<Co
 };
 
 /**
+ * Every favourite collection of the signed-in user as cards, newest first,
+ * for `/favorites`. Queried per visit; the session copy feeds only the sidebar.
+ */
+export const getFavoriteCollections = async (): Promise<CollectionSummary[]> => {
+  const userId = await requireCurrentUserId();
+  const collections = await prisma.collection.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: newestCollectionFirst,
+    select: collectionCardSelect,
+  });
+  return collections.map(toCollectionSummary);
+};
+
+/**
  * Creates a collection for the signed-in user, slugged from its name, in the
  * shape the session holds: a new collection has no items yet. Answers null
  * when the user already has a collection with that slug (`[userId, slug]`
