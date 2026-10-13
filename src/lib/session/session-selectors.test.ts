@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { SIDEBAR_FAVORITE_COLLECTION_LIMIT } from "@/lib/constants/limits";
+
 import type { SessionCollection } from "@/types/collections";
 import type { ItemRowType, ItemSummary } from "@/types/items";
 
@@ -137,20 +139,37 @@ describe("dashboard collections (D5)", () => {
 });
 
 describe("sidebar collections (D6)", () => {
-  it("lists every favorite alphabetically, whatever its update time", () => {
-    const collections = [
-      collection("zed", { name: "Zed", isFavorite: true, updatedAt: at(9) }),
+  it("FV6: lists favorites most recently updated first, not alphabetically, the name breaking ties", () => {
+    const { favorites } = selectSidebarCollections([
       collection("abe", { name: "Abe", isFavorite: true, updatedAt: at(1) }),
-      ...Array.from({ length: 6 }, (_, n) =>
-        collection(`fav${n}`, { name: `Mid ${n}`, isFavorite: true }),
-      ),
-    ];
+      collection("zed", { name: "Zed", isFavorite: true, updatedAt: at(9) }),
+      collection("beta", { name: "Beta", isFavorite: true, updatedAt: at(5) }),
+      collection("z-alpha", { name: "Alpha", isFavorite: true, updatedAt: at(5) }),
+    ]);
+
+    expect(ids(favorites)).toEqual(["zed", "z-alpha", "beta", "abe"]);
+  });
+
+  it("FV6: shows at most the 10 most recent favorites; the rest are on /favorites", () => {
+    const collections = Array.from({ length: SIDEBAR_FAVORITE_COLLECTION_LIMIT + 3 }, (_, n) =>
+      collection(`fav${n}`, { isFavorite: true, updatedAt: at(n + 1) }),
+    );
 
     const { favorites } = selectSidebarCollections(collections);
 
-    expect(favorites).toHaveLength(8);
-    expect(favorites[0].id).toBe("abe");
-    expect(favorites.at(-1)?.id).toBe("zed");
+    expect(SIDEBAR_FAVORITE_COLLECTION_LIMIT).toBe(10);
+    expect(favorites).toHaveLength(10);
+    expect(favorites[0].id).toBe("fav12");
+    expect(favorites.at(-1)?.id).toBe("fav3");
+  });
+
+  it("FV6: drops a collection un-favourited locally, before the session is reloaded", () => {
+    const { favorites } = selectSidebarCollections([
+      collection("kept", { isFavorite: true }),
+      collection("dropped", { isFavorite: false }),
+    ]);
+
+    expect(ids(favorites)).toEqual(["kept"]);
   });
 
   it("lists the 5 newest non-favorites as recents, so nothing appears twice", () => {

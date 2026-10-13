@@ -1,4 +1,8 @@
-import { DASHBOARD_COLLECTIONS_LIMIT, SIDEBAR_RECENT_COLLECTION_LIMIT } from "@/lib/constants/limits";
+import {
+  DASHBOARD_COLLECTIONS_LIMIT,
+  SIDEBAR_FAVORITE_COLLECTION_LIMIT,
+  SIDEBAR_RECENT_COLLECTION_LIMIT,
+} from "@/lib/constants/limits";
 import type {
   CollectionStats,
   CollectionSummary,
@@ -56,10 +60,14 @@ export const selectRecentCollections = (
       types,
     }));
 
-/** Every favorite (alphabetical) and the most recently updated non-favorites. */
+/**
+ * The most recently updated favorites and non-favorites, each capped. The
+ * favorites past the cap are on `/favorites`, which the sidebar links to.
+ */
 export const selectSidebarCollections = (
   collections: SessionCollection[],
   recentLimit: number = SIDEBAR_RECENT_COLLECTION_LIMIT,
+  favoriteLimit: number = SIDEBAR_FAVORITE_COLLECTION_LIMIT,
 ): SidebarCollections => {
   const toRow = ({ id, name, slug, itemCount, types }: SessionCollection): SidebarCollection => ({
     id,
@@ -72,7 +80,8 @@ export const selectSidebarCollections = (
   return {
     favorites: collections
       .filter((collection) => collection.isFavorite)
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort(newestCollectionFirst)
+      .slice(0, favoriteLimit)
       .map(toRow),
     recents: collections
       .filter((collection) => !collection.isFavorite)

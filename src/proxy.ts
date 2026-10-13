@@ -39,6 +39,7 @@ export const config = {
     "/settings/:path*",
     "/collections/:path*",
     "/items/:path*",
+    "/favorites/:path*",
     "/api/((?!auth/).*)",
   ],
 };

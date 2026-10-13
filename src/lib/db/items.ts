@@ -107,6 +107,21 @@ export const getSearchItems = async (): Promise<ItemSummary[]> => {
   return items.map(toItemSummary);
 };
 
+/**
+ * Every favourite item of the signed-in user, newest first, for `/favorites`.
+ * Fetched by the page on each visit, not held in the session. Unbounded, like
+ * the pinned list: favouriting is a deliberate act.
+ */
+export const getFavoriteItems = async (): Promise<ItemSummary[]> => {
+  const userId = await requireCurrentUserId();
+  const items = await prisma.item.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: newestFirst,
+    select: itemSummarySelect,
+  });
+  return items.map(toItemSummary);
+};
+
 /** One page of a user-scoped item listing, newest first, counted with the same filter. */
 const itemPage = (where: Prisma.ItemWhereInput, page: number): Promise<Paginated<ItemSummary>> =>
   loadPage(
