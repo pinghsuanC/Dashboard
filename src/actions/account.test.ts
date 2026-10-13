@@ -8,7 +8,7 @@ import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/sessio
 import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
 
-import { changePasswordAction, deleteAccountAction } from "./account";
+import { changePasswordAction, deleteAccountAction, updateEditorPreferences } from "./account";
 
 // Next's redirect() works by throwing; the tests read the target off the error.
 class RedirectError extends Error {
@@ -20,6 +20,9 @@ class RedirectError extends Error {
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     throw new RedirectError(url);
+  },
+  unstable_rethrow: (error: unknown) => {
+    if (error instanceof RedirectError) throw error;
   },
 }));
 // Both redirect on success, as Auth.js does from a server action.
@@ -56,8 +59,7 @@ const signedInAs = (userId: string) => {
     image: null,
     plan: "FREE",
     isPro: false,
-    preferredTheme: "dark",
-    preferredFontSize: 14,
+    editorPreferences: { fontSize: 12, tabSize: 2, wordWrap: true, minimap: false, theme: "vs-dark" },
     hasPassword: user.passwordHash !== null,
   });
 };
@@ -338,5 +340,54 @@ describe("delete account", () => {
     expect(url).toBe("/sign-in");
     expect(db.users).toHaveLength(2);
     expect(signOut).not.toHaveBeenCalled();
+  });
+});
+
+describe("editor preferences", () => {
+  const CHOSEN = { fontSize: 16, tabSize: 4, wordWrap: false, minimap: true, theme: "monokai" };
+  const stored = (id: string) => db.users.find((user) => user.id === id)?.editorPreferences;
+
+  beforeEach(async () => {
+    await addUser("ada", OLD_PASSWORD);
+    await addUser("bob", OLD_PASSWORD);
+    db.users.find((user) => user.id === "bob")!.editorPreferences = { theme: "github-dark" };
+    signedInAs("ada");
+  });
+
+  it("EP4: saves the choices on the signed-in user's row and returns them", async () => {
+    const result = await updateEditorPreferences(CHOSEN);
+
+    expect(result).toEqual({ success: true, data: CHOSEN });
+    expect(stored("ada")).toEqual(CHOSEN);
+  });
+
+  it("EP4: never stores keys outside the preferences, and leaves other users alone", async () => {
+    await updateEditorPreferences({ ...CHOSEN, userId: "bob", id: "bob" });
+
+    expect(stored("ada")).toEqual(CHOSEN);
+    expect(stored("bob")).toEqual({ theme: "github-dark" });
+  });
+
+  it("EP4: rejects an option not offered with a field error and stores nothing", async () => {
+    const result = await updateEditorPreferences({ ...CHOSEN, theme: "solarized" });
+
+    expect(result.success).toBe(false);
+    expect(!result.success && result.error.fieldErrors?.theme).toBeTruthy();
+    expect(stored("ada")).toBeUndefined();
+  });
+
+  it("EP4: sends a signed-out caller to sign in before reading the input", async () => {
+    signedOut();
+
+    expect(await redirectOf(() => updateEditorPreferences({ theme: "solarized" }))).toBe("/sign-in");
+    expect(stored("ada")).toBeUndefined();
+  });
+
+  it("EP4: answers a database failure with a message", async () => {
+    db.down = true;
+
+    const result = await updateEditorPreferences(CHOSEN);
+
+    expect(result).toEqual({ success: false, error: { message: expect.stringMatching(/something went wrong/i) } });
   });
 });

@@ -51,8 +51,7 @@ beforeEach(() => {
       passwordHash: "$2b$secret-hash",
       stripeCustomerId: "cus_secret",
       plan: "PRO",
-      preferredTheme: "dark",
-      preferredFontSize: 16,
+      editorPreferences: { fontSize: 16, theme: "monokai" },
       createdAt: day(1),
     },
     {
@@ -62,8 +61,6 @@ beforeEach(() => {
       image: "https://avatars.example/bob.png",
       passwordHash: null,
       plan: "FREE",
-      preferredTheme: "light",
-      preferredFontSize: 14,
       createdAt: day(1),
     },
   );
@@ -95,8 +92,7 @@ describe("user session: profile (S1)", () => {
       image: null,
       plan: "PRO",
       isPro: true,
-      preferredTheme: "dark",
-      preferredFontSize: 16,
+      editorPreferences: { fontSize: 16, tabSize: 2, wordWrap: true, minimap: false, theme: "monokai" },
       createdAt: day(1),
       hasPassword: true,
     });

@@ -97,6 +97,7 @@ describe("service boundaries", () => {
       "collections",
       "constants",
       "db",
+      "editor",
       "helpers",
       "items",
       "search",

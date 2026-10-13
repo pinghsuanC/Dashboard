@@ -23,8 +23,8 @@ interface UserRow {
   image?: string | null;
   plan?: "FREE" | "PRO";
   stripeCustomerId?: string | null;
-  preferredTheme?: string;
-  preferredFontSize?: number;
+  /** Stored JSON in any shape: Postgres doesn't check it. */
+  editorPreferences?: unknown;
   emailVerified?: Date | null;
   /** Prisma's default is 0; rows that leave it out read back as 0. */
   sessionVersion?: number;
@@ -156,7 +156,7 @@ const applyUserData = (user: UserRow, data: UserData) => {
   for (const [key, value] of Object.entries(data)) {
     if (value !== null && typeof value === "object" && "increment" in value) {
       const current = (withDefaults(user) as unknown as Record<string, number>)[key] ?? 0;
-      row[key] = current + value.increment;
+      row[key] = current + (value as { increment: number }).increment;
     } else {
       row[key] = value;
     }

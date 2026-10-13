@@ -2,7 +2,7 @@
  * The app's colour scheme: the class on `<html>` and the Sonner `<Toaster>`
  * theme. One value for both, because without a next-themes provider the
  * Toaster would otherwise fall back to "system" and could disagree with the
- * page. Becomes per-user once `preferredTheme` is wired up.
+ * page. The code editor's theme is separate: a per-user editor preference.
  */
 export const APP_THEME = "dark";
 
@@ -59,3 +59,9 @@ export const CODE_LANGUAGE_FALLBACK_LABEL = "plain text";
  * the rows, their headings and the loading skeleton so all three line up.
  */
 export const FILE_LIST_COLUMNS = "sm:grid sm:grid-cols-[minmax(0,1fr)_5rem_10rem] sm:items-center sm:gap-4";
+
+/**
+ * Toast id for editor preference saves. Fixed, so quick changes update one
+ * toast instead of stacking one per save.
+ */
+export const EDITOR_PREFERENCES_TOAST_ID = "editor-preferences-toast";

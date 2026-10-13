@@ -1,5 +1,7 @@
+import { parseEditorPreferences } from "@/lib/editor/editor-preferences";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
+import type { EditorPreferences } from "@/types/editor";
 
 /**
  * Deletes the signed-in user and everything they own, all or nothing. The
@@ -32,4 +34,22 @@ export const deleteAccount = async (): Promise<boolean> => {
     console.error("Deleting account failed", error);
     return false;
   }
+};
+
+/**
+ * Replaces the signed-in user's editor preferences with `preferences`, already
+ * validated by the caller, and returns them as stored. The user comes from the
+ * session, so a user only ever changes their own. Throws on a database
+ * failure, for the action to word.
+ */
+export const saveEditorPreferences = async (
+  preferences: EditorPreferences,
+): Promise<EditorPreferences> => {
+  const userId = await requireCurrentUserId();
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { editorPreferences: preferences },
+    select: { editorPreferences: true },
+  });
+  return parseEditorPreferences(user.editorPreferences);
 };

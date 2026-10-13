@@ -29,9 +29,10 @@ model User {
   stripePriceId          String?
   stripeCurrentPeriodEnd DateTime?
 
-  // Editor preferences (settings page)
-  preferredTheme    String @default("dark")
-  preferredFontSize Int    @default(14)
+  // Code editor preferences from the settings page. Read only through
+  // `parseEditorPreferences()`, which fills a missing or invalid field with
+  // its default, so `{}` means every default.
+  editorPreferences Json @default("{}")
 
   accounts    Account[]
   items       Item[]

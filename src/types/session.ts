@@ -1,5 +1,6 @@
 import type { Plan } from "@/generated/prisma/client";
 import type { SessionCollection } from "@/types/collections";
+import type { EditorPreferences } from "@/types/editor";
 import type { ItemCounts, ItemSummary, ItemTypeDefinition } from "@/types/items";
 
 /** The signed-in user's profile, safe to hand to client components. */
@@ -10,8 +11,8 @@ export interface CurrentUser {
   image: string | null;
   plan: Plan;
   isPro: boolean;
-  preferredTheme: string;
-  preferredFontSize: number;
+  /** Every field filled: a missing or invalid stored one reads as its default. */
+  editorPreferences: EditorPreferences;
   createdAt: Date;
   /** Whether the user can sign in with a password. Never the hash itself. */
   hasPassword: boolean;

@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CloseSidebarOnNavigate } from "@/components/layout/CloseSidebarOnNavigate";
 import { TopBar } from "@/components/layout/TopBar";
 import { SearchPaletteProvider } from "@/components/search/SearchPaletteProvider";
+import { EditorPreferencesProvider } from "@/components/session/EditorPreferencesProvider";
 import { UserSessionProvider } from "@/components/session/UserSessionProvider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,26 +29,28 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
 
   return (
     <UserSessionProvider session={session}>
-      <TooltipProvider>
-        {/* Above the sidebar and top bar, not just the page, so anything in
-            the shell (e.g. search results) can open the item drawer too. */}
-        <ItemDrawerProvider>
-          {/* Inside the drawer provider: picking an item opens the drawer. */}
-          <SearchPaletteProvider>
-            <SidebarProvider defaultOpen={defaultOpen}>
-              <AppSidebar />
-              <CloseSidebarOnNavigate />
+      <EditorPreferencesProvider>
+        <TooltipProvider>
+          {/* Above the sidebar and top bar, not just the page, so anything in
+              the shell (e.g. search results) can open the item drawer too. */}
+          <ItemDrawerProvider>
+            {/* Inside the drawer provider: picking an item opens the drawer. */}
+            <SearchPaletteProvider>
+              <SidebarProvider defaultOpen={defaultOpen}>
+                <AppSidebar />
+                <CloseSidebarOnNavigate />
 
-              <SidebarInset>
-                <TopBar />
-                {/* A plain div, not <main>: SidebarInset already renders <main>, and
-                    nesting a second one is invalid HTML and a duplicate landmark. */}
-                <div className="flex-1 p-6">{children}</div>
-              </SidebarInset>
-            </SidebarProvider>
-          </SearchPaletteProvider>
-        </ItemDrawerProvider>
-      </TooltipProvider>
+                <SidebarInset>
+                  <TopBar />
+                  {/* A plain div, not <main>: SidebarInset already renders <main>, and
+                      nesting a second one is invalid HTML and a duplicate landmark. */}
+                  <div className="flex-1 p-6">{children}</div>
+                </SidebarInset>
+              </SidebarProvider>
+            </SearchPaletteProvider>
+          </ItemDrawerProvider>
+        </TooltipProvider>
+      </EditorPreferencesProvider>
     </UserSessionProvider>
   );
 };
