@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
@@ -10,13 +10,15 @@ import { signInHref } from "@/lib/auth/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth/auth-schemas";
 import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
 import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
-import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { API_ROUTES, FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
-import { deleteAccount } from "@/lib/db/users";
+import { deleteAccount, saveEditorPreferences } from "@/lib/db/users";
+import { editorPreferencesSchema } from "@/lib/editor/editor-preferences";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
-import { requireCurrentUser } from "@/services/auth/session";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
 import { checkRateLimit } from "@/services/rate-limit";
-import type { DeleteAccountState, FormState } from "@/types/forms";
+import type { EditorPreferences } from "@/types/editor";
+import type { ActionResult, DeleteAccountState, FormState } from "@/types/forms";
 
 const PASSWORD_CHANGED = withFlag(ROUTES.settings, FLAGS.passwordChanged);
 
@@ -80,4 +82,35 @@ export const deleteAccountAction = async (): Promise<DeleteAccountState> => {
 
   await signOut({ redirect: false });
   return { leaveTo: withFlag(API_ROUTES.signedOut, FLAGS.deleted) };
+};
+
+/**
+ * Saves the settings page's editor preferences, called on every change (no
+ * Save button). Takes the whole set, so the last save to land is what is
+ * stored. Doesn't refresh the session: `EditorPreferencesProvider` already
+ * shows the change, and a refresh per toggle would reload the whole layout.
+ */
+export const updateEditorPreferences = async (
+  input: unknown,
+): Promise<ActionResult<EditorPreferences>> => {
+  // First and outside the try: a signed-out caller is redirected to sign in
+  // whatever they send, never answered with validation messages.
+  await requireCurrentUserId();
+
+  const parsed = editorPreferencesSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: { message: FIELDS_INVALID, fieldErrors: fieldErrorsOf(parsed.error) },
+    };
+  }
+
+  try {
+    return { success: true, data: await saveEditorPreferences(parsed.data) };
+  } catch (error) {
+    // The sign-in redirect for a signed-out user must propagate.
+    unstable_rethrow(error);
+    console.error("Saving editor preferences failed:", error);
+    return { success: false, error: { message: SOMETHING_WENT_WRONG } };
+  }
 };

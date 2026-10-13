@@ -6,6 +6,7 @@ import { cache } from "react";
 import { auth } from "@/auth";
 import { signInHref } from "@/lib/auth/auth-redirect";
 import { DEFAULT_SIGN_IN_REDIRECT } from "@/lib/constants/routes";
+import { parseEditorPreferences } from "@/lib/editor/editor-preferences";
 import { prisma } from "@/services/prisma";
 import type { CurrentUser } from "@/types/session";
 
@@ -36,8 +37,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       email: true,
       image: true,
       plan: true,
-      preferredTheme: true,
-      preferredFontSize: true,
+      editorPreferences: true,
       createdAt: true,
       passwordHash: true,
       sessionVersion: true,
@@ -45,9 +45,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   });
   if (!user) return null;
 
-  const { passwordHash, sessionVersion, ...profile } = user;
+  const { passwordHash, sessionVersion, editorPreferences, ...profile } = user;
   if (sessionVersion !== (session.sessionVersion ?? 0)) return null;
-  return { ...profile, isPro: profile.plan === "PRO", hasPassword: passwordHash !== null };
+  return {
+    ...profile,
+    isPro: profile.plan === "PRO",
+    hasPassword: passwordHash !== null,
+    editorPreferences: parseEditorPreferences(editorPreferences),
+  };
 });
 
 /**

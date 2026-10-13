@@ -10,3 +10,6 @@ export const ACCOUNT_MESSAGES = {
 
 /** Toast on `/settings?password=changed`. */
 export const PASSWORD_CHANGED_TOAST = { id: "password-changed", title: "Password updated" } as const;
+
+/** Toast after each editor preferences auto-save. */
+export const EDITOR_PREFERENCES_SAVED = "Editor preferences saved";

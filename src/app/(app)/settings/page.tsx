@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog";
+import { EditorPreferencesForm } from "@/components/settings/EditorPreferencesForm";
 import { PasswordSection } from "@/components/settings/PasswordSection";
 import { FlagToast } from "@/components/shared/FlagToast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,10 +13,10 @@ import { FLAGS, ROUTES } from "@/lib/constants/routes";
 export const metadata: Metadata = { title: "Settings" };
 
 /**
- * Queries nothing: whether the user has a password comes from the user
- * session the `(app)` layout loaded. Only the one-shot toast flag is read
- * here, from the URL. The cards stay server components; only the password
- * check sits under `PasswordSection`'s client boundary.
+ * Queries nothing: whether the user has a password, and their editor
+ * preferences, come from the user session the `(app)` layout loaded. Only
+ * the one-shot toast flag is read here, from the URL. The cards stay server
+ * components; only the password check and the editor controls are client.
  */
 const SettingsPage = async ({ searchParams }: PageProps<"/settings">) => {
   const passwordChanged = hasFlag(await searchParams, FLAGS.passwordChanged);
@@ -28,8 +29,18 @@ const SettingsPage = async ({ searchParams }: PageProps<"/settings">) => {
 
       <header>
         <h1 className="font-heading text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Your password and account</p>
+        <p className="text-muted-foreground mt-1">Your editor, password and account</p>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Editor preferences</CardTitle>
+          <CardDescription>For snippets and commands. Changes save automatically.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EditorPreferencesForm />
+        </CardContent>
+      </Card>
 
       <PasswordSection>
         <Card>

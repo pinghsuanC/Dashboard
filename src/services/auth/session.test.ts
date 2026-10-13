@@ -49,8 +49,7 @@ beforeEach(() => {
       passwordHash: "$2b$hash",
       stripeCustomerId: "cus_secret",
       plan: "PRO",
-      preferredTheme: "dark",
-      preferredFontSize: 16,
+      editorPreferences: { fontSize: 16, theme: "monokai" },
       createdAt,
     },
     {
@@ -60,8 +59,6 @@ beforeEach(() => {
       image: "https://avatars.example/octo.png",
       passwordHash: null,
       plan: "FREE",
-      preferredTheme: "light",
-      preferredFontSize: 14,
       createdAt,
     },
   );
@@ -98,8 +95,7 @@ describe("the signed-in user's profile (R8)", () => {
       image: null,
       plan: "PRO",
       isPro: true,
-      preferredTheme: "dark",
-      preferredFontSize: 16,
+      editorPreferences: { fontSize: 16, tabSize: 2, wordWrap: true, minimap: false, theme: "monokai" },
       createdAt,
       hasPassword: true,
     });
@@ -121,6 +117,32 @@ describe("the signed-in user's profile (R8)", () => {
 
     expect(serialized).not.toContain("$2b$hash");
     expect(serialized).not.toContain("cus_secret");
+  });
+});
+
+describe("the profile's editor preferences (EP3)", () => {
+  it("gives every default to a user who never saved any", async () => {
+    withToken("octo");
+
+    expect((await getCurrentUser())?.editorPreferences).toEqual({
+      fontSize: 12,
+      tabSize: 2,
+      wordWrap: true,
+      minimap: false,
+      theme: "vs-dark",
+    });
+  });
+
+  it("keeps the saved fields and fills the rest with defaults", async () => {
+    withToken("ada");
+
+    expect((await getCurrentUser())?.editorPreferences).toEqual({
+      fontSize: 16,
+      tabSize: 2,
+      wordWrap: true,
+      minimap: false,
+      theme: "monokai",
+    });
   });
 });
 
