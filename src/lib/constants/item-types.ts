@@ -67,3 +67,17 @@ export const isGalleryItemType = (name: string): boolean => GALLERY_ITEM_TYPE_NA
 export const LIST_ITEM_TYPE_NAMES: ReadonlySet<string> = new Set(["file"]);
 
 export const isListItemType = (name: string): boolean => LIST_ITEM_TYPE_NAMES.has(name);
+
+/**
+ * Each system type's colour, keyed by name, for pages with no session to read
+ * `ItemType.color` from (the homepage). A test keeps it equal to the seed.
+ */
+export const SYSTEM_TYPE_COLORS: Readonly<Record<string, string>> = {
+  snippet: "#3b82f6",
+  prompt: "#8b5cf6",
+  command: "#f97316",
+  note: "#fde047",
+  file: "#6b7280",
+  image: "#ec4899",
+  link: "#10b981",
+};

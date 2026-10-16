@@ -8,7 +8,10 @@ import {
   isGalleryItemType,
   isListItemType,
   isMarkdownItemType,
+  SYSTEM_TYPE_COLORS,
 } from "./item-types";
+
+import { MOCK_ITEM_TYPES } from "../../../prisma/seed-data";
 
 describe("editable body fields per item type (E1)", () => {
   it("snippets and commands edit content and language", () => {
@@ -139,5 +142,13 @@ describe("types whose page lists files as rows (FL1)", () => {
   it("a type named like an object or set property is not a list", () => {
     expect(isListItemType("constructor")).toBe(false);
     expect(isListItemType("size")).toBe(false);
+  });
+});
+
+describe("system type colours for pages without a session (H1)", () => {
+  // The signed-out homepage can't read ItemType.color, so it uses this copy.
+  it("match the colours the seed gives every system type", () => {
+    const seeded = Object.fromEntries(MOCK_ITEM_TYPES.map(({ name, color }) => [name, color]));
+    expect(SYSTEM_TYPE_COLORS).toEqual(seeded);
   });
 });

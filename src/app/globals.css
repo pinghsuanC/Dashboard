@@ -137,6 +137,22 @@
     cursor: pointer;
     }
 }
+/* Homepage headline and price accents. */
+@utility gradient-text {
+  @apply bg-linear-to-r from-blue-600 via-blue-400 to-blue-100 bg-clip-text text-transparent;
+}
+/* Homepage hero: fades up on load in CSS alone, so the prerendered headline
+   shows before React hydrates (ScrollFadeIn would hide it until then). */
+@keyframes hero-fade-in {
+  from { opacity: 0; translate: 0 24px; }
+  to { opacity: 1; translate: 0 0; }
+}
+/* Homepage hero arrow. Scale only: Tailwind's rotate-90 (pointing down when
+   the hero stacks) is the separate `rotate` property, so it survives this. */
+@keyframes hero-arrow-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgb(59 130 246 / 0.5); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 14px rgb(59 130 246 / 0); }
+}
 /* Rendered Markdown in MarkdownEditor's Preview. Hand-written rather than the
    typography plugin, so it follows the dark tokens above. Components layer,
    so a utility on the same element still wins. */

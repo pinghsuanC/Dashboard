@@ -100,6 +100,7 @@ describe("service boundaries", () => {
       "editor",
       "helpers",
       "items",
+      "pricing",
       "search",
       "session",
     ]);
