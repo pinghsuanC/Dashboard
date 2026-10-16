@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import { useSearchPalette } from "@/components/search/SearchPaletteProvider";
+import { Button } from "@/components/ui/button";
 import { searchShortcutLabel } from "@/lib/search/search";
 
 const subscribe = () => () => {};
@@ -36,5 +37,19 @@ export const SearchTrigger = () => {
         </kbd>
       )}
     </button>
+  );
+};
+
+/**
+ * The phone version of the search box: an icon button in the top bar's actions,
+ * since the box is hidden below `md` and a phone has no Cmd+K.
+ */
+export const SearchIconTrigger = () => {
+  const { openSearch } = useSearchPalette();
+
+  return (
+    <Button type="button" variant="ghost" size="icon" onClick={openSearch} aria-label="Search">
+      <Search />
+    </Button>
   );
 };
