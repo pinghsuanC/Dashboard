@@ -132,8 +132,11 @@ export const CollectionDialog = ({ collection }: CollectionDialogProps) => {
         ) : (
           <Button variant="outline">
             <FolderPlus />
-            {/* Icon only on phones, where the top bar is tight; still named for screen readers. */}
-            <span className="sr-only sm:not-sr-only">New Collection</span>
+            {/* Icon only on phones, where the top bar is tight; still named for screen readers.
+                `max-sm:sr-only`, not `sm:not-sr-only`: the latter also sets `white-space: normal`,
+                which lets the top bar's grid size this column as if the label could wrap,
+                so the actions overflow onto the search box. */}
+            <span className="max-sm:sr-only">New Collection</span>
           </Button>
         )}
       </DialogTrigger>
