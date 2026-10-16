@@ -24,9 +24,14 @@ export const metadata: Metadata = {
 
 const RootLayout = ({ children }: LayoutProps<"/">) => {
   return (
+    // scroll-smooth is for the homepage's #features / #pricing links.
+    // data-scroll-behavior has Next turn it off during route changes, so a
+    // page turn still jumps to the top instead of animating (Next 16 no
+    // longer does this unasked).
     <html
       lang={HTML_LANG}
-      className={`${APP_THEME} ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+      className={`${APP_THEME} ${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased motion-reduce:scroll-auto`}
     >
       <body className="min-h-full flex flex-col font-sans">
         {children}
