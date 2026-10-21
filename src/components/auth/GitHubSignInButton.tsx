@@ -17,7 +17,7 @@ export const GitHubSignInButton = ({ callbackUrl }: GitHubSignInButtonProps) => 
   return (
     <form action={signInWithGitHub}>
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
-      <Button type="submit" variant="outline" size="lg" className="w-full">
+      <Button type="submit" variant="outline" size="lg" className="w-full max-md:h-11">
         <GitHubMark />
         Sign in with GitHub
       </Button>

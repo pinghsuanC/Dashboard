@@ -193,28 +193,31 @@ export const ChaosAnimation = () => {
   }, []);
 
   return (
-    <div
-      ref={boxRef}
-      aria-hidden
-      className="bg-card relative h-72 overflow-hidden rounded-xl border border-dashed sm:h-[340px]"
-    >
-      {ICONS.map((icon, i) => (
-        <div
-          key={icon.name}
-          ref={(el) => {
-            iconRefs.current[i] = el;
-          }}
-          title={icon.name}
-          className="bg-background absolute grid size-14 place-items-center rounded-2xl border shadow-lg will-change-transform"
-          style={{ left: `${icon.x}%`, top: `${icon.y}%`, transform: `rotate(${icon.tilt}deg)` }}
-        >
-          {"logo" in icon ? (
-            <Image src={icon.logo} alt="" className="size-7" />
-          ) : (
-            <icon.Icon className="size-7" style={{ color: icon.color }} strokeWidth={1.8} />
-          )}
-        </div>
-      ))}
-    </div>
+    <>
+      <p className="sr-only">Knowledge scattered across {ICONS.map((icon) => icon.name).join(", ")}.</p>
+      <div
+        ref={boxRef}
+        aria-hidden
+        className="bg-card relative h-72 overflow-hidden rounded-xl border border-dashed sm:h-[340px]"
+      >
+        {ICONS.map((icon, i) => (
+          <div
+            key={icon.name}
+            ref={(el) => {
+              iconRefs.current[i] = el;
+            }}
+            title={icon.name}
+            className="bg-background absolute grid size-14 place-items-center rounded-2xl border shadow-lg will-change-transform"
+            style={{ left: `${icon.x}%`, top: `${icon.y}%`, transform: `rotate(${icon.tilt}deg)` }}
+          >
+            {"logo" in icon ? (
+              <Image src={icon.logo} alt="" className="size-7" />
+            ) : (
+              <icon.Icon className="size-7" style={{ color: icon.color }} strokeWidth={1.8} />
+            )}
+          </div>
+        ))}
+      </div>
+    </>
   );
 };

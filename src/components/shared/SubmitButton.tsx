@@ -12,7 +12,7 @@ export const SubmitButton = ({ children, pendingLabel }: SubmitButtonProps) => {
   const { pending } = useActionForm();
 
   return (
-    <Button type="submit" size="lg" disabled={pending}>
+    <Button type="submit" size="lg" className="max-md:h-11" disabled={pending}>
       {pending ? pendingLabel : children}
     </Button>
   );

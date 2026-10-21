@@ -34,12 +34,13 @@ export const PricingSection = () => {
           <p className="mb-3 text-sm font-semibold tracking-widest text-blue-500 uppercase">Pricing</p>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Start free, upgrade when you outgrow it</h2>
 
-          <div className="mt-7 inline-flex items-center gap-3 text-sm">
+          {/* The labels carry the 44px tap height; the switch itself is shadcn's small size. */}
+          <div className="mt-7 inline-flex items-center gap-1 text-sm">
             <button
               type="button"
               onClick={() => setIsYearly(false)}
               aria-pressed={!isYearly}
-              className={cn("transition-colors", isYearly ? "text-muted-foreground" : "text-foreground")}
+              className={cn("h-11 px-3 transition-colors", isYearly ? "text-muted-foreground" : "text-foreground")}
             >
               Monthly
             </button>
@@ -48,7 +49,7 @@ export const PricingSection = () => {
               type="button"
               onClick={() => setIsYearly(true)}
               aria-pressed={isYearly}
-              className={cn("transition-colors", isYearly ? "text-foreground" : "text-muted-foreground")}
+              className={cn("h-11 px-3 transition-colors", isYearly ? "text-foreground" : "text-muted-foreground")}
             >
               Yearly
             </button>
@@ -76,7 +77,7 @@ export const PricingSection = () => {
                 <CheckItem>Instant search</CheckItem>
               </ul>
               <Button asChild variant="outline" size="lg" className="h-11">
-                <Link href={ROUTES.register}>Get Started Free</Link>
+                <Link href={ROUTES.register}>Start with Free Tier</Link>
               </Button>
             </article>
           </ScrollFadeIn>
@@ -102,7 +103,7 @@ export const PricingSection = () => {
                 <CheckItem>Everything in Free</CheckItem>
               </ul>
               <Button asChild size="lg" className="h-11">
-                <Link href={ROUTES.register}>Start Free Trial</Link>
+                <Link href={ROUTES.register}>Go Pro</Link>
               </Button>
             </article>
           </ScrollFadeIn>
