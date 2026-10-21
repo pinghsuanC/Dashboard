@@ -51,7 +51,8 @@ export const AISection = () => {
               <span className="font-mono">useDebounce.ts</span>
               <span className="ml-auto">typescript</span>
             </div>
-            <pre className="overflow-x-auto p-4.5 font-mono text-[13px] leading-relaxed text-[#d4d4d4]">
+            {/* Wraps below `sm`: a sideways scroll inside a phone-width card is easy to miss. */}
+            <pre className="overflow-x-auto p-4.5 font-mono text-[13px] leading-relaxed text-[#d4d4d4] max-sm:break-words max-sm:whitespace-pre-wrap">
               <code>
                 <span className="text-[#569cd6]">export const</span> <span className="text-[#dcdcaa]">useDebounce</span>{" "}
                 = &lt;<span className="text-[#4ec9b0]">T</span>&gt;(value: <span className="text-[#4ec9b0]">T</span>, delay ={" "}

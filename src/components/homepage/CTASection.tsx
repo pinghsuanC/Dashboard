@@ -12,7 +12,7 @@ export const CTASection = () => {
         <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Ready to Organize Your Knowledge?</h2>
         <p className="text-muted-foreground mt-4">Bring everything you know into one place in under a minute.</p>
         <Button asChild size="lg" className="mt-7 h-11 px-6">
-          <Link href={ROUTES.register}>Get Started Free</Link>
+          <Link href={ROUTES.register}>Start with Free Tier</Link>
         </Button>
       </ScrollFadeIn>
     </section>

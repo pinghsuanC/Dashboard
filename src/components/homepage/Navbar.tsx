@@ -61,10 +61,14 @@ export const Navbar = () => {
         scrolled || menuOpen ? "bg-background/90 border-border" : "bg-background/30 border-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
+      <div className="relative mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
         <Logo />
 
-        <nav aria-label="Sections" className="text-muted-foreground hidden gap-6 text-sm md:flex">
+        {/* Centred on the bar itself, not the gap between logo and buttons, which differ in width. */}
+        <nav
+          aria-label="Sections"
+          className="text-muted-foreground absolute left-1/2 hidden -translate-x-1/2 gap-6 text-sm md:flex"
+        >
           {SECTION_LINKS.map(({ href, label }) => (
             <a key={href} href={href} className="hover:text-foreground transition-colors">
               {label}
@@ -84,7 +88,7 @@ export const Navbar = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="ml-auto md:hidden"
+          className="ml-auto size-11 md:hidden"
           aria-label={menuOpen ? "Close menu" : "Open menu"}
           aria-expanded={menuOpen}
           aria-controls="homepage-menu"

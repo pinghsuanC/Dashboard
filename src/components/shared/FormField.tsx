@@ -3,6 +3,7 @@
 import { useActionForm } from "@/components/shared/ActionForm";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 interface FormFieldProps extends React.ComponentProps<typeof Input> {
   name: string;
@@ -35,6 +36,7 @@ export const FormField = ({ name, label, labelAction, ...inputProps }: FormField
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         {...inputProps}
+        className={cn("max-md:h-11", inputProps.className)}
       />
       {error ? (
         <p id={errorId} className="text-destructive text-sm">

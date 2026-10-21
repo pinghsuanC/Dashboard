@@ -30,7 +30,7 @@ export const HeroSection = () => {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-11 px-6">
-              <Link href={ROUTES.register}>Get Started Free</Link>
+              <Link href={ROUTES.register}>Start with Free Tier</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-11 px-6">
               <a href="#features">See Features</a>
