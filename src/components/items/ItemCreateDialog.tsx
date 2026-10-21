@@ -148,7 +148,9 @@ export const ItemCreateDialog = () => {
       </DialogTrigger>
       <DialogContent
         showCloseButton={!creating}
-        className="max-h-[90dvh] overflow-y-auto sm:max-w-lg"
+        // A flex column capped at the viewport: only the fields scroll, so the
+        // header and the Create button stay in view on a short screen.
+        className="flex max-h-[90dvh] flex-col sm:max-w-lg"
         // Title, not the type picker: most items keep the type and start with a title.
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -160,58 +162,62 @@ export const ItemCreateDialog = () => {
           <DialogDescription>Pick a type, then fill in its details.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-5" noValidate>
-          <fieldset className="grid gap-2" disabled={creating}>
-            <legend className="mb-2 text-sm font-medium">Type</legend>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {types.map((type) => (
-                <label
-                  key={type.id}
-                  style={{ "--type-color": type.color } as CSSProperties}
-                  className="hover:bg-muted/40 has-checked:border-(--type-color) has-checked:bg-(--type-color)/10 has-focus-visible:ring-ring/50 flex cursor-pointer flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors has-focus-visible:ring-3"
-                >
-                  <input
-                    type="radio"
-                    name="item-create-type"
-                    value={type.name}
-                    checked={typeName === type.name}
-                    onChange={() => selectType(type.name)}
-                    className="sr-only"
-                  />
-                  {/* Hidden: the label text already names the type. */}
-                  <span aria-hidden>
-                    <TypeIcon type={type} className="size-4" />
-                  </span>
-                  {type.label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-4" noValidate>
+          {/* The negative margin and padding keep focus rings inside the scroll
+              area's clip instead of cut off at its edges. */}
+          <div className="-mx-4 grid min-h-0 gap-5 overflow-y-auto px-4 py-1">
+            <fieldset className="grid gap-2" disabled={creating}>
+              <legend className="mb-2 text-sm font-medium">Type</legend>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {types.map((type) => (
+                  <label
+                    key={type.id}
+                    style={{ "--type-color": type.color } as CSSProperties}
+                    className="hover:bg-muted/40 has-checked:border-(--type-color) has-checked:bg-(--type-color)/10 has-focus-visible:ring-ring/50 flex cursor-pointer flex-col items-center gap-1 rounded-lg border p-2 text-xs transition-colors has-focus-visible:ring-3"
+                  >
+                    <input
+                      type="radio"
+                      name="item-create-type"
+                      value={type.name}
+                      checked={typeName === type.name}
+                      onChange={() => selectType(type.name)}
+                      className="sr-only"
+                    />
+                    {/* Hidden: the label text already names the type. */}
+                    <span aria-hidden>
+                      <TypeIcon type={type} className="size-4" />
+                    </span>
+                    {type.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
 
-          {fileKind && (
-            <FileUpload
-              kind={fileKind}
-              file={file}
-              onChange={(picked) => {
-                setFile(picked);
-                setFieldErrors((current) => ({ ...current, file: undefined }));
-              }}
-              progress={progress}
-              disabled={creating}
-              error={fieldErrors.file}
+            {fileKind && (
+              <FileUpload
+                kind={fileKind}
+                file={file}
+                onChange={(picked) => {
+                  setFile(picked);
+                  setFieldErrors((current) => ({ ...current, file: undefined }));
+                }}
+                progress={progress}
+                disabled={creating}
+                error={fieldErrors.file}
+              />
+            )}
+
+            <ItemFormFields
+              idPrefix="item-create"
+              typeName={typeName}
+              fields={fields}
+              draft={draft}
+              onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
+              fieldErrors={fieldErrors}
+              contentRows={6}
+              titleRef={titleRef}
             />
-          )}
-
-          <ItemFormFields
-            idPrefix="item-create"
-            typeName={typeName}
-            fields={fields}
-            draft={draft}
-            onChange={(key, value) => setDraft((current) => ({ ...current, [key]: value }))}
-            fieldErrors={fieldErrors}
-            contentRows={6}
-            titleRef={titleRef}
-          />
+          </div>
 
           <DialogFooter>
             <DialogClose asChild>
