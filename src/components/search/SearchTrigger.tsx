@@ -41,8 +41,8 @@ export const SearchTrigger = () => {
 };
 
 /**
- * The phone version of the search box: an icon button in the top bar's actions,
- * since the box is hidden below `md` and a phone has no Cmd+K.
+ * The phone and tablet version of the search box: an icon button in the top bar's actions,
+ * since the box is hidden below `lg` and a touch screen has no Cmd+K.
  */
 export const SearchIconTrigger = () => {
   const { openSearch } = useSearchPalette();

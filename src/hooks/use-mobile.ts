@@ -1,6 +1,10 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+// Tailwind's `lg`, not shadcn's 768 (`md`): below it the sidebar is a sheet.
+// At 768 a docked 16rem sidebar left the page about 512px and squeezed the
+// top bar's search box to a stub. Keep in step with the `lg:` classes in
+// `components/ui/sidebar.tsx` and `components/layout/TopBar.tsx`.
+const MOBILE_BREAKPOINT = 1024
 
 function subscribe(onStoreChange: () => void) {
   const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)

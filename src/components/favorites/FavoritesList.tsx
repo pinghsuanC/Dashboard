@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
-import { Star } from "lucide-react";
+import { Folder, LayoutGrid, Star } from "lucide-react";
 
-import { FavoriteCollectionRow } from "@/components/favorites/FavoriteCollectionRow";
-import { FavoriteItemRow } from "@/components/favorites/FavoriteItemRow";
+import { CollectionCard } from "@/components/collections/CollectionCard";
+import { SectionHeader } from "@/components/dashboard/SectionHeader";
+import { ItemRow } from "@/components/items/ItemRow";
 import type { CollectionSummary } from "@/types/collections";
 import type { ItemSummary } from "@/types/items";
 
@@ -11,30 +11,10 @@ interface FavoritesListProps {
   items: ItemSummary[];
 }
 
-interface FavoritesSectionProps {
-  title: string;
-  count: number;
-  /** Shown in place of the rows when the section has none. */
-  empty: string;
-  children: ReactNode;
-}
-
-const FavoritesSection = ({ title, count, empty, children }: FavoritesSectionProps) => (
-  <section className="flex flex-col gap-1" aria-label={title}>
-    <h2 className="text-muted-foreground border-b px-2 pb-1 text-xs font-medium tracking-wider uppercase">
-      {title} <span className="tabular-nums">({count})</span>
-    </h2>
-    {count > 0 ? (
-      <ul className="divide-border/50 divide-y">{children}</ul>
-    ) : (
-      <p className="text-muted-foreground px-2 py-1.5">{empty}</p>
-    )}
-  </section>
-);
-
 /**
- * The favourites as two dense lists, collections then items, in a monospace
- * face. With none at all, one empty state stands in for both sections.
+ * The favourites in two sections, collections then items, as the same cards
+ * and grids the collections and item type pages use. A section with none says
+ * so; with none at all, one empty state stands in for both.
  */
 export const FavoritesList = ({ collections, items }: FavoritesListProps) => {
   if (collections.length === 0 && items.length === 0) {
@@ -48,18 +28,32 @@ export const FavoritesList = ({ collections, items }: FavoritesListProps) => {
   }
 
   return (
-    <div className="flex flex-col gap-8 font-mono text-sm">
-      <FavoritesSection title="Collections" count={collections.length} empty="No favorite collections.">
-        {collections.map((collection) => (
-          <FavoriteCollectionRow key={collection.id} collection={collection} />
-        ))}
-      </FavoritesSection>
+    <div className="flex flex-col gap-8">
+      <section>
+        <SectionHeader title={`Collections (${collections.length})`} icon={Folder} size="sm" />
+        {collections.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {collections.map((collection) => (
+              <CollectionCard key={collection.id} collection={collection} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No favorite collections.</p>
+        )}
+      </section>
 
-      <FavoritesSection title="Items" count={items.length} empty="No favorite items.">
-        {items.map((item) => (
-          <FavoriteItemRow key={item.id} item={item} />
-        ))}
-      </FavoritesSection>
+      <section>
+        <SectionHeader title={`Items (${items.length})`} icon={LayoutGrid} size="sm" />
+        {items.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {items.map((item) => (
+              <ItemRow key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No favorite items.</p>
+        )}
+      </section>
     </div>
   );
 };
