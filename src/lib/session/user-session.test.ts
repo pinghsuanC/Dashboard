@@ -2,6 +2,7 @@ import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { auth } from "@/auth";
+import { DAY_MS } from "@/lib/constants/time";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { getUserSession, resetProfile } from "./user-session";
@@ -49,8 +50,6 @@ beforeEach(() => {
       email: "ada@example.test",
       image: null,
       passwordHash: "$2b$secret-hash",
-      stripeCustomerId: "cus_secret",
-      plan: "PRO",
       editorPreferences: { fontSize: 16, theme: "monokai" },
       createdAt: day(1),
     },
@@ -60,10 +59,23 @@ beforeEach(() => {
       email: "bob@example.test",
       image: "https://avatars.example/bob.png",
       passwordHash: null,
-      plan: "FREE",
       createdAt: day(1),
     },
   );
+  // Ada pays through Stripe; Bob has never paid.
+  db.subscriptionPeriods.push({
+    id: "ada-paid",
+    userId: "ada",
+    status: "PAID",
+    vendor: "STRIPE",
+    vendorCustomerId: "cus_secret",
+    vendorSubscriptionId: "sub_secret",
+    stripeCheckoutSessionId: "cs_secret",
+    stripePriceId: "price_secret",
+    interval: "MONTH",
+    periodStart: new Date(Date.now() - 10 * DAY_MS),
+    periodEnd: new Date(Date.now() + 20 * DAY_MS),
+  });
   // Seeded out of display order on purpose; display order is createdAt, then
   // name. Link is added before Command on the same day so the name tie-break
   // is what puts Command first.
@@ -110,13 +122,16 @@ describe("user session: profile (S1)", () => {
     expect((await getUserSession()).user.isPro).toBe(false);
   });
 
-  it("never carries the password hash or Stripe ids to the client", async () => {
+  it("never carries the password hash or billing ids to the client (R7)", async () => {
     signedInAs("ada");
 
     const serialized = JSON.stringify(await getUserSession());
 
     expect(serialized).not.toContain("$2b$secret-hash");
     expect(serialized).not.toContain("cus_secret");
+    expect(serialized).not.toContain("sub_secret");
+    expect(serialized).not.toContain("cs_secret");
+    expect(serialized).not.toContain("price_secret");
   });
 });
 

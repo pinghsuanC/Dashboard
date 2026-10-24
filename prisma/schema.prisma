@@ -23,12 +23,6 @@ model User {
   // before (password change and reset). See getCurrentUser().
   sessionVersion Int       @default(0)
 
-  plan                   Plan      @default(FREE)
-  stripeCustomerId       String?   @unique
-  stripeSubscriptionId   String?   @unique
-  stripePriceId          String?
-  stripeCurrentPeriodEnd DateTime?
-
   // Code editor preferences from the settings page. Read only through
   // `parseEditorPreferences()`, which fills a missing or invalid field with
   // its default, so `{}` means every default.
@@ -39,6 +33,9 @@ model User {
   collections Collection[]
   tags        Tag[]
   itemTypes   ItemType[] // custom types only
+
+  // The plan is derived from these in getCurrentUser(), never stored.
+  subscriptionPeriods SubscriptionPeriod[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -212,7 +209,48 @@ model ItemTag {
   @@index([tagId])
 }
 
-enum Plan {
-  FREE
-  PRO
+// ─────────────────────────────  Billing  ─────────────────────────────
+
+enum BillingVendor {
+  STRIPE
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum PeriodStatus {
+  PENDING // checkout started, not paid; grants nothing
+  PAID
+  EXPIRED // checkout abandoned (Stripe expires unpaid sessions after ~24 h)
+}
+
+/// One period of Pro, from checkout to expiry. Pro while PAID, periodEnd (plus
+/// BILLING_GRACE_MS) is not past and it isn't revoked. No vendor means granted,
+/// not paid: a free trial, the seed, a comped account.
+///
+/// Postgres treats NULLs as distinct, so the composite unique doesn't apply to
+/// pending or granted rows; stripeCheckoutSessionId's unique covers pending ones.
+model SubscriptionPeriod {
+  id                      String          @id @default(uuid())
+  userId                  String
+  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status                  PeriodStatus    @default(PAID)
+  vendor                  BillingVendor? // null: granted, never checked with a vendor
+  vendorCustomerId        String? // cus_…, filled when paid; copied on renewals
+  vendorSubscriptionId    String? // sub_…, shared by every renewal
+  stripeCheckoutSessionId String?         @unique // cs_…, Stripe's id for the checkout
+  stripePriceId           String? // price_…, what a Stripe period was bought at
+  interval                BillingInterval
+  periodStart             DateTime? // null while PENDING
+  periodEnd               DateTime?
+  revokedAt               DateTime? // ends access early; set by hand for now
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  // The same vendor period is never stored twice.
+  @@unique([vendor, vendorSubscriptionId, periodEnd])
+  // Also serves the User cascade, which looks up by userId alone.
+  @@index([userId, status, periodEnd])
 }

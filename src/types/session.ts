@@ -1,4 +1,4 @@
-import type { Plan } from "@/generated/prisma/client";
+import type { Plan } from "@/types/billing";
 import type { SessionCollection } from "@/types/collections";
 import type { EditorPreferences } from "@/types/editor";
 import type { ItemCounts, ItemSummary, ItemTypeDefinition } from "@/types/items";

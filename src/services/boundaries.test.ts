@@ -94,6 +94,7 @@ describe("service boundaries", () => {
     const root = readdirSync(join(SRC, "lib"), { withFileTypes: true });
     expect(root.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()).toEqual([
       "auth",
+      "billing",
       "collections",
       "constants",
       "db",

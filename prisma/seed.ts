@@ -3,6 +3,7 @@ import { prisma } from "../src/services/prisma";
 import { slugify } from "../src/lib/helpers/slugify";
 import {
   MOCK_COLLECTIONS,
+  MOCK_GRANTED_PERIOD,
   MOCK_ITEM_TYPES,
   MOCK_ITEMS,
   MOCK_USER,
@@ -49,13 +50,28 @@ const seedItemTypes = async () => {
 };
 
 const seedUser = () => {
-  const { name, email, image, plan } = MOCK_USER;
-  const data = { name, image, plan, emailVerified: new Date() };
+  const { name, email, image } = MOCK_USER;
+  const data = { name, image, emailVerified: new Date() };
   return prisma.user.upsert({
     where: { email },
     update: data,
     create: { email, ...data },
   });
+};
+
+// The demo user is Pro through a granted period (no vendor), so Pro comes
+// from the same rule as a paid one. Periods have no natural key, so this is
+// find-then-write on the user's granted row.
+const seedGrantedPeriod = async (userId: string) => {
+  const { interval, periodStart, periodEnd } = MOCK_GRANTED_PERIOD;
+  const data = { interval, periodStart: new Date(periodStart), periodEnd: new Date(periodEnd) };
+  const existing = await prisma.subscriptionPeriod.findFirst({
+    where: { userId, vendor: null, status: 'PAID' },
+    select: { id: true },
+  });
+  return existing
+    ? prisma.subscriptionPeriod.update({ where: { id: existing.id }, data })
+    : prisma.subscriptionPeriod.create({ data: { userId, status: 'PAID', ...data } });
 };
 
 // Returns mock collection id -> database id.
@@ -152,12 +168,13 @@ const seedItems = (
 const main = async () => {
   const typeIds = await seedItemTypes();
   const user = await seedUser();
+  await seedGrantedPeriod(user.id);
   const collectionIds = await seedCollections(user.id);
   const tagIds = await seedTags(user.id);
   const items = await seedItems(user.id, typeIds, collectionIds, tagIds);
 
   console.log(
-    `Seeded ${typeIds.size} item types, 1 user, ${collectionIds.size} collections, ` +
+    `Seeded ${typeIds.size} item types, 1 Pro user, ${collectionIds.size} collections, ` +
       `${tagIds.size} tags, ${items.length} items.`,
   );
 };

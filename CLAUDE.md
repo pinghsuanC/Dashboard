@@ -25,7 +25,7 @@ Load-bearing; do not drop or soften. Other sections point here instead of repeat
 - Queries scope themselves to the session user: no `userId` threaded through callers. `userId` (or the user's own `id`) is part of every `where` for Item, Collection and User; another user's id finds nothing and is answered as not found.
 - Call `requireCurrentUserId()` outside any `try`, so the sign-in redirect is not swallowed.
 - `sessionVersion` is the real revocation check; the `jwt` callback stamps it only at sign-in; never let `update()` refresh it.
-- The profile never carries the password hash or Stripe ids.
+- The profile never carries the password hash or billing ids (customer, subscription, checkout session).
 - Register answers a taken email exactly like a new one, so it cannot reveal whether an account exists.
 - Redirect targets go through `safeCallbackUrl()` / `signInHref()`.
 - Check email verification with `isEmailVerificationEnabled()`, never `process.env` directly.
@@ -85,7 +85,7 @@ For a typecheck without a full build: `npx tsc --noEmit`.
 
 ## Docs are local
 
-This is Next.js 16.3.8 with React 19. The version-correct docs ship inside the repo at `node_modules/next/dist/docs/` — `01-app/01-getting-started/` for guides, `01-app/03-api-reference/` for APIs, and `01-app/02-guides/upgrading/version-16.md` for what changed. This is the point of the generated block in `AGENTS.md`; the generated-types note below is a concrete example of an API that does not exist in older Next.
+This is Next.js 16.4.3 with React 19. The version-correct docs ship inside the repo at `node_modules/next/dist/docs/` — `01-app/01-getting-started/` for guides, `01-app/03-api-reference/` for APIs, and `01-app/02-guides/upgrading/version-16.md` for what changed. This is the point of the generated block in `AGENTS.md`; the generated-types note below is a concrete example of an API that does not exist in older Next.
 
 ## Architecture
 
