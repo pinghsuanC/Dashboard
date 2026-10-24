@@ -25,7 +25,7 @@ Load-bearing; do not drop or soften. Other sections point here instead of repeat
 - Queries scope themselves to the session user: no `userId` threaded through callers. `userId` (or the user's own `id`) is part of every `where` for Item, Collection and User; another user's id finds nothing and is answered as not found.
 - Call `requireCurrentUserId()` outside any `try`, so the sign-in redirect is not swallowed.
 - `sessionVersion` is the real revocation check; the `jwt` callback stamps it only at sign-in; never let `update()` refresh it.
-- The profile never carries the password hash or Stripe ids.
+- The profile never carries the password hash or billing ids (customer, subscription, checkout session).
 - Register answers a taken email exactly like a new one, so it cannot reveal whether an account exists.
 - Redirect targets go through `safeCallbackUrl()` / `signInHref()`.
 - Check email verification with `isEmailVerificationEnabled()`, never `process.env` directly.

@@ -5,6 +5,7 @@ import { cache } from "react";
 
 import { auth } from "@/auth";
 import { signInHref } from "@/lib/auth/auth-redirect";
+import { liveSince } from "@/lib/billing/plan-rules";
 import { DEFAULT_SIGN_IN_REDIRECT } from "@/lib/constants/routes";
 import { parseEditorPreferences } from "@/lib/editor/editor-preferences";
 import { prisma } from "@/services/prisma";
@@ -20,9 +21,14 @@ import type { CurrentUser } from "@/types/session";
  * (e.g. deleted) returns null, and so does one issued before the user's last
  * password change or reset (its `sessionVersion` is behind the row's). The
  * proxy only verifies the JWT, so a revoked cookie still gets past it and is
- * turned away here. `select` keeps the Stripe ids out, and the password hash
- * is read only to become `hasPassword` (keyed off the hash, not
- * the linked provider, so a GitHub user who later set a password counts).
+ * turned away here. The password hash is read only to become `hasPassword`
+ * (keyed off the hash, not the linked provider, so a GitHub user who later
+ * set a password counts).
+ *
+ * The plan comes from the database alone, in the same query: Pro while a
+ * `PAID` period is live (see `liveSince()`) and not revoked. It never asks
+ * the vendor, since this runs on every request, image loads included. Only
+ * the period's id is read, so no billing id reaches the profile.
  */
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth();
@@ -36,20 +42,27 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       name: true,
       email: true,
       image: true,
-      plan: true,
       editorPreferences: true,
       createdAt: true,
       passwordHash: true,
       sessionVersion: true,
+      subscriptionPeriods: {
+        where: { status: "PAID", revokedAt: null, periodEnd: { gte: liveSince() } },
+        orderBy: [{ periodEnd: "desc" }],
+        take: 1,
+        select: { id: true },
+      },
     },
   });
   if (!user) return null;
 
-  const { passwordHash, sessionVersion, editorPreferences, ...profile } = user;
+  const { passwordHash, sessionVersion, editorPreferences, subscriptionPeriods, ...profile } = user;
   if (sessionVersion !== (session.sessionVersion ?? 0)) return null;
+  const isPro = subscriptionPeriods.length > 0;
   return {
     ...profile,
-    isPro: profile.plan === "PRO",
+    plan: isPro ? "PRO" : "FREE",
+    isPro,
     hasPassword: passwordHash !== null,
     editorPreferences: parseEditorPreferences(editorPreferences),
   };

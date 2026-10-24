@@ -265,6 +265,10 @@ describe("delete account", () => {
       { id: "bob-1", userId: "bob", typeId: "snippet" },
     );
     db.collections.push({ id: "ada-c", userId: "ada" }, { id: "bob-c", userId: "bob" });
+    db.subscriptionPeriods.push(
+      { id: "ada-p", userId: "ada", interval: "MONTH", periodEnd: new Date(Date.UTC(2099, 0, 1)) },
+      { id: "bob-p", userId: "bob", interval: "YEAR", periodEnd: new Date(Date.UTC(2099, 0, 1)) },
+    );
     db.verificationTokens.push(
       { identifier: ada.email, token: "v-ada" },
       { identifier: bob.email, token: "v-bob" },
@@ -282,6 +286,7 @@ describe("delete account", () => {
     expect(db.users.map((user) => user.id)).toEqual(["bob"]);
     expect(db.items.map((item) => item.id)).toEqual(["bob-1"]);
     expect(db.collections.map((collection) => collection.id)).toEqual(["bob-c"]);
+    expect(db.subscriptionPeriods.map((period) => period.id)).toEqual(["bob-p"]);
     expect(db.verificationTokens.map((token) => token.token)).toEqual(["v-bob"]);
     expect(db.passwordResetTokens.map((token) => token.token)).toEqual(["r-bob"]);
   });

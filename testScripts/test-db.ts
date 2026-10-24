@@ -10,6 +10,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 const { prisma } = await import("../src/services/prisma");
+const { liveSince } = await import("../src/lib/billing/plan-rules");
 
 const UUID = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
@@ -71,7 +72,13 @@ const results = [
     const user = await prisma.user.findFirst({
       select: {
         email: true,
-        plan: true,
+        // The plan's source: a live PAID period, as getCurrentUser() reads it.
+        subscriptionPeriods: {
+          where: { status: "PAID", revokedAt: null, periodEnd: { gte: liveSince() } },
+          orderBy: [{ periodEnd: "desc" }],
+          take: 1,
+          select: { vendor: true, interval: true, periodEnd: true },
+        },
         _count: { select: { items: true, collections: true, tags: true } },
       },
     });

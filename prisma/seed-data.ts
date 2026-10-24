@@ -9,14 +9,18 @@
 
 export type ContentType = 'TEXT' | 'FILE' | 'URL';
 
-export type Plan = 'FREE' | 'PRO';
-
 export interface User {
   id: string;
   name: string;
   email: string;
   image: string | null;
-  plan: Plan;
+}
+
+/** A Pro period granted without a vendor. Dates are ISO strings. */
+export interface GrantedPeriod {
+  interval: 'MONTH' | 'YEAR';
+  periodStart: string;
+  periodEnd: string;
 }
 
 export interface ItemType {
@@ -77,7 +81,13 @@ export const MOCK_USER: User = {
   name: 'John Doe',
   email: 'john@example.com',
   image: null,
-  plan: 'PRO',
+};
+
+/** The demo user's Pro: granted, not paid, ending far in the future. */
+export const MOCK_GRANTED_PERIOD: GrantedPeriod = {
+  interval: 'YEAR',
+  periodStart: '2026-01-01T00:00:00Z',
+  periodEnd: '2099-12-31T23:59:59Z',
 };
 
 // ─────────────────────────  Item types  ─────────────────────────

@@ -12,6 +12,9 @@ import { Prisma } from "@/generated/prisma/client";
  * Collections are unique on `[userId, slug]` too: a clashing create throws
  * Prisma's `P2002`. Items hold their collection links as `collectionIds`,
  * written through the nested `collections` writes of item create and edit.
+ * `SubscriptionPeriod` rows cascade from `User` and keep both uniques:
+ * `stripeCheckoutSessionId`, and `[vendor, vendorSubscriptionId, periodEnd]`,
+ * where a `NULL` never clashes, as in Postgres.
  */
 
 interface UserRow {
@@ -21,8 +24,6 @@ interface UserRow {
   passwordHash: string | null;
   createdAt: Date;
   image?: string | null;
-  plan?: "FREE" | "PRO";
-  stripeCustomerId?: string | null;
   /** Stored JSON in any shape: Postgres doesn't check it. */
   editorPreferences?: unknown;
   emailVerified?: Date | null;
@@ -74,6 +75,21 @@ interface CollectionRow {
   isFavorite?: boolean;
   updatedAt?: Date;
 }
+interface SubscriptionPeriodRow {
+  id: string;
+  userId: string;
+  /** The schema's default is PAID. */
+  status?: "PENDING" | "PAID" | "EXPIRED";
+  vendor?: "STRIPE" | null;
+  vendorCustomerId?: string | null;
+  vendorSubscriptionId?: string | null;
+  stripeCheckoutSessionId?: string | null;
+  stripePriceId?: string | null;
+  interval: "MONTH" | "YEAR";
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
+  revokedAt?: Date | null;
+}
 interface VerificationTokenRow {
   identifier: string;
   token: string;
@@ -91,6 +107,7 @@ export const db = {
   items: [] as ItemRow[],
   collections: [] as CollectionRow[],
   tags: [] as TagRow[],
+  subscriptionPeriods: [] as SubscriptionPeriodRow[],
   verificationTokens: [] as VerificationTokenRow[],
   passwordResetTokens: [] as PasswordResetTokenRow[],
   /** When set, every query rejects, like an unreachable database. */
@@ -103,6 +120,7 @@ export const resetDb = () => {
   db.items = [];
   db.collections = [];
   db.tags = [];
+  db.subscriptionPeriods = [];
   db.verificationTokens = [];
   db.passwordResetTokens = [];
   db.down = false;
@@ -148,6 +166,46 @@ const findUser = (id: string) => db.users.find((user) => user.id === id);
 
 // Column defaults the schema fills in, so a row read back looks like Postgres's.
 const withDefaults = (user: UserRow): UserRow => ({ sessionVersion: 0, ...user });
+
+type PeriodWhere = {
+  id?: string;
+  userId?: string;
+  status?: SubscriptionPeriodRow["status"];
+  revokedAt?: null;
+  periodEnd?: { gte: Date };
+};
+
+// The period filters the code uses; one left out matches every row, as in
+// Prisma. A null `periodEnd` never passes a `gte`, as in SQL.
+const matchesPeriod = (where: PeriodWhere = {}) => (row: SubscriptionPeriodRow) =>
+  (where.id === undefined || row.id === where.id) &&
+  (where.userId === undefined || row.userId === where.userId) &&
+  (where.status === undefined || (row.status ?? "PAID") === where.status) &&
+  (where.revokedAt === undefined || (row.revokedAt ?? null) === null) &&
+  (where.periodEnd === undefined || (row.periodEnd != null && row.periodEnd >= where.periodEnd.gte));
+
+type PeriodQuery = { where?: PeriodWhere; orderBy?: OrderBy; take?: number; select?: Select };
+
+const findPeriods = ({ where, orderBy = [], take, select }: PeriodQuery) =>
+  db.subscriptionPeriods
+    .filter(matchesPeriod(where))
+    .sort(compareBy(orderBy))
+    .slice(0, take)
+    .map((row) => pick({ status: "PAID", ...row }, select));
+
+/** A user select: columns, plus the filtered `subscriptionPeriods` relation. */
+type UserSelect = { [column: string]: boolean | PeriodQuery | undefined; subscriptionPeriods?: PeriodQuery };
+
+// The row in the shape `select` asks for, with the periods relation nested as
+// Prisma nests it: only the user's rows, filtered, ordered and capped.
+const shapeUser = (user: UserRow, select?: UserSelect) => {
+  if (!select?.subscriptionPeriods) return pick(withDefaults(user), select as Select | undefined);
+  const { subscriptionPeriods: relation, ...columns } = select;
+  return {
+    ...pick(withDefaults(user), columns as Select),
+    subscriptionPeriods: findPeriods({ ...relation, where: { ...relation.where, userId: user.id } }),
+  };
+};
 
 type UserData = { [K in keyof UserRow]?: UserRow[K] | { increment: number } };
 
@@ -290,10 +348,10 @@ const transaction = (
 
 export const fakePrisma = {
   user: {
-    findUnique: ({ where, select }: { where: { id: string }; select?: Select }) =>
+    findUnique: ({ where, select }: { where: { id: string }; select?: UserSelect }) =>
       query(() => {
         const user = findUser(where.id);
-        return user ? pick(withDefaults(user), select) : null;
+        return user ? shapeUser(user, select) : null;
       }),
     // Only the case-insensitive email lookup that register and sign-in use.
     findFirst: ({
@@ -367,7 +425,54 @@ export const fakePrisma = {
         db.items = db.items.filter((row) => row.userId !== user.id);
         db.collections = db.collections.filter((row) => row.userId !== user.id);
         db.itemTypes = db.itemTypes.filter((row) => row.userId !== user.id);
+        db.subscriptionPeriods = db.subscriptionPeriods.filter((row) => row.userId !== user.id);
         return { ...user };
+      }),
+  },
+  subscriptionPeriod: {
+    findMany: (args: PeriodQuery = {}) => query(() => findPeriods(args)),
+    // Defaults as the schema fills them. `userId` must name a user, as the
+    // foreign key requires, and both uniques hold; a `NULL` in any part of
+    // the composite one never clashes, as in Postgres.
+    create: ({ data, select }: { data: Omit<SubscriptionPeriodRow, "id">; select?: Select }) =>
+      query(() => {
+        if (!findUser(data.userId)) {
+          throw new Error('violates foreign key constraint "SubscriptionPeriod_userId_fkey"');
+        }
+        const { stripeCheckoutSessionId, vendor, vendorSubscriptionId, periodEnd } = data;
+        if (stripeCheckoutSessionId && db.subscriptionPeriods.some((row) => row.stripeCheckoutSessionId === stripeCheckoutSessionId)) {
+          throw uniqueViolation(["stripeCheckoutSessionId"]);
+        }
+        if (
+          vendor &&
+          vendorSubscriptionId &&
+          periodEnd &&
+          db.subscriptionPeriods.some(
+            (row) =>
+              row.vendor === vendor &&
+              row.vendorSubscriptionId === vendorSubscriptionId &&
+              row.periodEnd?.getTime() === periodEnd.getTime(),
+          )
+        ) {
+          throw uniqueViolation(["vendor", "vendorSubscriptionId", "periodEnd"]);
+        }
+        const row: SubscriptionPeriodRow = {
+          id: `period-${db.subscriptionPeriods.length + 1}`,
+          status: "PAID",
+          vendor: null,
+          revokedAt: null,
+          ...data,
+        };
+        db.subscriptionPeriods.push(row);
+        return pick(row, select);
+      }),
+    // A conditional write such as `{ id, status: "PENDING" }`: a row already
+    // moved on doesn't match, so two racing writes change it once.
+    updateMany: ({ where, data }: { where: PeriodWhere; data: Partial<Omit<SubscriptionPeriodRow, "id" | "userId">> }) =>
+      query(() => {
+        const rows = db.subscriptionPeriods.filter(matchesPeriod(where));
+        for (const row of rows) Object.assign(row, data);
+        return { count: rows.length };
       }),
   },
   itemType: {
