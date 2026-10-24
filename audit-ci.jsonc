@@ -8,24 +8,7 @@
   "high": true,
   "skip-dev": true,
   "show-not-found": true,
-  "allowlist": [
-    // braces: denial of service (stack exhaustion) from a deeply nested glob pattern.
-    // Path: shadcn > fast-glob > micromatch > braces. shadcn is the component CLI,
-    // run by hand during development; the app only imports its CSS at build time.
-    // Patterns come from the CLI, never from users. No fixed braces version exists.
-    "GHSA-vfj7-8cjw-p6xm",
-
-    // deepmerge-ts: denial of service (stack exhaustion) when merging an object that
-    // refers to itself. Path: @prisma/client > prisma > @prisma/config > deepmerge-ts.
-    // Only the Prisma CLI's config loading uses it, on our own prisma.config.ts.
-    // Prisma pins 7.1.5; the only fix is Prisma 6, which breaks the ^7 pin.
-    "GHSA-ggr8-5vv4-36mx",
-
-    // mysql2: credential leak (auth plugin downgrade to mysql_clear_password).
-    // Path: @prisma/client > prisma > mysql2, bundled with the Prisma CLI.
-    // This app is Postgres only (Neon); nothing ever opens a MySQL connection.
-    // (Its other advisory, a decompression-bomb DoS, GHSA-rgwj-5xj2-c3m3, is
-    // moderate, below the threshold, so it needs no entry.)
-    "GHSA-3f6p-5ww8-9rcr"
-  ]
+  // Empty: the braces, deepmerge-ts and mysql2 advisories listed here before
+  // were fixed upstream (Prisma 7.10.1, shadcn's newer dependencies).
+  "allowlist": []
 }

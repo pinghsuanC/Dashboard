@@ -85,7 +85,7 @@ For a typecheck without a full build: `npx tsc --noEmit`.
 
 ## Docs are local
 
-This is Next.js 16.3.8 with React 19. The version-correct docs ship inside the repo at `node_modules/next/dist/docs/` — `01-app/01-getting-started/` for guides, `01-app/03-api-reference/` for APIs, and `01-app/02-guides/upgrading/version-16.md` for what changed. This is the point of the generated block in `AGENTS.md`; the generated-types note below is a concrete example of an API that does not exist in older Next.
+This is Next.js 16.4.3 with React 19. The version-correct docs ship inside the repo at `node_modules/next/dist/docs/` — `01-app/01-getting-started/` for guides, `01-app/03-api-reference/` for APIs, and `01-app/02-guides/upgrading/version-16.md` for what changed. This is the point of the generated block in `AGENTS.md`; the generated-types note below is a concrete example of an API that does not exist in older Next.
 
 ## Architecture
 
