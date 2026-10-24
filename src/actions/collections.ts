@@ -2,8 +2,10 @@
 
 import { unstable_rethrow } from "next/navigation";
 
+import { PlanLimitError } from "@/lib/billing/billing-errors";
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { collectionCreateSchema } from "@/lib/collections/collection-schemas";
+import { COLLECTION_LIMIT_REACHED } from "@/lib/constants/messages/billing";
 import { COLLECTION_NAME_TAKEN, COLLECTION_NOT_FOUND } from "@/lib/constants/messages/collections";
 import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import {
@@ -25,6 +27,8 @@ const NAME_TAKEN = {
 const NOT_FOUND = { success: false, error: { message: COLLECTION_NOT_FOUND, code: "not-found" } } as const;
 // A favourite value that isn't a boolean.
 const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
+// A Free user already holds the most collections the plan allows.
+const COLLECTION_LIMIT = { success: false, error: { message: COLLECTION_LIMIT_REACHED } } as const;
 
 /**
  * Saves the New Collection dialog. Called directly, like `createItem`: the
@@ -55,6 +59,7 @@ export const createCollection = async (input: unknown): Promise<ActionResult<Ses
   } catch (error) {
     // The sign-in redirect for a signed-out user must propagate.
     unstable_rethrow(error);
+    if (error instanceof PlanLimitError) return COLLECTION_LIMIT;
     console.error("Collection create failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }

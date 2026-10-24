@@ -1,12 +1,14 @@
 import { cache } from "react";
 
 import { Prisma } from "@/generated/prisma/client";
+import { PlanLimitError } from "@/lib/billing/billing-errors";
+import { canCreateCollection } from "@/lib/billing/plan-rules";
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { COLLECTIONS_PER_PAGE } from "@/lib/constants/limits";
 import { isRecordNotFound, isUniqueViolation } from "@/lib/db/prisma-errors";
 import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
-import { requireCurrentUserId } from "@/services/auth/session";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
 import type { CollectionCreate, CollectionHeader, CollectionSummary, SessionCollection } from "@/types/collections";
 import type { ItemRowType } from "@/types/items";
@@ -116,14 +118,23 @@ export const getFavoriteCollections = async (): Promise<CollectionSummary[]> => 
  * shape the session holds: a new collection has no items yet. Answers null
  * when the user already has a collection with that slug (`[userId, slug]`
  * is unique), so names differing only in case or punctuation can't both
- * exist. Another user's slugs never clash.
+ * exist. Another user's slugs never clash. Throws `PlanLimitError` when a
+ * Free user already holds `PRICING.free.collectionLimit` collections, counted
+ * in the create's transaction.
  */
 export const createCollection = async (fields: CollectionCreate): Promise<SessionCollection | null> => {
-  const userId = await requireCurrentUserId();
+  const { id: userId, plan } = await requireCurrentUser();
   try {
-    const collection = await prisma.collection.create({
-      data: { ...fields, userId, slug: slugify(fields.name) },
-      select: { id: true, name: true, slug: true, description: true, isFavorite: true, updatedAt: true },
+    const collection = await prisma.$transaction(async (tx) => {
+      // Known gap, as in `createItem`: two creates at the same instant can
+      // both count one under the limit (Read Committed), ending one over it.
+      if (!canCreateCollection(plan, await tx.collection.count({ where: { userId } }))) {
+        throw new PlanLimitError("collections");
+      }
+      return tx.collection.create({
+        data: { ...fields, userId, slug: slugify(fields.name) },
+        select: { id: true, name: true, slug: true, description: true, isFavorite: true, updatedAt: true },
+      });
     });
     return { ...collection, itemCount: 0, types: [] };
   } catch (error) {

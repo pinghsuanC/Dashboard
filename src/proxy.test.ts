@@ -43,6 +43,19 @@ describe("proxy: which paths it guards (P1)", () => {
     expect(matches("/api/auth/verify-email")).toBe(false);
     expect(matches("/sign-in")).toBe(false);
   });
+
+  it("R17 (Billing): lets a vendor's webhook through signed out; it checks the vendor's signature itself", () => {
+    expect(matches("/api/billing/stripe/webhook")).toBe(false);
+    expect(matches("/api/billing/paypal/webhook")).toBe(false);
+  });
+
+  it("R17 (Billing): every other billing path keeps the guard", () => {
+    expect(matches("/api/billing")).toBe(true);
+    expect(matches("/api/billing/stripe")).toBe(true);
+    expect(matches("/api/billing/stripe/portal")).toBe(true);
+    expect(matches("/api/billing/stripe/webhook/extra")).toBe(true);
+    expect(matches("/api/billing/a/b/webhook")).toBe(true);
+  });
 });
 
 describe("proxy: signed out (P2)", () => {

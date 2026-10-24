@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { ITEMS_PER_PAGE, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
+import { PlanLimitError } from "@/lib/billing/billing-errors";
+import { PRICING } from "@/lib/constants/pricing";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, fakePrisma, resetDb } from "@/test/fake-prisma";
+import { signInOnPlan } from "@/test/fake-session";
 
 import {
   createItem,
@@ -23,7 +26,7 @@ import {
   updateItem,
 } from "./items";
 
-vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn(), requireCurrentUser: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 const day = (n: number) => new Date(Date.UTC(2026, 0, n));
@@ -31,6 +34,7 @@ const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 beforeEach(() => {
   resetDb();
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
+  signInOnPlan("FREE");
   db.itemTypes.push({ id: "t-snippet", name: "snippet", label: "Snippet", icon: "Code", color: "#3b82f6", isSystem: true, userId: null });
 });
 
@@ -1206,5 +1210,39 @@ describe("pinned items for the session and /pinned (getPinnedItems)", () => {
     vi.mocked(requireCurrentUserId).mockRejectedValue(redirect);
 
     await expect(getPinnedItems()).rejects.toBe(redirect);
+  });
+});
+
+describe("Free item limit, counted inside the create (Billing 2: R1, R4)", () => {
+  const fillTo = (count: number, userId = "ada") => {
+    for (let n = 0; n < count; n++) db.items.push({ id: `${userId}-${n}`, userId, typeId: "t-snippet", title: `Item ${n}` });
+  };
+
+  it("R1: a Free user below the limit can create the last item", async () => {
+    fillTo(PRICING.free.itemLimit - 1);
+
+    expect(await createItem("snippet", { title: "Last one" })).toMatchObject({ title: "Last one" });
+    expect(db.items.filter((item) => item.userId === "ada")).toHaveLength(PRICING.free.itemLimit);
+  });
+
+  it("R1: at the limit the create throws PlanLimitError and nothing is saved", async () => {
+    fillTo(PRICING.free.itemLimit);
+
+    await expect(createItem("snippet", { title: "One too many", tags: ["extra"] })).rejects.toBeInstanceOf(PlanLimitError);
+    expect(db.items).toHaveLength(PRICING.free.itemLimit);
+    expect(db.tags).toEqual([]);
+  });
+
+  it("R1: only the user's own items count", async () => {
+    fillTo(PRICING.free.itemLimit, "bob");
+
+    expect(await createItem("snippet", { title: "Mine" })).toMatchObject({ title: "Mine" });
+  });
+
+  it("R4: a Pro user has no item limit", async () => {
+    signInOnPlan("PRO");
+    fillTo(PRICING.free.itemLimit + 3);
+
+    expect(await createItem("snippet", { title: "Unlimited" })).toMatchObject({ title: "Unlimited" });
   });
 });

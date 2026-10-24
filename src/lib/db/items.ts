@@ -1,10 +1,12 @@
 import { Prisma } from "@/generated/prisma/client";
+import { PlanLimitError } from "@/lib/billing/billing-errors";
+import { canCreateItem } from "@/lib/billing/plan-rules";
 import { CollectionNotFoundError } from "@/lib/collections/collection-errors";
 import { DASHBOARD_RECENT_ITEMS_LIMIT, ITEMS_PER_PAGE, SEARCH_ITEM_LIMIT } from "@/lib/constants/limits";
 import { isRecordNotFound } from "@/lib/db/prisma-errors";
 import { loadPage } from "@/lib/helpers/pagination";
 import { slugify } from "@/lib/helpers/slugify";
-import { requireCurrentUserId } from "@/services/auth/session";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
 import { prisma } from "@/services/prisma";
 import type { ItemFileFields, ItemFileRef } from "@/types/files";
 import type { DeletedItem, ItemCounts, ItemCreate, ItemDetail, ItemSummary, ItemUpdate } from "@/types/items";
@@ -341,13 +343,15 @@ export const getItemFile = async (id: string): Promise<ItemFileRef | null> => {
  * the drawer shows it. The owner comes from the session, never the input.
  * `null` when no built-in type has that name: a user-owned type, even one
  * named like a built-in, is never used. Throws `CollectionNotFoundError`,
- * saving nothing, if a collection id isn't one of the user's.
+ * saving nothing, if a collection id isn't one of the user's, and
+ * `PlanLimitError` when a Free user already holds `PRICING.free.itemLimit`
+ * items, counted inside the transaction so the count and the write agree.
  */
 export const createItem = async (
   typeName: string,
   { title, description, content, language, url, tags, collectionIds }: ItemCreate,
 ): Promise<ItemDetail | null> => {
-  const userId = await requireCurrentUserId();
+  const { id: userId, plan } = await requireCurrentUser();
   const type = await prisma.itemType.findFirst({
     where: { name: typeName, isSystem: true, userId: null },
     select: { id: true },
@@ -355,6 +359,11 @@ export const createItem = async (
   if (!type) return null;
 
   const item = await prisma.$transaction(async (tx) => {
+    // Known gap: the default isolation (Read Committed) doesn't stop two
+    // creates sent at the same instant from both counting one under the limit,
+    // so a Free user could end one item over it. Only by racing themselves;
+    // a Serializable transaction would close it at the cost of retries.
+    if (!canCreateItem(plan, await tx.item.count({ where: { userId } }))) throw new PlanLimitError("items");
     if (collectionIds) await assertOwnCollections(tx, userId, collectionIds);
     return tx.item.create({
       data: {

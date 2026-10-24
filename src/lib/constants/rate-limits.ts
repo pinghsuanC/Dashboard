@@ -28,6 +28,17 @@ export const RATE_LIMITS = {
    * behind one NAT still count separately.
    */
   upload: { limit: 30, window: "1 h", perIp: false },
+  /**
+   * Settings' Upgrade buttons, keyed by the session user alone: each one may
+   * create a Checkout session at Stripe.
+   */
+  checkout: { limit: 10, window: "1 h", perIp: false },
+  /**
+   * The session load's Stripe check, keyed by the session user alone. Past
+   * it, the stored periods answer without asking Stripe, so reloading can't
+   * spend the app's Stripe rate limit.
+   */
+  billingCheck: { limit: 30, window: "1 h", perIp: false },
 } as const satisfies Record<string, { limit: number; window: Duration; perIp?: false }>;
 
 export type RateLimitPolicy = keyof typeof RATE_LIMITS;

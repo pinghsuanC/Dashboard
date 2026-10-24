@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { auth } from "@/auth";
 import { DAY_MS } from "@/lib/constants/time";
+import { fakeAdapter, paidPeriod, resetFakeBilling } from "@/test/fake-billing";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { getUserSession, resetProfile } from "./user-session";
@@ -23,6 +24,12 @@ vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 // The JWT: only the user id. Everything else is read from the database.
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
+// The billing check runs for real; only the vendor and the rate limit are stood in for.
+vi.mock("@/services/billing/vendors", async () => (await import("@/test/fake-billing")).fakeVendors);
+vi.mock("@/services/rate-limit", () => ({
+  checkRateLimit: async () => ({ success: true, remaining: 1, reset: Date.now() }),
+}));
+vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 
 const signedInAs = (userId: string | null) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- auth() is overloaded; the session shape is all that matters
@@ -42,6 +49,7 @@ const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 
 beforeEach(() => {
   resetDb();
+  resetFakeBilling();
   vi.mocked(refresh).mockClear();
   db.users.push(
     {
@@ -244,7 +252,7 @@ describe("user session: item counts, pinned items and collections (S3)", () => {
     const session = await getUserSession();
 
     expect(Object.keys(session).sort()).toEqual(
-      ["collections", "itemCounts", "itemTypes", "pinnedItems", "searchItems", "user"],
+      ["billing", "collections", "itemCounts", "itemTypes", "pinnedItems", "searchItems", "user"],
     );
   });
 
@@ -330,5 +338,48 @@ describe("server-side reset (S6)", () => {
     resetProfile();
 
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("user session: billing (Billing 2: R19)", () => {
+  it("holds the user's billing: plan, interval, period end and whether they're a customer", async () => {
+    signedInAs("ada");
+
+    const { billing } = await getUserSession();
+
+    expect(billing).toEqual({
+      plan: "PRO",
+      interval: "MONTH",
+      periodEnd: db.subscriptionPeriods[0].periodEnd,
+      isCustomer: true,
+    });
+  });
+
+  it("a user who never paid is Free and no customer, at no Stripe call", async () => {
+    signedInAs("bob");
+
+    expect((await getUserSession()).billing).toEqual({ plan: "FREE", interval: null, periodEnd: null, isCustomer: false });
+    expect(fakeAdapter.fetchActivePeriod).not.toHaveBeenCalled();
+    expect(fakeAdapter.fetchCheckout).not.toHaveBeenCalled();
+  });
+
+  it("checks with Stripe once per load", async () => {
+    signedInAs("ada");
+
+    await getUserSession();
+
+    expect(fakeAdapter.fetchActivePeriod).toHaveBeenCalledOnce();
+    expect(fakeAdapter.fetchActivePeriod).toHaveBeenCalledWith("cus_secret");
+  });
+
+  it("a payment settled by this load makes the session's user Pro on this load", async () => {
+    signedInAs("bob");
+    db.subscriptionPeriods.push({ id: "bob-pending", userId: "bob", status: "PENDING", vendor: "STRIPE", interval: "YEAR", stripeCheckoutSessionId: "cs_bob" });
+    fakeAdapter.fetchCheckout.mockResolvedValue({ state: "paid", period: paidPeriod({ customerId: "cus_bob", interval: "YEAR" }) });
+
+    const { user, billing } = await getUserSession();
+
+    expect(billing).toMatchObject({ plan: "PRO", interval: "YEAR", isCustomer: true });
+    expect(user).toMatchObject({ plan: "PRO", isPro: true });
   });
 });

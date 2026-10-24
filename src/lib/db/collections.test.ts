@@ -2,8 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CollectionNameTakenError } from "@/lib/collections/collection-errors";
 import { COLLECTIONS_PER_PAGE } from "@/lib/constants/limits";
+import { PlanLimitError } from "@/lib/billing/billing-errors";
+import { PRICING } from "@/lib/constants/pricing";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, fakePrisma, resetDb } from "@/test/fake-prisma";
+import { signInOnPlan } from "@/test/fake-session";
 
 import {
   createCollection,
@@ -19,7 +22,7 @@ import { getItemDetail } from "./items";
 
 class RedirectError extends Error {}
 
-vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn(), requireCurrentUser: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 
 const updatedAt = new Date("2026-01-01T00:00:00Z");
@@ -36,6 +39,7 @@ beforeEach(() => {
     { id: "b1", userId: "bob", typeId: "t-note", title: "Bob's note", collectionIds: ["c-bob"] },
   );
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
+  signInOnPlan("FREE");
 });
 
 describe("getSessionCollections", () => {
@@ -467,5 +471,40 @@ describe("collection favourite flag (setCollectionFavorite)", () => {
 
     expect((await getFavoriteCollections()).map((collection) => collection.id)).toEqual(["c-ada"]);
     expect(await getSessionCollections()).toEqual([expect.objectContaining({ id: "c-ada", isFavorite: true })]);
+  });
+});
+
+describe("Free collection limit, counted inside the create (Billing 2: R2, R4)", () => {
+  // Ada starts with one collection (c-ada).
+  const fillTo = (count: number, userId = "ada") => {
+    const have = db.collections.filter((collection) => collection.userId === userId).length;
+    for (let n = have; n < count; n++) db.collections.push({ id: `${userId}-c${n}`, userId, name: `C ${n}`, slug: `c-${n}`, updatedAt });
+  };
+
+  it("R2: a Free user below the limit can create the last collection", async () => {
+    fillTo(PRICING.free.collectionLimit - 1);
+
+    expect(await createCollection({ name: "Last one", description: null, isFavorite: false })).toMatchObject({ name: "Last one" });
+  });
+
+  it("R2: at the limit the create throws PlanLimitError and nothing is saved", async () => {
+    fillTo(PRICING.free.collectionLimit);
+    const before = db.collections.length;
+
+    await expect(createCollection({ name: "One too many", description: null, isFavorite: false })).rejects.toBeInstanceOf(PlanLimitError);
+    expect(db.collections).toHaveLength(before);
+  });
+
+  it("R2: only the user's own collections count", async () => {
+    fillTo(PRICING.free.collectionLimit + 2, "bob");
+
+    expect(await createCollection({ name: "Mine", description: null, isFavorite: false })).toMatchObject({ name: "Mine" });
+  });
+
+  it("R4: a Pro user has no collection limit", async () => {
+    signInOnPlan("PRO");
+    fillTo(PRICING.free.collectionLimit + 2);
+
+    expect(await createCollection({ name: "Unlimited", description: null, isFavorite: false })).toMatchObject({ name: "Unlimited" });
   });
 });

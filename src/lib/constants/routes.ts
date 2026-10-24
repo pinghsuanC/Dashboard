@@ -27,6 +27,8 @@ export const API_ROUTES = {
   verifyEmail: "/api/auth/verify-email",
   signedOut: "/api/auth/signed-out",
   items: "/api/items",
+  /** Vendor webhooks, `/api/billing/<vendor>/webhook`: the one API route the proxy lets through signed out. */
+  billing: "/api/billing",
 } as const;
 
 /** `/api/items/<id>`, the item drawer's fetch. Encoded: the id comes from data. */
@@ -84,6 +86,10 @@ export const FLAGS = {
   sent: { param: "sent", value: "1" },
   /** `/settings?password=changed` after a password change. */
   passwordChanged: { param: "password", value: "changed" },
+  /** `/settings?billing=success`, Checkout's return after paying. Carries no id: the webhook and the session load settle the payment. */
+  billingSuccess: { param: "billing", value: "success" },
+  /** `/settings?billing=canceled`, Checkout's return when the user backs out. */
+  billingCanceled: { param: "billing", value: "canceled" },
 } as const;
 
 export type Flag = (typeof FLAGS)[keyof typeof FLAGS];

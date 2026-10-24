@@ -29,7 +29,9 @@ export const proxy = auth((req) => {
 
 // Literal on purpose: Next reads `matcher` statically and ignores variables.
 // Keep it in step with the protected pages in `ROUTES` (lib/constants/routes.ts).
-// Every API route except Auth.js's and the signed-out ones under /api/auth.
+// Every API route except Auth.js's and the signed-out ones under /api/auth,
+// and a vendor's webhook (`/api/billing/<vendor>/webhook`, exactly), which a
+// vendor calls with no session and which verifies the vendor's signature.
 // Routes still check the session themselves: this only verifies the JWT, and
 // a revoked session (`sessionVersion`) is only seen by `getCurrentUser()`.
 export const config = {
@@ -41,6 +43,6 @@ export const config = {
     "/items/:path*",
     "/favorites/:path*",
     "/pinned/:path*",
-    "/api/((?!auth/).*)",
+    "/api/((?!auth/|billing/[^/]+/webhook$).*)",
   ],
 };
