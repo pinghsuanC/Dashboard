@@ -1,7 +1,8 @@
 /**
  * Plan prices and limits as the homepage advertises them, in whole US
- * dollars. Nothing in the app enforces the limits yet; Stripe will own the
- * real prices. Copy that mentions a price or a saving derives it from these
+ * dollars. The Free limits are enforced on the server (`lib/billing/plan-rules.ts`);
+ * what is charged is the Stripe prices (`STRIPE_PRICE_ID_*`), which must match
+ * these. Copy that mentions a price or a saving derives it from these
  * through `src/lib/pricing/pricing.ts`, never as typed text.
  */
 export const PRICING = {

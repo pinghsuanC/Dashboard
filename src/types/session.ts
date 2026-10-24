@@ -1,4 +1,4 @@
-import type { Plan } from "@/types/billing";
+import type { BillingStatus, Plan } from "@/types/billing";
 import type { SessionCollection } from "@/types/collections";
 import type { EditorPreferences } from "@/types/editor";
 import type { ItemCounts, ItemSummary, ItemTypeDefinition } from "@/types/items";
@@ -29,6 +29,11 @@ export interface CurrentUser {
  */
 export interface UserSession {
   user: CurrentUser;
+  /**
+   * Checked with the vendor once per session load, like the rest of the
+   * session; navigation reuses it. Never carries vendor ids.
+   */
+  billing: BillingStatus;
   itemTypes: ItemTypeDefinition[];
   /** Numbers only: total, favorites, per type. */
   itemCounts: ItemCounts;

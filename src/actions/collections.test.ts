@@ -7,13 +7,16 @@ import {
   COLLECTION_NOT_FOUND,
 } from "@/lib/constants/messages/collections";
 import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
+import { COLLECTION_LIMIT_REACHED } from "@/lib/constants/messages/billing";
+import { PRICING } from "@/lib/constants/pricing";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { db, resetDb } from "@/test/fake-prisma";
+import { signInOnPlan } from "@/test/fake-session";
 
 import { createCollection, deleteCollection, setCollectionFavorite, updateCollection } from "./collections";
 
-vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn(), requireCurrentUser: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Next's refresh() only works inside a real request; the tests check it was asked for.
 vi.mock("@/lib/session/user-session", () => ({ resetProfile: vi.fn() }));
@@ -29,6 +32,7 @@ beforeEach(() => {
   resetDb();
   vi.mocked(resetProfile).mockClear();
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
+  signInOnPlan("FREE");
 });
 
 describe("createCollection action: success (A1)", () => {
@@ -350,5 +354,32 @@ describe("setCollectionFavorite action (CF6–CF10)", () => {
       digest: expect.stringContaining("NEXT_REDIRECT"),
     });
     expect(collection().isFavorite).toBe(false);
+  });
+});
+
+describe("createCollection action: Free plan limit (Billing 2: R2, R4)", () => {
+  const fill = () => {
+    for (let n = 0; n < PRICING.free.collectionLimit; n++) {
+      db.collections.push({ id: `c${n}`, userId: "ada", name: `C ${n}`, slug: `c-${n}`, updatedAt });
+    }
+  };
+
+  it("R2: a Free user at the limit is refused with the limit message; nothing is saved", async () => {
+    fill();
+
+    expect(await createCollection({ name: "One too many", description: "", isFavorite: false })).toEqual({
+      success: false,
+      error: { message: COLLECTION_LIMIT_REACHED },
+    });
+    expect(db.collections).toHaveLength(PRICING.free.collectionLimit);
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("R4: a Pro user creates past the Free limit", async () => {
+    signInOnPlan("PRO");
+    fill();
+
+    expect(await createCollection({ name: "Unlimited", description: "", isFavorite: false })).toMatchObject({ success: true });
+    expect(db.collections).toHaveLength(PRICING.free.collectionLimit + 1);
   });
 });

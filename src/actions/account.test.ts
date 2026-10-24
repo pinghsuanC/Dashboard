@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signIn, signOut } from "@/auth";
 import { signInHref } from "@/lib/auth/auth-redirect";
 import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
+import { BILLING_CANCEL_FAILED } from "@/lib/constants/messages/billing";
 import { checkRateLimit } from "@/services/rate-limit";
+import { fakeAdapter, resetFakeBilling } from "@/test/fake-billing";
 import { db, resetDb } from "@/test/fake-prisma";
 
 import { changePasswordAction, deleteAccountAction, updateEditorPreferences } from "./account";
@@ -40,6 +42,7 @@ vi.mock("@/services/auth/session", () => ({
 }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 vi.mock("@/services/rate-limit", () => ({ checkRateLimit: vi.fn() }));
+vi.mock("@/services/billing/vendors", async () => (await import("@/test/fake-billing")).fakeVendors);
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "1.1.1.1" }) }));
 // Real bcrypt at the lowest cost.
 vi.mock("@/lib/constants/security", async (importOriginal) => ({
@@ -257,6 +260,7 @@ describe("change password", () => {
 
 describe("delete account", () => {
   beforeEach(async () => {
+    resetFakeBilling();
     const ada = await addUser("ada", OLD_PASSWORD);
     const bob = await addUser("bob", OLD_PASSWORD);
     db.itemTypes.push({ id: "snippet", userId: null });
@@ -345,6 +349,77 @@ describe("delete account", () => {
     expect(url).toBe("/sign-in");
     expect(db.users).toHaveLength(2);
     expect(signOut).not.toHaveBeenCalled();
+  });
+});
+
+describe("delete account: subscriptions are cancelled first (Billing 2: R22)", () => {
+  const paid = (id: string, userId: string, customerId: string, createdAt: number) => ({
+    id,
+    userId,
+    vendor: "STRIPE" as const,
+    vendorCustomerId: customerId,
+    vendorSubscriptionId: `sub_${id}`,
+    interval: "MONTH" as const,
+    periodEnd: new Date(Date.UTC(2099, 0, 1)),
+    createdAt: new Date(Date.UTC(2026, 0, createdAt)),
+  });
+
+  beforeEach(async () => {
+    resetFakeBilling();
+    await addUser("ada", OLD_PASSWORD);
+    await addUser("bob", OLD_PASSWORD);
+    db.subscriptionPeriods.push(
+      paid("ada-1", "ada", "cus_ada_old", 1),
+      paid("ada-2", "ada", "cus_ada_old", 2),
+      paid("ada-3", "ada", "cus_ada_new", 3),
+      // Granted: no customer to cancel.
+      { id: "ada-trial", userId: "ada", interval: "MONTH", periodEnd: new Date(Date.UTC(2099, 0, 1)) },
+      paid("bob-1", "bob", "cus_bob", 1),
+    );
+    signedInAs("ada");
+  });
+
+  it("cancels every open subscription of every customer the user paid through, each once, then deletes", async () => {
+    const state = await deleteAccountAction();
+
+    expect(fakeAdapter.cancelAll.mock.calls.map(([customerId]) => customerId).sort()).toEqual(["cus_ada_new", "cus_ada_old"]);
+    expect(state).toEqual({ leaveTo: "/api/auth/signed-out?deleted=1" });
+    expect(db.users.map((user) => user.id)).toEqual(["bob"]);
+  });
+
+  it("cancels before deleting: the account still exists while Stripe is asked", async () => {
+    fakeAdapter.cancelAll.mockImplementation(async () => {
+      expect(db.users.some((user) => user.id === "ada")).toBe(true);
+    });
+
+    await deleteAccountAction();
+
+    expect(fakeAdapter.cancelAll).toHaveBeenCalled();
+  });
+
+  it("a user who never paid deletes with no Stripe call", async () => {
+    db.subscriptionPeriods = db.subscriptionPeriods.filter((period) => period.userId !== "ada" || period.id === "ada-trial");
+
+    await deleteAccountAction();
+
+    expect(fakeAdapter.cancelAll).not.toHaveBeenCalled();
+    expect(db.users.map((user) => user.id)).toEqual(["bob"]);
+  });
+
+  it("a Stripe failure keeps the account and the session, with a message", async () => {
+    fakeAdapter.cancelAll.mockRejectedValueOnce(new Error("Stripe down"));
+
+    expect(await deleteAccountAction()).toEqual({ error: BILLING_CANCEL_FAILED });
+    expect(db.users.map((user) => user.id)).toEqual(["ada", "bob"]);
+    expect(db.subscriptionPeriods.filter((period) => period.userId === "ada")).toHaveLength(4);
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it("missing Stripe settings keep the account too: a subscription would go on billing", async () => {
+    fakeAdapter.cancelAll.mockRejectedValue(Object.assign(new Error("not configured"), { name: "BillingNotConfiguredError" }));
+
+    expect(await deleteAccountAction()).toEqual({ error: BILLING_CANCEL_FAILED });
+    expect(db.users.some((user) => user.id === "ada")).toBe(true);
   });
 });
 

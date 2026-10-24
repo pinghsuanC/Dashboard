@@ -10,12 +10,15 @@ import { signInHref } from "@/lib/auth/auth-redirect";
 import { changePasswordSchema } from "@/lib/auth/auth-schemas";
 import { rateLimitMessage } from "@/lib/auth/rate-limit-messages";
 import { ACCOUNT_MESSAGES } from "@/lib/constants/messages/account";
+import { BILLING_CANCEL_FAILED } from "@/lib/constants/messages/billing";
 import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { API_ROUTES, FLAGS, ROUTES, withFlag } from "@/lib/constants/routes";
+import { getBillingCustomers } from "@/lib/db/billing";
 import { deleteAccount, saveEditorPreferences } from "@/lib/db/users";
 import { editorPreferencesSchema } from "@/lib/editor/editor-preferences";
 import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
+import { adapterFor } from "@/services/billing/vendors";
 import { checkRateLimit } from "@/services/rate-limit";
 import type { EditorPreferences } from "@/types/editor";
 import type { ActionResult, DeleteAccountState, FormState } from "@/types/forms";
@@ -76,12 +79,44 @@ export const changePasswordAction = async (
  * route, in the browser so its `Clear-Site-Data` reaches it (a redirect from
  * here would be followed on the server), and that route goes on to
  * `/sign-in?deleted=1`.
+ *
+ * First, every open subscription of every customer the user paid through is
+ * cancelled, so a deleted account is never billed again. A vendor failure
+ * (missing settings included) keeps the account, with a message: deleting
+ * anyway would leave a subscription billing nobody's account. A checkout
+ * still open in another tab and paid after this is cancelled by the webhook
+ * (its period is gone with the user).
  */
 export const deleteAccountAction = async (): Promise<DeleteAccountState> => {
+  // Outside the try: its sign-in redirect must propagate.
+  await requireCurrentUserId();
+  const cancelled = await cancelSubscriptions();
+  if (cancelled !== "ok") return { error: cancelled };
+
   if (!(await deleteAccount())) return { error: SOMETHING_WENT_WRONG };
 
   await signOut({ redirect: false });
   return { leaveTo: withFlag(API_ROUTES.signedOut, FLAGS.deleted) };
+};
+
+/** Cancels each of the user's vendor customers' subscriptions: "ok", or the message to answer with. */
+const cancelSubscriptions = async (): Promise<"ok" | string> => {
+  let customers;
+  try {
+    customers = await getBillingCustomers();
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Reading billing customers failed; account kept:", error);
+    return SOMETHING_WENT_WRONG;
+  }
+  try {
+    for (const { vendor, customerId } of customers) await adapterFor(vendor).cancelAll(customerId);
+    return "ok";
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("Cancelling subscriptions failed; account kept:", error);
+    return BILLING_CANCEL_FAILED;
+  }
 };
 
 /**

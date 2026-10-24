@@ -6,7 +6,8 @@ import { cache } from "react";
 import { getSessionCollections } from "@/lib/db/collections";
 import { getSystemItemTypeDefinitions } from "@/lib/db/item-types";
 import { getItemCounts, getPinnedItems, getSearchItems } from "@/lib/db/items";
-import { requireCurrentUser } from "@/services/auth/session";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
+import { resolveBilling } from "@/services/billing/entitlement";
 import type { UserSession } from "@/types/session";
 
 /**
@@ -24,15 +25,21 @@ import type { UserSession } from "@/types/session";
  * the auth check that sends a valid token with a deleted user to sign-in.
  */
 export const getUserSession = cache(async (): Promise<UserSession> => {
-  const [user, itemTypes, itemCounts, pinnedItems, collections, searchItems] = await Promise.all([
+  const [user, billing, itemTypes, itemCounts, pinnedItems, collections, searchItems] = await Promise.all([
     requireCurrentUser(),
+    // The one place billing is checked with the vendor (see `resolveBilling`).
+    requireCurrentUserId().then(resolveBilling),
     getSystemItemTypeDefinitions(),
     getItemCounts(),
     getPinnedItems(),
     getSessionCollections(),
     getSearchItems(),
   ]);
-  return { user, itemTypes, itemCounts, pinnedItems, collections, searchItems };
+  // The profile's plan was read alongside the check, so a payment the check
+  // just settled isn't in it yet: the check's answer wins. The next request's
+  // `getCurrentUser()` reads the settled row itself.
+  const plan = billing.plan;
+  return { user: { ...user, plan, isPro: plan === "PRO" }, billing, itemTypes, itemCounts, pinnedItems, collections, searchItems };
 });
 
 /**

@@ -13,15 +13,18 @@ import {
   ITEM_TITLE_REQUIRED,
   ITEM_URL_REQUIRED,
 } from "@/lib/constants/messages/items";
+import { ITEM_LIMIT_REACHED, PRO_TYPE_REQUIRED } from "@/lib/constants/messages/billing";
+import { PRICING } from "@/lib/constants/pricing";
 import { resetProfile } from "@/lib/session/user-session";
 import { requireCurrentUserId } from "@/services/auth/session";
 import { checkRateLimit } from "@/services/rate-limit";
 import { db, resetDb } from "@/test/fake-prisma";
+import { signInOnPlan } from "@/test/fake-session";
 import { resetStorage, storage, upload } from "@/test/fake-storage";
 
 import { createItem, deleteItem, setItemFavorite, setItemPinned, updateItem } from "./items";
 
-vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn() }));
+vi.mock("@/services/auth/session", () => ({ requireCurrentUserId: vi.fn(), requireCurrentUser: vi.fn() }));
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 // Next's refresh() only works inside a real request; the tests check it was asked for.
 vi.mock("@/lib/session/user-session", () => ({ resetProfile: vi.fn() }));
@@ -39,6 +42,7 @@ beforeEach(() => {
   vi.mocked(checkRateLimit).mockReset().mockResolvedValue({ success: true, remaining: 1, reset: Date.now() });
   vi.mocked(resetProfile).mockClear();
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
+  signInOnPlan("FREE");
   db.itemTypes.push(
     { id: "t-note", name: "note", label: "Notes", icon: "StickyNote", color: "#fde047", isSystem: true, userId: null },
     { id: "t-link", name: "link", label: "Links", icon: "Link", color: "#10b981", isSystem: true, userId: null },
@@ -316,6 +320,8 @@ describe("createItem action: file and image items (F7)", () => {
   const MAX = 5 * BYTES_PER_MB;
 
   beforeEach(() => {
+    // File and image items are Pro (R3); the Free refusal has its own tests.
+    signInOnPlan("PRO");
     db.itemTypes.push(
       { id: "t-file", name: "file", label: "Files", color: "#6b7280", isSystem: true, userId: null },
       { id: "t-image", name: "image", label: "Images", color: "#ec4899", isSystem: true, userId: null },
@@ -561,6 +567,7 @@ describe("item collections: the actions (C5)", () => {
   });
 
   it("C5: a file item with a missing collection is refused before any upload is signed", async () => {
+    signInOnPlan("PRO");
     db.itemTypes.push({ id: "t-image", name: "image", label: "Images", icon: "Image", color: "#ec4899", isSystem: true, userId: null });
 
     const result = await createItem("image", {
@@ -647,5 +654,52 @@ describe("setItemFavorite and setItemPinned actions (FP7–FP11)", () => {
       });
       expect(itemRow("note")[flag]).toBeUndefined();
     });
+  });
+});
+
+describe("createItem action: Free plan limits (Billing 2: R1, R3, R4)", () => {
+  const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED } };
+  const file = { name: "a.png", size: 10, mimeType: "image/png" };
+
+  beforeEach(() => {
+    db.itemTypes.push(
+      { id: "t-file", name: "file", label: "Files", color: "#6b7280", isSystem: true, userId: null },
+      { id: "t-image", name: "image", label: "Images", color: "#ec4899", isSystem: true, userId: null },
+    );
+  });
+
+  it("R3: a Free user can't create a file or image item; nothing is saved or signed", async () => {
+    expect(await createItem("image", { title: "Logo", file })).toEqual(PRO_ONLY);
+    expect(await createItem("file", { title: "Doc", file: { ...file, name: "a.pdf", mimeType: "application/pdf" } })).toEqual(PRO_ONLY);
+
+    expect(db.items).toHaveLength(2);
+    expect(storage.signed.size).toBe(0);
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("R3: the refusal comes before the rate limit, so it uses up no upload try", async () => {
+    await createItem("image", { title: "Logo", file });
+
+    expect(checkRateLimit).not.toHaveBeenCalled();
+  });
+
+  it("R1: a Free user at the item limit is refused with the limit message; nothing is saved", async () => {
+    // Two items already (note, link); fill up to the limit.
+    for (let n = 2; n < PRICING.free.itemLimit; n++) db.items.push({ id: `fill-${n}`, userId: "ada", typeId: "t-note", title: `Fill ${n}` });
+
+    expect(await createItem("note", { title: "One too many" })).toEqual({
+      success: false,
+      error: { message: ITEM_LIMIT_REACHED },
+    });
+    expect(db.items).toHaveLength(PRICING.free.itemLimit);
+    expect(resetProfile).not.toHaveBeenCalled();
+  });
+
+  it("R4: a Pro user creates file and image items, past the Free item limit", async () => {
+    signInOnPlan("PRO");
+    for (let n = 2; n < PRICING.free.itemLimit; n++) db.items.push({ id: `fill-${n}`, userId: "ada", typeId: "t-note", title: `Fill ${n}` });
+
+    expect(await createItem("image", { title: "Logo", file })).toMatchObject({ success: true });
+    expect(db.items).toHaveLength(PRICING.free.itemLimit + 1);
   });
 });

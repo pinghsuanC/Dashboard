@@ -90,6 +90,19 @@ describe("service boundaries", () => {
     expect(importing("@/services/storage").length).toBeGreaterThan(0);
   });
 
+  it("B11 (Billing R5): only the Stripe adapter talks to Stripe", () => {
+    expect(importingAtRuntime("stripe")).toEqual(["services/billing/stripe.ts"]);
+    expect(importingPrefix("stripe/")).toEqual([]);
+  });
+
+  it("B12 (Billing R21): no server action reaches the period writes", () => {
+    // Every export of a "use server" file is a public endpoint; period
+    // writes are only reached through the webhook and the session load.
+    const actions = importing("@/services/billing/entitlement").filter((path) => path.startsWith("actions/"));
+    expect(actions).toEqual([]);
+    expect(importing("@/services/billing/entitlement").length).toBeGreaterThan(0);
+  });
+
   it("B7: lib/ is grouped by area; only shadcn's utils stays at its root", () => {
     const root = readdirSync(join(SRC, "lib"), { withFileTypes: true });
     expect(root.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort()).toEqual([

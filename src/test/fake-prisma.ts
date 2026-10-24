@@ -89,6 +89,8 @@ interface SubscriptionPeriodRow {
   periodStart?: Date | null;
   periodEnd?: Date | null;
   revokedAt?: Date | null;
+  /** Filled on create, as the schema's `now()` default does. */
+  createdAt?: Date;
 }
 interface VerificationTokenRow {
   identifier: string;
@@ -167,31 +169,77 @@ const findUser = (id: string) => db.users.find((user) => user.id === id);
 // Column defaults the schema fills in, so a row read back looks like Postgres's.
 const withDefaults = (user: UserRow): UserRow => ({ sessionVersion: 0, ...user });
 
+// A column filter: a value matches equal, `{ not: null }` any non-null value.
+type ColumnFilter<T> = T | { not: null };
+
 type PeriodWhere = {
   id?: string;
   userId?: string;
   status?: SubscriptionPeriodRow["status"];
   revokedAt?: null;
-  periodEnd?: { gte: Date };
+  vendor?: ColumnFilter<"STRIPE">;
+  vendorCustomerId?: ColumnFilter<string>;
+  vendorSubscriptionId?: string;
+  stripeCheckoutSessionId?: ColumnFilter<string>;
+  periodEnd?: { gte: Date } | Date;
+};
+
+const matchesColumn = <T>(filter: ColumnFilter<T> | undefined, value: T | null | undefined) => {
+  if (filter === undefined) return true;
+  if (filter !== null && typeof filter === "object" && "not" in filter) return value != null;
+  return value === filter;
+};
+
+// A `periodEnd` filter: `{ gte }`, or an exact instant. A null `periodEnd`
+// never passes either, as in SQL.
+const matchesPeriodEnd = (filter: PeriodWhere["periodEnd"], value: Date | null | undefined) => {
+  if (filter === undefined) return true;
+  if (value == null) return false;
+  return filter instanceof Date ? value.getTime() === filter.getTime() : value >= filter.gte;
 };
 
 // The period filters the code uses; one left out matches every row, as in
-// Prisma. A null `periodEnd` never passes a `gte`, as in SQL.
-const matchesPeriod = (where: PeriodWhere = {}) => (row: SubscriptionPeriodRow) =>
+// Prisma. A null `id` is refused, as Prisma refuses null for a required column.
+const matchesPeriod = (where: PeriodWhere = {}) => {
+  if ((where.id as unknown) === null) throw new Error("Argument `id` must not be null.");
+  return (row: SubscriptionPeriodRow) => matchesPeriodRow(where, row);
+};
+
+const matchesPeriodRow = (where: PeriodWhere, row: SubscriptionPeriodRow) =>
   (where.id === undefined || row.id === where.id) &&
   (where.userId === undefined || row.userId === where.userId) &&
   (where.status === undefined || (row.status ?? "PAID") === where.status) &&
   (where.revokedAt === undefined || (row.revokedAt ?? null) === null) &&
-  (where.periodEnd === undefined || (row.periodEnd != null && row.periodEnd >= where.periodEnd.gte));
+  matchesColumn(where.vendor, row.vendor) &&
+  matchesColumn(where.vendorCustomerId, row.vendorCustomerId) &&
+  matchesColumn(where.vendorSubscriptionId, row.vendorSubscriptionId) &&
+  matchesColumn(where.stripeCheckoutSessionId, row.stripeCheckoutSessionId) &&
+  matchesPeriodEnd(where.periodEnd, row.periodEnd);
 
-type PeriodQuery = { where?: PeriodWhere; orderBy?: OrderBy; take?: number; select?: Select };
+type PeriodQuery = {
+  where?: PeriodWhere;
+  orderBy?: OrderBy;
+  take?: number;
+  select?: Select;
+  /** Keeps the first row of each combination of these columns, after ordering. */
+  distinct?: (keyof SubscriptionPeriodRow)[];
+};
 
-const findPeriods = ({ where, orderBy = [], take, select }: PeriodQuery) =>
-  db.subscriptionPeriods
+const findPeriods = ({ where, orderBy = [], take, select, distinct }: PeriodQuery) => {
+  const seen = new Set<string>();
+  return db.subscriptionPeriods
     .filter(matchesPeriod(where))
     .sort(compareBy(orderBy))
+    .filter((row) => {
+      if (!distinct) return true;
+      const key = JSON.stringify(distinct.map((column) => row[column] ?? null));
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .slice(0, take)
     .map((row) => pick({ status: "PAID", ...row }, select));
+};
 
 /** A user select: columns, plus the filtered `subscriptionPeriods` relation. */
 type UserSelect = { [column: string]: boolean | PeriodQuery | undefined; subscriptionPeriods?: PeriodQuery };
@@ -431,6 +479,7 @@ export const fakePrisma = {
   },
   subscriptionPeriod: {
     findMany: (args: PeriodQuery = {}) => query(() => findPeriods(args)),
+    findFirst: (args: PeriodQuery = {}) => query(() => findPeriods({ ...args, take: 1 }).at(0) ?? null),
     // Defaults as the schema fills them. `userId` must name a user, as the
     // foreign key requires, and both uniques hold; a `NULL` in any part of
     // the composite one never clashes, as in Postgres.
@@ -461,6 +510,7 @@ export const fakePrisma = {
           status: "PAID",
           vendor: null,
           revokedAt: null,
+          createdAt: new Date(),
           ...data,
         };
         db.subscriptionPeriods.push(row);
@@ -473,6 +523,18 @@ export const fakePrisma = {
         const rows = db.subscriptionPeriods.filter(matchesPeriod(where));
         for (const row of rows) Object.assign(row, data);
         return { count: rows.length };
+      }),
+    // By id; a missing row throws Prisma's P2025, like `update` does.
+    update: ({ where, data, select }: { where: { id: string }; data: Partial<Omit<SubscriptionPeriodRow, "id" | "userId">>; select?: Select }) =>
+      query(() => {
+        const row = db.subscriptionPeriods.find((period) => period.id === where.id);
+        if (!row) throw recordNotFound();
+        const { stripeCheckoutSessionId } = data;
+        if (stripeCheckoutSessionId && db.subscriptionPeriods.some((other) => other !== row && other.stripeCheckoutSessionId === stripeCheckoutSessionId)) {
+          throw uniqueViolation(["stripeCheckoutSessionId"]);
+        }
+        Object.assign(row, data);
+        return pick(row, select);
       }),
   },
   itemType: {

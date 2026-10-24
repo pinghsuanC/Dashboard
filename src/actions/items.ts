@@ -4,7 +4,10 @@ import { headers } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 
 import { isFileItemType } from "@/lib/constants/files";
+import { PlanLimitError } from "@/lib/billing/billing-errors";
+import { canUseType } from "@/lib/billing/plan-rules";
 import { isCreatableItemType } from "@/lib/constants/item-types";
+import { ITEM_LIMIT_REACHED, PRO_TYPE_REQUIRED } from "@/lib/constants/messages/billing";
 import { FIELDS_INVALID, SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import {
   FILE_REQUIRED,
@@ -29,7 +32,7 @@ import { fieldErrorsOf } from "@/lib/helpers/form-errors";
 import { itemCreateSchemaFor, itemUpdateSchemaFor } from "@/lib/items/item-schemas";
 import { FileMissingError, StorageNotConfiguredError } from "@/lib/items/upload-errors";
 import { resetProfile } from "@/lib/session/user-session";
-import { requireCurrentUserId } from "@/services/auth/session";
+import { requireCurrentUser, requireCurrentUserId } from "@/services/auth/session";
 import { checkRateLimit } from "@/services/rate-limit";
 import { createUploadUrl, deleteFile, newFileKey } from "@/services/storage";
 import type { ActionResult } from "@/types/forms";
@@ -40,6 +43,9 @@ const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not
 // A favourite or pin value that isn't a boolean.
 const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
 const INVALID_TYPE = { success: false, error: { message: ITEM_TYPE_INVALID } } as const;
+// Free plan: a Pro-only type (file, image), or the item limit reached.
+const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED } } as const;
+const ITEM_LIMIT = { success: false, error: { message: ITEM_LIMIT_REACHED } } as const;
 // A chosen collection is missing or another user's: answered alike, on the field.
 const COLLECTION_GONE = {
   success: false,
@@ -152,10 +158,13 @@ export const createItem = async (
 ): Promise<ActionResult<CreatedItem>> => {
   // First and outside the try: a signed-out caller is redirected to sign in
   // whatever they send, never answered with validation messages.
-  const userId = await requireCurrentUserId();
+  const { id: userId, plan } = await requireCurrentUser();
 
   // Also false for a non-string, which a hand-built request could send.
   if (!isCreatableItemType(typeName)) return INVALID_TYPE;
+  // Before the rate limit and the save: a Free user's file pick uses up no
+  // upload try, and nothing is written.
+  if (!canUseType(plan, typeName)) return PRO_ONLY;
 
   const parsed = itemCreateSchemaFor(typeName).safeParse(input);
   if (!parsed.success) {
@@ -182,6 +191,7 @@ export const createItem = async (
     unstable_rethrow(error);
     // Nothing was saved, so a file item's upload is never signed either.
     if (error instanceof CollectionNotFoundError) return COLLECTION_GONE;
+    if (error instanceof PlanLimitError) return ITEM_LIMIT;
     console.error("Item create failed:", error);
     return { success: false, error: { message: SOMETHING_WENT_WRONG } };
   }

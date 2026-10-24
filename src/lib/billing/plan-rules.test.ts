@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { BILLING_GRACE_MS } from "@/lib/constants/billing";
+import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
+import { COLLECTION_LIMIT_REACHED, ITEM_LIMIT_REACHED } from "@/lib/constants/messages/billing";
+import { PRICING } from "@/lib/constants/pricing";
 
-import { liveSince } from "./plan-rules";
+import { canCreateCollection, canCreateItem, canUseType, liveSince } from "./plan-rules";
 
 const now = new Date("2026-05-10T12:00:00Z");
 
@@ -32,5 +35,39 @@ describe("when a paid period is live (R3)", () => {
 
     expect(since).toBeGreaterThanOrEqual(before - BILLING_GRACE_MS);
     expect(since).toBeLessThanOrEqual(Date.now() - BILLING_GRACE_MS);
+  });
+});
+
+describe("Free plan limits (Billing 2: R1–R4)", () => {
+  const { itemLimit, collectionLimit } = PRICING.free;
+
+  it("R1: a Free user may create items up to the limit, and not one more", () => {
+    expect(canCreateItem("FREE", itemLimit - 1)).toBe(true);
+    expect(canCreateItem("FREE", itemLimit)).toBe(false);
+    expect(canCreateItem("FREE", itemLimit + 5)).toBe(false);
+  });
+
+  it("R2: a Free user may create collections up to the limit, and not one more", () => {
+    expect(canCreateCollection("FREE", collectionLimit - 1)).toBe(true);
+    expect(canCreateCollection("FREE", collectionLimit)).toBe(false);
+  });
+
+  it("R3: a Free user can't use the Pro types; every other type is open", () => {
+    for (const typeName of PRO_TYPE_NAMES) expect(canUseType("FREE", typeName)).toBe(false);
+    expect(canUseType("FREE", "snippet")).toBe(true);
+    expect(canUseType("FREE", "link")).toBe(true);
+  });
+
+  it("R4: Pro has none of these limits", () => {
+    expect(canCreateItem("PRO", itemLimit * 10)).toBe(true);
+    expect(canCreateCollection("PRO", collectionLimit * 10)).toBe(true);
+    for (const typeName of PRO_TYPE_NAMES) expect(canUseType("PRO", typeName)).toBe(true);
+  });
+});
+
+describe("limit messages derive their numbers from PRICING (R4)", () => {
+  it("names the item and collection limits", () => {
+    expect(ITEM_LIMIT_REACHED).toContain(String(PRICING.free.itemLimit));
+    expect(COLLECTION_LIMIT_REACHED).toContain(String(PRICING.free.collectionLimit));
   });
 });
