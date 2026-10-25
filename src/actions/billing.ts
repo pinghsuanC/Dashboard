@@ -31,9 +31,10 @@ const failure = (error: unknown, label: string): FormState => {
 };
 
 /**
- * Settings' Upgrade buttons (`interval` from a hidden field, `MONTH` or
- * `YEAR`). Sends the browser to the vendor's checkout, or back with a toast:
- * already subscribed, over the `checkout` rate limit, or billing unavailable.
+ * The upgrade dialog's buttons (`UpgradePromptProvider`; `interval` from a
+ * hidden field, `MONTH` or `YEAR`). Sends the browser to the vendor's
+ * checkout, or back with a toast: already subscribed, over the `checkout`
+ * rate limit, or billing unavailable.
  * A Pro user has nothing to buy and is sent to settings.
  */
 export const startCheckout = async (_state: FormState, formData: FormData): Promise<FormState> => {

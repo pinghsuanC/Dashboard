@@ -17,6 +17,11 @@ export const metadata: Metadata = { title: "Settings" };
  * preferences, come from the user session the `(app)` layout loaded. Only
  * the one-shot toast flag is read here, from the URL. The cards stay server
  * components; only the password check and the editor controls are client.
+ *
+ * Known issue: Checkout returns here with `?billing=success` or `=canceled`
+ * (`ROUTES`), and nothing reads it yet: no toast, no plan card, and no
+ * Manage button for `openBillingPortal`. The payment still settles on this
+ * load, in `getUserSession()`.
  */
 const SettingsPage = async ({ searchParams }: PageProps<"/settings">) => {
   const passwordChanged = hasFlag(await searchParams, FLAGS.passwordChanged);
