@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { createItem } from "@/actions/items";
+import { useUpgradePrompt } from "@/components/billing/UpgradePromptProvider";
 import { FileUpload } from "@/components/items/FileUpload";
 import { ItemFormFields } from "@/components/items/ItemFormFields";
 import { useUserSession } from "@/components/session/UserSessionProvider";
@@ -20,8 +21,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { canUseType } from "@/lib/billing/plan-rules";
 import { isFileItemType } from "@/lib/constants/files";
 import { CREATABLE_ITEM_TYPE_NAMES, editableFieldsFor } from "@/lib/constants/item-types";
+import { PRO_TYPE_REQUIRED } from "@/lib/constants/messages/billing";
 import { SOMETHING_WENT_WRONG } from "@/lib/constants/messages/common";
 import { FILE_UPLOAD_FAILED, FILE_UPLOADING, ITEM_CREATED } from "@/lib/constants/messages/items";
 import { ITEM_CREATE_TOAST_ID } from "@/lib/constants/ui";
@@ -48,12 +51,17 @@ const EMPTY_DRAFT: ItemDraft = {
  * is saved first, then the file goes straight to storage through the signed
  * link the save returns, with a progress bar.
  *
+ * Anything the Free plan refuses opens the upgrade dialog instead: a pick of
+ * a Pro-only type at once (from the session plan, which can be a load
+ * behind), and a `plan-limit` answer from the server, which decides.
+ *
  * The draft outlives a dismiss, so a stray click outside doesn't lose it, and
  * is cleared once the item is created. As in `ItemDeleteDialog`, the dialog
  * can't be closed while the create runs: closing wouldn't stop it.
  */
 export const ItemCreateDialog = () => {
-  const { itemTypes } = useUserSession();
+  const { user, itemTypes } = useUserSession();
+  const { showUpgrade } = useUpgradePrompt();
   // In the dialog's own order; a type missing from the session isn't offered.
   const types = CREATABLE_ITEM_TYPE_NAMES.flatMap((name) => itemTypes.filter((type) => type.name === name));
 
@@ -78,7 +86,17 @@ export const ItemCreateDialog = () => {
     if (!next) setFieldErrors({});
   };
 
+  // Closed first: the upgrade dialog replaces this one, and the draft stays.
+  const askToUpgrade = (reason: string) => {
+    setOpen(false);
+    showUpgrade(reason);
+  };
+
   const selectType = (name: string) => {
+    if (!canUseType(user.plan, name)) {
+      askToUpgrade(PRO_TYPE_REQUIRED);
+      return;
+    }
     setPickedType(name);
     // A file picked for one kind may not suit the other.
     setFile(null);
@@ -121,6 +139,10 @@ export const ItemCreateDialog = () => {
           }
           toast.success(ITEM_CREATED, { id: ITEM_CREATE_TOAST_ID });
           finish();
+          return;
+        }
+        if (result.error.code === "plan-limit") {
+          askToUpgrade(result.error.message);
           return;
         }
         toast.error(result.error.message, { id: ITEM_CREATE_TOAST_ID });
@@ -188,6 +210,9 @@ export const ItemCreateDialog = () => {
                       <TypeIcon type={type} className="size-4" />
                     </span>
                     {type.label}
+                    {!canUseType(user.plan, type.name) && (
+                      <span className="text-muted-foreground text-[10px] font-semibold tracking-wide">PRO</span>
+                    )}
                   </label>
                 ))}
               </div>

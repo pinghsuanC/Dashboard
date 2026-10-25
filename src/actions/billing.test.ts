@@ -268,11 +268,11 @@ describe("openBillingPortal", () => {
 
 describe("return links follow where the app runs", () => {
   it("on Vercel, checkout returns to the production domain", async () => {
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "devstash.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "stashboard.vercel.app");
 
     await expect(checkout()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
 
-    expect(fakeAdapter.createCheckout.mock.calls[0][0].successUrl).toBe("https://devstash.vercel.app/settings?billing=success");
+    expect(fakeAdapter.createCheckout.mock.calls[0][0].successUrl).toBe("https://stashboard.vercel.app/settings?billing=success");
   });
 
   it("elsewhere, checkout returns to the host the user came from", async () => {

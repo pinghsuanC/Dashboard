@@ -64,6 +64,8 @@ export const DashboardContent = ({ recentItems }: DashboardContentProps) => {
       )}
 
       <section>
+        {/* Known issue: `/items` isn't built yet (`NOT_BUILT_YET` in routes.test.ts),
+            so this View all is a 404 until it is. */}
         <SectionHeader
           title={`Recent (${recentItems.length})`}
           icon={Clock}
