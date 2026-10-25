@@ -28,7 +28,7 @@ const NOT_FOUND = { success: false, error: { message: COLLECTION_NOT_FOUND, code
 // A favourite value that isn't a boolean.
 const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
 // A Free user already holds the most collections the plan allows.
-const COLLECTION_LIMIT = { success: false, error: { message: COLLECTION_LIMIT_REACHED } } as const;
+const COLLECTION_LIMIT = { success: false, error: { message: COLLECTION_LIMIT_REACHED, code: "plan-limit" } } as const;
 
 /**
  * Saves the New Collection dialog. Called directly, like `createItem`: the

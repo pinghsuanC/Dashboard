@@ -38,7 +38,9 @@ export type ActionResult<T> =
          * `not-found`: the record is gone (or never was the user's), so the
          * client can stop showing it. `file-not-uploaded`: the item was saved,
          * but its file step failed; the client should treat it as created.
+         * `plan-limit`: the Free plan doesn't allow it (a limit reached, or a
+         * Pro-only type); the client offers the upgrade instead.
          */
-        code?: "not-found" | "file-not-uploaded";
+        code?: "not-found" | "file-not-uploaded" | "plan-limit";
       };
     };
