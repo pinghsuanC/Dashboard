@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { UpgradePromptProvider } from "@/components/billing/UpgradePromptProvider";
 import { ItemDrawerProvider } from "@/components/items/ItemDrawerProvider";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CloseSidebarOnNavigate } from "@/components/layout/CloseSidebarOnNavigate";
@@ -31,24 +32,27 @@ const AppLayout = async ({ children }: LayoutProps<"/">) => {
     <UserSessionProvider session={session}>
       <EditorPreferencesProvider>
         <TooltipProvider>
-          {/* Above the sidebar and top bar, not just the page, so anything in
-              the shell (e.g. search results) can open the item drawer too. */}
-          <ItemDrawerProvider>
-            {/* Inside the drawer provider: picking an item opens the drawer. */}
-            <SearchPaletteProvider>
-              <SidebarProvider defaultOpen={defaultOpen}>
-                <AppSidebar />
-                <CloseSidebarOnNavigate />
+          {/* Outermost of the app providers: any create, in the shell or a page, can open the upgrade dialog. */}
+          <UpgradePromptProvider>
+            {/* Above the sidebar and top bar, not just the page, so anything in
+                the shell (e.g. search results) can open the item drawer too. */}
+            <ItemDrawerProvider>
+              {/* Inside the drawer provider: picking an item opens the drawer. */}
+              <SearchPaletteProvider>
+                <SidebarProvider defaultOpen={defaultOpen}>
+                  <AppSidebar />
+                  <CloseSidebarOnNavigate />
 
-                <SidebarInset>
-                  <TopBar />
-                  {/* A plain div, not <main>: SidebarInset already renders <main>, and
-                      nesting a second one is invalid HTML and a duplicate landmark. */}
-                  <div className="flex-1 p-6">{children}</div>
-                </SidebarInset>
-              </SidebarProvider>
-            </SearchPaletteProvider>
-          </ItemDrawerProvider>
+                  <SidebarInset>
+                    <TopBar />
+                    {/* A plain div, not <main>: SidebarInset already renders <main>, and
+                        nesting a second one is invalid HTML and a duplicate landmark. */}
+                    <div className="flex-1 p-6">{children}</div>
+                  </SidebarInset>
+                </SidebarProvider>
+              </SearchPaletteProvider>
+            </ItemDrawerProvider>
+          </UpgradePromptProvider>
         </TooltipProvider>
       </EditorPreferencesProvider>
     </UserSessionProvider>
