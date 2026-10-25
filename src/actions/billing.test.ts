@@ -20,10 +20,14 @@ vi.mock("@/services/auth/session", () => ({ requireCurrentUser: vi.fn(), require
 vi.mock("@/services/prisma", async () => ({ prisma: (await import("@/test/fake-prisma")).fakePrisma }));
 vi.mock("@/services/billing/vendors", async () => (await import("@/test/fake-billing")).fakeVendors);
 vi.mock("@/services/rate-limit", () => ({ checkRateLimit: vi.fn() }));
-vi.mock("next/headers", () => ({ headers: async () => new Headers({ "x-forwarded-for": "1.1.1.1" }) }));
+// The request's headers: its host decides the return links when not on Vercel.
+let requestHeaders = new Headers();
+vi.mock("next/headers", () => ({ headers: async () => requestHeaders }));
 vi.spyOn(console, "error").mockImplementation(() => {});
 
 const APP_URL = "https://app.test";
+const signedInRequest = () =>
+  new Headers({ "x-forwarded-for": "1.1.1.1", host: "app.test", "x-forwarded-proto": "https" });
 const ada = { id: "ada", email: "ada@example.com", plan: "FREE", isPro: false } as CurrentUser;
 const day = (n: number) => new Date(Date.UTC(2026, 0, n));
 
@@ -39,7 +43,8 @@ const adasPeriods = () => db.subscriptionPeriods.filter((row) => row.userId === 
 beforeEach(() => {
   resetDb();
   resetFakeBilling();
-  vi.stubEnv("APP_URL", APP_URL);
+  vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "");
+  requestHeaders = signedInRequest();
   db.users.push({ id: "ada", name: "Ada", email: ada.email, passwordHash: null, createdAt: day(1) });
   vi.mocked(requireCurrentUser).mockResolvedValue(ada);
   vi.mocked(requireCurrentUserId).mockResolvedValue("ada");
@@ -65,7 +70,7 @@ describe("startCheckout: a new checkout (R8, R12)", () => {
     expect(fakeAdapter.createCheckout.mock.calls[0][0]).toMatchObject({ periodId: "period-1", userId: "ada", interval: "YEAR" });
   });
 
-  it("R12: returns to settings on APP_URL with a success or canceled flag, and no id in either", async () => {
+  it("R12: returns to settings on the app's own address with a success or canceled flag, and no id in either", async () => {
     await expect(checkout()).rejects.toMatchObject(redirectedTo("https://checkout.test/period-1"));
 
     const { successUrl, cancelUrl } = fakeAdapter.createCheckout.mock.calls[0][0];
@@ -219,8 +224,8 @@ describe("startCheckout: refusals (R11)", () => {
     expect(db.subscriptionPeriods).toEqual([]);
   });
 
-  it("a missing APP_URL answers the same, and nothing is written", async () => {
-    vi.stubEnv("APP_URL", "");
+  it("no address for the app (not on Vercel, no request host) answers the same, and nothing is written", async () => {
+    requestHeaders = new Headers();
 
     expect(await checkout()).toEqual({ toast: BILLING_UNAVAILABLE });
     expect(db.subscriptionPeriods).toEqual([]);
@@ -253,10 +258,28 @@ describe("openBillingPortal", () => {
     expect(await openBillingPortal()).toEqual({ toast: SOMETHING_WENT_WRONG });
   });
 
-  it("a missing APP_URL answers BILLING_UNAVAILABLE", async () => {
+  it("no address for the app answers BILLING_UNAVAILABLE", async () => {
     db.subscriptionPeriods.push({ id: "p", userId: "ada", vendor: "STRIPE", vendorCustomerId: "cus_ada", interval: "MONTH", periodEnd: day(2), createdAt: day(1) });
-    vi.stubEnv("APP_URL", "");
+    requestHeaders = new Headers();
 
     expect(await openBillingPortal()).toEqual({ toast: BILLING_UNAVAILABLE });
+  });
+});
+
+describe("return links follow where the app runs", () => {
+  it("on Vercel, checkout returns to the production domain", async () => {
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "devstash.vercel.app");
+
+    await expect(checkout()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
+
+    expect(fakeAdapter.createCheckout.mock.calls[0][0].successUrl).toBe("https://devstash.vercel.app/settings?billing=success");
+  });
+
+  it("elsewhere, checkout returns to the host the user came from", async () => {
+    requestHeaders = new Headers({ host: "localhost:3000" });
+
+    await expect(checkout()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
+
+    expect(fakeAdapter.createCheckout.mock.calls[0][0].cancelUrl).toBe("http://localhost:3000/settings?billing=canceled");
   });
 });
