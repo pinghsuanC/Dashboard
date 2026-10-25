@@ -73,7 +73,7 @@ export const openBillingPortal = async (): Promise<FormState> => {
   try {
     const [newest] = await getBillingCustomers();
     if (!newest) return { toast: BILLING_NO_PORTAL };
-    url = await adapterFor(newest.vendor).createPortalLink(newest.customerId, appUrl(ROUTES.settings));
+    url = await adapterFor(newest.vendor).createPortalLink(newest.customerId, await appUrl(ROUTES.settings));
   } catch (error) {
     unstable_rethrow(error);
     return failure(error, "Billing portal");

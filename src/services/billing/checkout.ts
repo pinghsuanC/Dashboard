@@ -12,7 +12,7 @@ import type { CheckoutStart } from "@/types/billing";
  * Starts a checkout for a Free user. Called only by `startCheckout`, which
  * has already checked the session, the plan and the rate limit.
  *
- * Settings come first (the vendor's and `APP_URL`), so missing config throws
+ * Settings come first (the vendor's, and the app's own address), so missing config throws
  * `BillingNotConfiguredError` before anything is written. Then:
  * 1. The newest pending checkout with a vendor session is asked about: still
  *    open, the user is sent back to it and nothing is inserted; expired, it
@@ -29,8 +29,8 @@ export const beginCheckout = async (
 ): Promise<CheckoutStart> => {
   const adapter = checkoutAdapter();
   adapter.assertConfigured();
-  const successUrl = appUrl(withFlag(ROUTES.settings, FLAGS.billingSuccess));
-  const cancelUrl = appUrl(withFlag(ROUTES.settings, FLAGS.billingCanceled));
+  const successUrl = await appUrl(withFlag(ROUTES.settings, FLAGS.billingSuccess));
+  const cancelUrl = await appUrl(withFlag(ROUTES.settings, FLAGS.billingCanceled));
 
   const pending = await prisma.subscriptionPeriod.findFirst({
     where: { userId: user.id, status: "PENDING", vendor: adapter.vendor, stripeCheckoutSessionId: { not: null } },
