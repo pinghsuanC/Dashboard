@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://img.icons8.com/fluency/96/code-folder.png" alt="DevStash" width="80" />
+  <img src="https://img.icons8.com/fluency/96/code-folder.png" alt="Stashboard" width="80" />
 </p>
 
-<h1 align="center">DevStash</h1>
+<h1 align="center">Stashboard</h1>
 
 <p align="center">
   <strong>A unified hub for developer knowledge &amp; resources</strong>
@@ -47,7 +47,7 @@
 
 Developers keep their essentials scattered across VS Code snippets, browser bookmarks, chat histories, shell history, and random folders. Nothing is searchable across those silos, and nothing survives a machine change cleanly.
 
-DevStash brings all of it into **one fast, searchable, AI-enhanced hub** — a single store for the code, prompts, commands, and links you reach for every day.
+Stashboard brings all of it into **one fast, searchable, AI-enhanced hub** — a single store for the code, prompts, commands, and links you reach for every day.
 
 ---
 
@@ -510,7 +510,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant App as DevStash
+    participant App as Stashboard
     participant S as Stripe
     participant WH as /api/stripe/webhook
     participant DB as Neon
@@ -542,8 +542,8 @@ sequenceDiagram
 ### Installation
 
 ```bash
-git clone https://github.com/<your-username>/devstash.git
-cd devstash
+git clone https://github.com/<your-username>/stashboard.git
+cd stashboard
 npm install
 ```
 

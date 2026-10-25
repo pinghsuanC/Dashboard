@@ -15,10 +15,10 @@ beforeEach(() => {
 
 describe("appUrl: the address vendor pages send the browser back to", () => {
   it("on Vercel, uses the project's production domain over https, whatever the request says", async () => {
-    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "devstash.vercel.app");
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "stashboard.vercel.app");
     requestHeaders = new Headers({ host: "evil.example", "x-forwarded-proto": "http" });
 
-    expect(await appUrl("/settings?billing=success")).toBe("https://devstash.vercel.app/settings?billing=success");
+    expect(await appUrl("/settings?billing=success")).toBe("https://stashboard.vercel.app/settings?billing=success");
   });
 
   it("elsewhere, builds it from the request's forwarded host and protocol", async () => {
