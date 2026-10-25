@@ -357,7 +357,7 @@ describe("setCollectionFavorite action (CF6–CF10)", () => {
   });
 });
 
-describe("createCollection action: Free plan limit (Billing 2: R2, R4)", () => {
+describe("createCollection action: Free plan limit (Billing 2: R2, R4; Billing 3: plan-limit code)", () => {
   const fill = () => {
     for (let n = 0; n < PRICING.free.collectionLimit; n++) {
       db.collections.push({ id: `c${n}`, userId: "ada", name: `C ${n}`, slug: `c-${n}`, updatedAt });
@@ -369,7 +369,7 @@ describe("createCollection action: Free plan limit (Billing 2: R2, R4)", () => {
 
     expect(await createCollection({ name: "One too many", description: "", isFavorite: false })).toEqual({
       success: false,
-      error: { message: COLLECTION_LIMIT_REACHED },
+      error: { message: COLLECTION_LIMIT_REACHED, code: "plan-limit" },
     });
     expect(db.collections).toHaveLength(PRICING.free.collectionLimit);
     expect(resetProfile).not.toHaveBeenCalled();

@@ -44,8 +44,8 @@ const NOT_FOUND = { success: false, error: { message: ITEM_NOT_FOUND, code: "not
 const INVALID_VALUE = { success: false, error: { message: FIELDS_INVALID } } as const;
 const INVALID_TYPE = { success: false, error: { message: ITEM_TYPE_INVALID } } as const;
 // Free plan: a Pro-only type (file, image), or the item limit reached.
-const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED } } as const;
-const ITEM_LIMIT = { success: false, error: { message: ITEM_LIMIT_REACHED } } as const;
+const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED, code: "plan-limit" } } as const;
+const ITEM_LIMIT = { success: false, error: { message: ITEM_LIMIT_REACHED, code: "plan-limit" } } as const;
 // A chosen collection is missing or another user's: answered alike, on the field.
 const COLLECTION_GONE = {
   success: false,

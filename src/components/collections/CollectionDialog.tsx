@@ -6,6 +6,7 @@ import { FolderPlus, Pencil, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { createCollection, updateCollection } from "@/actions/collections";
+import { useUpgradePrompt } from "@/components/billing/UpgradePromptProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,11 +51,13 @@ interface CollectionDialogProps {
  * Creating, as in `ItemCreateDialog`, the draft outlives a dismiss and is
  * cleared once the collection is created. Editing starts from the saved
  * collection on every open, and a rename moves the page to the new slug's
- * URL. Either way the dialog can't be closed while saving.
+ * URL. Either way the dialog can't be closed while saving. A create the Free
+ * plan refuses (`plan-limit`) closes it, keeping the draft, for the upgrade dialog.
  */
 export const CollectionDialog = ({ collection }: CollectionDialogProps) => {
   const editing = collection !== undefined;
   const router = useRouter();
+  const { showUpgrade } = useUpgradePrompt();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -87,6 +90,11 @@ export const CollectionDialog = ({ collection }: CollectionDialogProps) => {
       toast.success(COLLECTION_CREATED, { id: toastId });
       close();
       setDraft(EMPTY_DRAFT);
+      return;
+    }
+    if (result.error.code === "plan-limit") {
+      close();
+      showUpgrade(result.error.message);
       return;
     }
     toast.error(result.error.message, { id: toastId });

@@ -21,21 +21,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
+import { canUseType } from "@/lib/billing/plan-rules";
 import { getItemTypeIcon } from "@/lib/items/item-type-icons";
-
-// KNOWN DEVIATION: the PRO badge shows for every user, Pro included. `isPro`
-// is in the session (`useUserSession().user.isPro`); hiding the badge for Pro
-// users is a visible behaviour change left for its own feature.
 
 /**
  * Client component: the active row depends on the current URL, and the types
  * and counts come from the user session, so a local count change shows with
- * no request.
+ * no request. The PRO badge marks the types the user's plan can't create, as
+ * the New Item dialog does, so a Pro user sees none.
  */
 export const SidebarTypeNav = () => {
   const pathname = usePathname();
-  const { itemTypes, itemCounts } = useUserSession();
+  const { user, itemTypes, itemCounts } = useUserSession();
 
   return (
     <Collapsible defaultOpen className="group/types">
@@ -72,7 +69,7 @@ export const SidebarTypeNav = () => {
                         {/* The button only truncates its last span, which is
                             now the badge, so the label truncates itself. */}
                         <span className="truncate">{type.label}</span>
-                        {PRO_TYPE_NAMES.has(type.name) && (
+                        {!canUseType(user.plan, type.name) && (
                           <Badge
                             variant="outline"
                             className="h-4 px-1.5 text-[10px] font-semibold tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden"

@@ -657,8 +657,8 @@ describe("setItemFavorite and setItemPinned actions (FP7–FP11)", () => {
   });
 });
 
-describe("createItem action: Free plan limits (Billing 2: R1, R3, R4)", () => {
-  const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED } };
+describe("createItem action: Free plan limits (Billing 2: R1, R3, R4; Billing 3: plan-limit code)", () => {
+  const PRO_ONLY = { success: false, error: { message: PRO_TYPE_REQUIRED, code: "plan-limit" } };
   const file = { name: "a.png", size: 10, mimeType: "image/png" };
 
   beforeEach(() => {
@@ -689,7 +689,7 @@ describe("createItem action: Free plan limits (Billing 2: R1, R3, R4)", () => {
 
     expect(await createItem("note", { title: "One too many" })).toEqual({
       success: false,
-      error: { message: ITEM_LIMIT_REACHED },
+      error: { message: ITEM_LIMIT_REACHED, code: "plan-limit" },
     });
     expect(db.items).toHaveLength(PRICING.free.itemLimit);
     expect(resetProfile).not.toHaveBeenCalled();
