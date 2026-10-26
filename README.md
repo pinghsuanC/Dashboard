@@ -1,24 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Stashboard
 
-## Getting Started
+A developer knowledge hub for snippets, commands, prompts, notes, files, images, links and custom types.
 
-First, run the development server:
+**Live:** [stashboard-kohl.vercel.app](https://stashboard-kohl.vercel.app/)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Items of seven system types, grouped into collections, with favourites, pinning and tags
+- Command palette search (Cmd+K / Ctrl+K) across items and collections
+- Code and Markdown editors, with file and image uploads stored privately in R2
+- Email and password or GitHub sign-in, with email verification, password reset and rate limiting
+- Free and Pro plans, with Stripe Checkout and plan limits enforced on the server
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Area | Tools |
+| --- | --- |
+| Framework | Next.js 16 (App Router, Turbopack), React 19, TypeScript |
+| Styling and UI | Tailwind CSS v4, shadcn/ui on Radix, Lucide icons, Sonner toasts |
+| Database | PostgreSQL on Neon, Prisma 7 with the Neon driver adapter |
+| Auth | Auth.js v5 (GitHub and credentials, JWT sessions), bcrypt |
+| Validation | Zod |
+| Editors | Monaco, react-markdown with remark-gfm |
+| File storage | Cloudflare R2 through the AWS S3 SDK, signed upload links |
+| Billing | Stripe Checkout, Customer Portal and webhooks |
+| Email | Resend |
+| Rate limiting | Upstash Redis |
+| Testing | Vitest |
+| Hosting and CI | Vercel, GitHub Actions |
 
 ## Future Plans
 
@@ -31,7 +40,6 @@ Deferred work, to pick up in the polishing phase.
 - **Search past the preloaded items.** The search palette searches the session's `searchItems` in the browser, and `getSearchItems()` loads up to `SEARCH_ITEM_LIMIT` (50) of them, newest first. The cap is kept small so the session stays light, which means anything older than the newest 50 can't be found. When a search finds nothing locally, fall back to a server search: a debounced, rate-limited request to a user-scoped route or action that matches the same fields (title, type, description, file name, tags) in the database and returns item summaries, shown in the palette as they arrive. Open questions: whether to also query the server when there are a few local matches but the cap was hit, and whether Postgres full-text search or `ILIKE` on indexed columns is enough.
 - **Paginate each collection section on its own.** `/collections/[slug]` loads one page of the collection's items (`ITEMS_PER_PAGE`, newest by `updatedAt`) and splits it into Items, Files and Images in memory, so a page's mix of types varies and each section shows only part of its items. Instead, run one query per section (filtered by type, each with its own `skip`/`take` and count) and give each section its own page links and URL parameter (e.g. `?items=2&files=1&images=3`), with section totals from the counts rather than the page. The section headers lost their `(n)` counts when pagination landed, because a page's count is only part of the section; each section's own count query restores them.
 - **Count collection cards in the database.** `collectionCardSelect` (`src/lib/db/collections.ts`) fetches one join row, with its item's type, for every item in every collection, then counts and ranks the types in JS. `getSessionCollections()` runs it on every full page load inside `getUserSession()`, so the rows grow with total item-to-collection links. Use `_count` for the item count and one grouped query (`collectionId`, `typeId`, `count(*)` over `CollectionItem` joined to `Item`, scoped to the user) for the ranked types.
-- **Decide what `/` does.** It is still the "Project Start" placeholder and the proxy doesn't guard it. It is planned as the public marketing homepage, so a proxy guard would have to come off again, and the auth layout's logo links to it. Until the homepage exists, consider having the page redirect to `/dashboard`, which the proxy already guards.
 - **Share the editors' copy feedback.** `CodeEditor` and `MarkdownEditor` each declare `COPIED_ICON_MS` and their own copied-icon timer and copy handler. Move the constant to `constants/ui.ts` and extract a `useCopyFeedback(value)` hook returning `{ copied, copy }` in `components/items/` (not `src/hooks/`, which is shadcn's).
 - **Move tuning values into constants.** `MAX_PAGE_LINKS` (`lib/helpers/pagination.ts`), `FIELD_MATCH_WEIGHT` (`lib/search/search.ts`) and the editors' padding are declared inline. `pageLinks()` also hard-codes thresholds (4, 5, 3) derived from 7, so changing `MAX_PAGE_LINKS` alone breaks its layout: derive them, with tests first.
 - **Split the large item components.** `ItemDrawer` (~330 lines) into `ItemDrawerActions`, `ItemDrawerBody`, `ImagePreview` and `ItemMeta`, leaving the sheet shell and edit toggle; `ItemCreateDialog` (~230 lines) into an `ItemTypePicker` and a `useCreateItem` hook for the submit, upload and toast flow.
@@ -42,18 +50,3 @@ Deferred work, to pick up in the polishing phase.
 - **Switch plans (monthly ↔ yearly).** There's no plan switching for now: the Customer Portal offers cancel and payment updates only. When added, the stored period keeps the old interval until it ends, and a monthly-to-yearly switch resets the billing date, so the switch must also end the current period row and record the new one.
 - **Make payment configurable instead of hard-coded.** Today the Pro plan's prices come from `STRIPE_PRICE_ID_*` env vars (a change needs a redeploy), the plans offered are fixed in code (monthly and yearly), and `BILLING_VENDOR` picks the vendor. Move these to configuration: which products and prices are offered (with their order and labels), and which payment vendors are enabled, editable from an admin page without a deploy. A first step is Stripe lookup keys (`stashboard_pro_monthly` / `stashboard_pro_yearly`, already on the sandbox prices), which remove stored price ids without a table. Open questions: a config table versus reading Stripe's catalog directly, and the admin role the page needs.
 - **Share repeated UI.** `ItemDeleteDialog` and `CollectionDeleteDialog` are ~80% the same: one `ConfirmDeleteDialog` in `components/shared/`. The image grid, file list and item grid markup is repeated in `/items/[type]` and `/collections/[slug]`: `ImageGrid`, `FileList` and `ItemGrid` in `components/items/`. `CollectionDialog` hand-writes the label, error and `aria-describedby` wiring that `ItemFormFields`' `Field` helper already does: move `Field` to `components/shared/` and use it in both.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
