@@ -1,12 +1,12 @@
 # Item Types Documentation
 
-> Generated documentation for DevStash's 7 item types
+> Generated documentation for Stashboard's 7 item types
 
 ---
 
 ## Overview
 
-DevStash uses 7 system-defined item types to categorize developer resources. Each type has a specific purpose, icon, color, and content storage method. All system types are immutable (`isSystem: true`) and shared across all users.
+Stashboard uses 7 system-defined item types to categorize developer resources. Each type has a specific purpose, icon, color, and content storage method. All system types are immutable (`isSystem: true`) and shared across all users.
 
 ---
 

@@ -56,7 +56,7 @@ Load-bearing; do not drop or soften. Other sections point here instead of repeat
 - Tests come before the code: write them from the feature's requirements, not from the code, and see each fail on its assertion before implementing. Once green, break the behaviour to prove each test can fail (full workflow in `context/ai-interaction.md`).
 - Item detail is a drawer; do not add an `/items/[id]` page.
 
-# Devstash
+# Stashboard
 
 A developer knowledge hub for snippets, commands, prompts, notes, files, images, links and custom types.
 
