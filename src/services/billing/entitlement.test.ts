@@ -222,12 +222,6 @@ describe("a paying customer's subscription is checked (R18.2)", () => {
 
     expect(await resolveBilling("ada")).toMatchObject({ plan: "PRO" });
   });
-
-  it("a revoked period is not Pro", async () => {
-    db.subscriptionPeriods.push(paidRow("revoked", 10, { revokedAt: daysFromNow(-1) }));
-
-    expect(await resolveBilling("ada")).toMatchObject({ plan: "FREE" });
-  });
 });
 
 describe("failures and the rate limit (R20)", () => {

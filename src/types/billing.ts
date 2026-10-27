@@ -70,6 +70,20 @@ export interface BillingStatus {
   isCustomer: boolean;
 }
 
+/** Where a past subscription stands now. */
+export type SubscriptionState = "active" | "ended";
+
+/** One row of the billing page's past subscriptions. Never vendor ids. */
+export interface PastSubscription {
+  id: string;
+  interval: BillingInterval;
+  /** Paid through a vendor, or granted without one (a trial, the seed, a comped account). */
+  source: "paid" | "granted";
+  periodStart: Date | null;
+  periodEnd: Date | null;
+  state: SubscriptionState;
+}
+
 /** One vendor customer the user has paid through (account deletion, the portal). */
 export interface BillingCustomer {
   vendor: BillingVendor;

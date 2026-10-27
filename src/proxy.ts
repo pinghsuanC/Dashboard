@@ -43,6 +43,7 @@ export const config = {
     "/items/:path*",
     "/favorites/:path*",
     "/pinned/:path*",
+    "/billings/:path*",
     "/api/((?!auth/|billing/[^/]+/webhook$).*)",
   ],
 };

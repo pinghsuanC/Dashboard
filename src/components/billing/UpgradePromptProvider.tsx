@@ -14,12 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { APP_NAME } from "@/lib/constants/app";
+import { UPGRADE_PITCH } from "@/lib/constants/messages/billing";
 import { PRICING } from "@/lib/constants/pricing";
 import { formatPrice, yearlySavingPercent } from "@/lib/pricing/pricing";
 
 interface UpgradePromptContextValue {
-  /** Opens the upgrade dialog with why the action was refused. */
-  showUpgrade: (reason: string) => void;
+  /** Opens the upgrade dialog, with why the action was refused when one was. */
+  showUpgrade: (reason?: string) => void;
 }
 
 const UpgradePromptContext = createContext<UpgradePromptContextValue | null>(null);
@@ -33,18 +35,19 @@ export const useUpgradePrompt = () => {
 const { monthlyPrice, yearlyPrice } = PRICING.pro;
 
 /**
- * The one "Pro is needed to continue" dialog, in the `(app)` layout. A create
- * the Free plan refuses (`code: "plan-limit"`) opens it with the server's
- * reason, and its buttons start a checkout through `startCheckout`, which
- * redirects to the vendor or answers with a toast. The server stays the
- * judge: this only words a refusal it already made, or a pick it will make.
+ * The one upgrade dialog, in the `(app)` layout. A create the Free plan
+ * refuses (`code: "plan-limit"`) opens it with the server's reason; the
+ * billing page's Upgrade opens it with none, and `UPGRADE_PITCH` stands in.
+ * Its buttons start a checkout through `startCheckout`, which redirects to
+ * the vendor or answers with a toast. The server stays the judge: this only
+ * words a refusal it already made, or a pick it will make.
  */
 export const UpgradePromptProvider = ({ children }: { children: React.ReactNode }) => {
   const [open, setOpen] = useState(false);
   // Kept after closing, so the text doesn't blank while the dialog fades out.
   const [reason, setReason] = useState("");
 
-  const showUpgrade = useCallback((next: string) => {
+  const showUpgrade = useCallback((next: string = UPGRADE_PITCH) => {
     setReason(next);
     setOpen(true);
   }, []);
@@ -58,7 +61,7 @@ export const UpgradePromptProvider = ({ children }: { children: React.ReactNode 
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="size-4 text-amber-400" aria-hidden />
-              Pro is needed to continue
+              Want to enjoy more of {APP_NAME}?
             </DialogTitle>
             <DialogDescription>{reason}</DialogDescription>
           </DialogHeader>

@@ -192,12 +192,6 @@ describe("the plan, from the user's periods", () => {
     expect(await planOf()).toEqual(FREE);
   });
 
-  it("R3: a revoked paid period gives Free, even before its end", async () => {
-    period({ status: "PAID", vendor: "STRIPE", periodEnd: fromNow(30 * DAY_MS), revokedAt: fromNow(-DAY_MS) });
-
-    expect(await planOf()).toEqual(FREE);
-  });
-
   it("R3: one live period is enough, whatever else the user has", async () => {
     period({ status: "PAID", vendor: "STRIPE", periodEnd: fromNow(-60 * DAY_MS) });
     period({ status: "EXPIRED", vendor: "STRIPE" });

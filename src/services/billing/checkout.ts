@@ -29,8 +29,8 @@ export const beginCheckout = async (
 ): Promise<CheckoutStart> => {
   const adapter = checkoutAdapter();
   adapter.assertConfigured();
-  const successUrl = await appUrl(withFlag(ROUTES.settings, FLAGS.billingSuccess));
-  const cancelUrl = await appUrl(withFlag(ROUTES.settings, FLAGS.billingCanceled));
+  const successUrl = await appUrl(withFlag(ROUTES.billings, FLAGS.billingSuccess));
+  const cancelUrl = await appUrl(withFlag(ROUTES.billings, FLAGS.billingCanceled));
 
   const pending = await prisma.subscriptionPeriod.findFirst({
     where: { userId: user.id, status: "PENDING", vendor: adapter.vendor, stripeCheckoutSessionId: { not: null } },

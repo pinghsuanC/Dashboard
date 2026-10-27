@@ -1,10 +1,19 @@
 import { BILLING_GRACE_MS } from "@/lib/constants/billing";
 import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
 import { PRICING } from "@/lib/constants/pricing";
-import type { Plan } from "@/types/billing";
+import type { Plan, SubscriptionState } from "@/types/billing";
 
 /** Periods ending at or after this instant are live. */
 export const liveSince = (now: Date = new Date()): Date => new Date(now.getTime() - BILLING_GRACE_MS);
+
+/**
+ * Where a `PAID` period stands: active while live by the same rule as
+ * `getCurrentUser()` (see `liveSince()`), else ended.
+ */
+export const subscriptionState = (
+  { periodEnd }: { periodEnd: Date | null },
+  now: Date = new Date(),
+): SubscriptionState => (periodEnd && periodEnd >= liveSince(now) ? "active" : "ended");
 
 /** Whether a user with `itemCount` items may create one more. Pro has no limit. */
 export const canCreateItem = (plan: Plan, itemCount: number): boolean =>

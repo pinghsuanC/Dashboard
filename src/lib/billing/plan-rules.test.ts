@@ -5,7 +5,7 @@ import { PRO_TYPE_NAMES } from "@/lib/constants/item-types";
 import { COLLECTION_LIMIT_REACHED, ITEM_LIMIT_REACHED } from "@/lib/constants/messages/billing";
 import { PRICING } from "@/lib/constants/pricing";
 
-import { canCreateCollection, canCreateItem, canUseType, liveSince } from "./plan-rules";
+import { canCreateCollection, canCreateItem, canUseType, liveSince, subscriptionState } from "./plan-rules";
 
 const now = new Date("2026-05-10T12:00:00Z");
 
@@ -35,6 +35,23 @@ describe("when a paid period is live (R3)", () => {
 
     expect(since).toBeGreaterThanOrEqual(before - BILLING_GRACE_MS);
     expect(since).toBeLessThanOrEqual(Date.now() - BILLING_GRACE_MS);
+  });
+});
+
+describe("a past subscription's state on the billing page (P9)", () => {
+  const at = (offsetMs: number) => new Date(now.getTime() + offsetMs);
+
+  it("is active while live, grace window included", () => {
+    expect(subscriptionState({ periodEnd: at(1) }, now)).toBe("active");
+    expect(subscriptionState({ periodEnd: at(-BILLING_GRACE_MS) }, now)).toBe("active");
+  });
+
+  it("has ended once past the grace window", () => {
+    expect(subscriptionState({ periodEnd: at(-BILLING_GRACE_MS - 1) }, now)).toBe("ended");
+  });
+
+  it("has ended when it has no end date, as no live check would match it", () => {
+    expect(subscriptionState({ periodEnd: null }, now)).toBe("ended");
   });
 });
 

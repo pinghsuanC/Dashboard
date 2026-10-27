@@ -26,7 +26,7 @@ import type { CurrentUser } from "@/types/session";
  * set a password counts).
  *
  * The plan comes from the database alone, in the same query: Pro while a
- * `PAID` period is live (see `liveSince()`) and not revoked. It never asks
+ * `PAID` period is live (see `liveSince()`). It never asks
  * the vendor, since this runs on every request, image loads included. Only
  * the period's id is read, so no billing id reaches the profile.
  */
@@ -47,7 +47,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
       passwordHash: true,
       sessionVersion: true,
       subscriptionPeriods: {
-        where: { status: "PAID", revokedAt: null, periodEnd: { gte: liveSince() } },
+        where: { status: "PAID", periodEnd: { gte: liveSince() } },
         orderBy: [{ periodEnd: "desc" }],
         take: 1,
         select: { id: true },

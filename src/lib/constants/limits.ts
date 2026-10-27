@@ -37,6 +37,8 @@ export const SIDEBAR_RECENT_COLLECTION_LIMIT = 5;
 export const ITEMS_PER_PAGE = 21;
 /** Collection cards per page on `/collections`: a multiple of 3, like `ITEMS_PER_PAGE`. */
 export const COLLECTIONS_PER_PAGE = 21;
+/** Past subscriptions per page on `/billings`: a monthly subscriber adds 12 a year. */
+export const SUBSCRIPTIONS_PER_PAGE = 10;
 
 // ─── Items ───
 
