@@ -59,8 +59,8 @@ const request = {
   email: "ada@example.com",
   customerId: null,
   interval: "MONTH" as const,
-  successUrl: "https://app.test/settings?billing=success",
-  cancelUrl: "https://app.test/settings?billing=canceled",
+  successUrl: "https://app.test/billings?billing=success",
+  cancelUrl: "https://app.test/billings?billing=canceled",
 };
 
 // A body signed with the webhook secret, as Stripe would send it.

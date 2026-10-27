@@ -15,6 +15,7 @@ export const ROUTES = {
   collections: "/collections",
   favorites: "/favorites",
   pinned: "/pinned",
+  billings: "/billings",
   // Linked from the app already, not built yet (see routes.test.ts).
   settings: "/settings",
   items: "/items",
@@ -86,9 +87,9 @@ export const FLAGS = {
   sent: { param: "sent", value: "1" },
   /** `/settings?password=changed` after a password change. */
   passwordChanged: { param: "password", value: "changed" },
-  /** `/settings?billing=success`, Checkout's return after paying. Carries no id: the webhook and the session load settle the payment. */
+  /** `/billings?billing=success`, Checkout's return after paying. Carries no id: the webhook and the session load settle the payment. */
   billingSuccess: { param: "billing", value: "success" },
-  /** `/settings?billing=canceled`, Checkout's return when the user backs out. */
+  /** `/billings?billing=canceled`, Checkout's return when the user backs out. */
   billingCanceled: { param: "billing", value: "canceled" },
 } as const;
 

@@ -227,8 +227,8 @@ enum PeriodStatus {
 }
 
 /// One period of Pro, from checkout to expiry. Pro while PAID, periodEnd (plus
-/// BILLING_GRACE_MS) is not past and it isn't revoked. No vendor means granted,
-/// not paid: a free trial, the seed, a comped account.
+/// BILLING_GRACE_MS) is not past. To end access early, move periodEnd. No vendor
+/// means granted, not paid: a free trial, the seed, a comped account.
 ///
 /// Postgres treats NULLs as distinct, so the composite unique doesn't apply to
 /// pending or granted rows; stripeCheckoutSessionId's unique covers pending ones.
@@ -244,8 +244,7 @@ model SubscriptionPeriod {
   stripePriceId           String? // price_…, what a Stripe period was bought at
   interval                BillingInterval
   periodStart             DateTime? // null while PENDING
-  periodEnd               DateTime?
-  revokedAt               DateTime? // ends access early; set by hand for now
+  periodEnd               DateTime? // moved earlier to end access early
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
 

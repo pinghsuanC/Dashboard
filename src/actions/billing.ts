@@ -35,13 +35,13 @@ const failure = (error: unknown, label: string): FormState => {
  * hidden field, `MONTH` or `YEAR`). Sends the browser to the vendor's
  * checkout, or back with a toast: already subscribed, over the `checkout`
  * rate limit, or billing unavailable.
- * A Pro user has nothing to buy and is sent to settings.
+ * A Pro user has nothing to buy and is sent to the billing page.
  */
 export const startCheckout = async (_state: FormState, formData: FormData): Promise<FormState> => {
   // First and outside the try: the sign-in redirect must propagate, and the
   // row it reads must exist before anything is written for it.
   const user = await requireCurrentUser();
-  if (user.isPro) redirect(ROUTES.settings);
+  if (user.isPro) redirect(ROUTES.billings);
 
   const interval = formData.get("interval");
   if (interval !== BillingInterval.MONTH && interval !== BillingInterval.YEAR) return { toast: FIELDS_INVALID };
@@ -64,8 +64,8 @@ export const startCheckout = async (_state: FormState, formData: FormData): Prom
 };
 
 /**
- * Settings' Manage button: the vendor's hosted portal (payment methods,
- * invoices, cancelling) for the user's newest customer, returning to settings.
+ * The billing page's View past bills button: the vendor's hosted portal (payment methods,
+ * invoices, cancelling) for the user's newest customer, returning to billing.
  */
 export const openBillingPortal = async (): Promise<FormState> => {
   await requireCurrentUser();
@@ -74,7 +74,7 @@ export const openBillingPortal = async (): Promise<FormState> => {
   try {
     const [newest] = await getBillingCustomers();
     if (!newest) return { toast: BILLING_NO_PORTAL };
-    url = await adapterFor(newest.vendor).createPortalLink(newest.customerId, await appUrl(ROUTES.settings));
+    url = await adapterFor(newest.vendor).createPortalLink(newest.customerId, await appUrl(ROUTES.billings));
   } catch (error) {
     unstable_rethrow(error);
     return failure(error, "Billing portal");

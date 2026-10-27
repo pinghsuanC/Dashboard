@@ -27,7 +27,7 @@ describe("subscription periods in the fake database", () => {
   it("R1/R2/R4: a new row defaults to PAID with no vendor (granted)", async () => {
     const row = await fakePrisma.subscriptionPeriod.create({ data: { userId: "ada", interval: "YEAR", periodEnd: END } });
 
-    expect(row).toMatchObject({ userId: "ada", status: "PAID", vendor: null, revokedAt: null });
+    expect(row).toMatchObject({ userId: "ada", status: "PAID", vendor: null });
   });
 
   it("R1: a row must belong to an existing user", async () => {

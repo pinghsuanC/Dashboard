@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { CreditCard, Settings } from "lucide-react";
 
 import { useUserSession } from "@/components/session/UserSessionProvider";
 import { UserAvatar } from "@/components/shared/UserAvatar";
@@ -16,7 +16,7 @@ import { ROUTES } from "@/lib/constants/routes";
 /**
  * Client component reading the user session, so a local profile change (or a
  * `resetProfile()`) shows here without a reload. Sign-out lives on the
- * profile page this links to.
+ * profile page this links to; the plan and past subscriptions on the billing page.
  */
 export const SidebarUser = () => {
   const { user } = useUserSession();
@@ -52,6 +52,15 @@ export const SidebarUser = () => {
             <Settings />
           </Link>
         </SidebarMenuAction>
+      </SidebarMenuItem>
+
+      <SidebarMenuItem>
+        <SidebarMenuButton tooltip="Billing" asChild>
+          <Link href={ROUTES.billings}>
+            <CreditCard />
+            <span>Billing</span>
+          </Link>
+        </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
   );

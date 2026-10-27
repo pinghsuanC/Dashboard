@@ -88,7 +88,6 @@ interface SubscriptionPeriodRow {
   interval: "MONTH" | "YEAR";
   periodStart?: Date | null;
   periodEnd?: Date | null;
-  revokedAt?: Date | null;
   /** Filled on create, as the schema's `now()` default does. */
   createdAt?: Date;
 }
@@ -176,7 +175,6 @@ type PeriodWhere = {
   id?: string;
   userId?: string;
   status?: SubscriptionPeriodRow["status"];
-  revokedAt?: null;
   vendor?: ColumnFilter<"STRIPE">;
   vendorCustomerId?: ColumnFilter<string>;
   vendorSubscriptionId?: string;
@@ -209,7 +207,6 @@ const matchesPeriodRow = (where: PeriodWhere, row: SubscriptionPeriodRow) =>
   (where.id === undefined || row.id === where.id) &&
   (where.userId === undefined || row.userId === where.userId) &&
   (where.status === undefined || (row.status ?? "PAID") === where.status) &&
-  (where.revokedAt === undefined || (row.revokedAt ?? null) === null) &&
   matchesColumn(where.vendor, row.vendor) &&
   matchesColumn(where.vendorCustomerId, row.vendorCustomerId) &&
   matchesColumn(where.vendorSubscriptionId, row.vendorSubscriptionId) &&
@@ -219,13 +216,14 @@ const matchesPeriodRow = (where: PeriodWhere, row: SubscriptionPeriodRow) =>
 type PeriodQuery = {
   where?: PeriodWhere;
   orderBy?: OrderBy;
+  skip?: number;
   take?: number;
   select?: Select;
   /** Keeps the first row of each combination of these columns, after ordering. */
   distinct?: (keyof SubscriptionPeriodRow)[];
 };
 
-const findPeriods = ({ where, orderBy = [], take, select, distinct }: PeriodQuery) => {
+const findPeriods = ({ where, orderBy = [], skip = 0, take, select, distinct }: PeriodQuery) => {
   const seen = new Set<string>();
   return db.subscriptionPeriods
     .filter(matchesPeriod(where))
@@ -237,7 +235,7 @@ const findPeriods = ({ where, orderBy = [], take, select, distinct }: PeriodQuer
       seen.add(key);
       return true;
     })
-    .slice(0, take)
+    .slice(skip, take === undefined ? undefined : skip + take)
     .map((row) => pick({ status: "PAID", ...row }, select));
 };
 
@@ -480,6 +478,8 @@ export const fakePrisma = {
   subscriptionPeriod: {
     findMany: (args: PeriodQuery = {}) => query(() => findPeriods(args)),
     findFirst: (args: PeriodQuery = {}) => query(() => findPeriods({ ...args, take: 1 }).at(0) ?? null),
+    count: ({ where }: { where?: PeriodWhere } = {}) =>
+      query(() => db.subscriptionPeriods.filter(matchesPeriod(where)).length),
     // Defaults as the schema fills them. `userId` must name a user, as the
     // foreign key requires, and both uniques hold; a `NULL` in any part of
     // the composite one never clashes, as in Postgres.
@@ -509,7 +509,6 @@ export const fakePrisma = {
           id: `period-${db.subscriptionPeriods.length + 1}`,
           status: "PAID",
           vendor: null,
-          revokedAt: null,
           createdAt: new Date(),
           ...data,
         };

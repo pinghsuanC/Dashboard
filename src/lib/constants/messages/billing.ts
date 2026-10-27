@@ -4,12 +4,29 @@ import { PRICING } from "@/lib/constants/pricing";
 export const ITEM_LIMIT_REACHED = `Free accounts hold up to ${PRICING.free.itemLimit} items. Upgrade to Pro for unlimited items.`;
 export const COLLECTION_LIMIT_REACHED = `Free accounts hold up to ${PRICING.free.collectionLimit} collections. Upgrade to Pro for unlimited collections.`;
 export const PRO_TYPE_REQUIRED = "File and image uploads are a Pro feature. Upgrade to Pro to upload.";
+/** The upgrade dialog's line when it opens without a refusal (the billing page's Upgrade). */
+export const UPGRADE_PITCH = "Subscribe to Pro for unlimited items and collections, plus file and image uploads.";
 
 /** Checkout and the billing portal. */
 export const BILLING_UNAVAILABLE = "Billing is unavailable right now. Please try again later.";
 export const BILLING_ALREADY_SUBSCRIBED =
-  "You already have an active subscription. Manage it from Settings, or try again in a few minutes if you just paid.";
+  "You already have an active subscription. Manage it from the Billing page, or try again in a few minutes if you just paid.";
 export const BILLING_NO_PORTAL = "There's no billing account to manage yet.";
+
+/**
+ * Checkout's returns to `/billings` (`FLAGS.billingSuccess` / `billingCanceled`).
+ * Success doesn't promise Pro: a payment that settles later leaves the plan Free until it does.
+ */
+export const BILLING_SUCCESS_TOAST = {
+  id: "billing-success",
+  title: "Payment received",
+  description: "Pro unlocks as soon as the payment clears.",
+} as const;
+export const BILLING_CANCELED_TOAST = {
+  id: "billing-canceled",
+  title: "Checkout canceled",
+  description: "You weren't charged.",
+} as const;
 
 /** Webhook route answers, read only by the vendor's delivery logs. */
 export const WEBHOOK_SIGNATURE_INVALID = "Invalid signature";

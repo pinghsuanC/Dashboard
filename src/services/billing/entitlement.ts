@@ -160,11 +160,11 @@ const recordRenewal = async (userId: string, period: PaidPeriod) => {
 const isRecordedByAnother = (error: unknown) =>
   error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2002" || error.code === "P2034");
 
-/** The billing the stored rows give: Pro while a `PAID` period is live and not revoked, as `getCurrentUser()` decides. */
+/** The billing the stored rows give: Pro while a `PAID` period is live, as `getCurrentUser()` decides. */
 const storedStatus = async (userId: string): Promise<BillingStatus> => {
   const [live, customer] = await Promise.all([
     prisma.subscriptionPeriod.findFirst({
-      where: { userId, status: "PAID", revokedAt: null, periodEnd: { gte: liveSince() } },
+      where: { userId, status: "PAID", periodEnd: { gte: liveSince() } },
       orderBy: [{ periodEnd: "desc" }],
       select: { interval: true, periodEnd: true },
     }),

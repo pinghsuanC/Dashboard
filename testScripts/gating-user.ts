@@ -218,7 +218,7 @@ const status = async () => {
     prisma.subscriptionPeriod.findMany({
       where: { userId: id },
       orderBy: { createdAt: "asc" },
-      select: { status: true, vendor: true, interval: true, periodEnd: true, revokedAt: true },
+      select: { status: true, vendor: true, interval: true, periodEnd: true },
     }),
   ]);
   console.log(`${email}: ${items} items (${files.length} with a file), ${collections} collections`);
@@ -226,8 +226,7 @@ const status = async () => {
   for (const file of files) console.log(`  file ${file.id} ${file.mimeType} "${file.title}"`);
   for (const period of periods) {
     const end = period.periodEnd?.toISOString() ?? "no end";
-    const revoked = period.revokedAt ? " (revoked)" : "";
-    console.log(`  ${period.status} ${period.vendor ?? "granted"} ${period.interval} ends ${end}${revoked}`);
+    console.log(`  ${period.status} ${period.vendor ?? "granted"} ${period.interval} ends ${end}`);
   }
   if (periods.length === 0) console.log("  no periods (Free)");
 };

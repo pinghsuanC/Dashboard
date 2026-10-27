@@ -70,12 +70,12 @@ describe("startCheckout: a new checkout (R8, R12)", () => {
     expect(fakeAdapter.createCheckout.mock.calls[0][0]).toMatchObject({ periodId: "period-1", userId: "ada", interval: "YEAR" });
   });
 
-  it("R12: returns to settings on the app's own address with a success or canceled flag, and no id in either", async () => {
+  it("R12: returns to billings on the app's own address with a success or canceled flag, and no id in either", async () => {
     await expect(checkout()).rejects.toMatchObject(redirectedTo("https://checkout.test/period-1"));
 
     const { successUrl, cancelUrl } = fakeAdapter.createCheckout.mock.calls[0][0];
-    expect(successUrl).toBe(`${APP_URL}/settings?billing=success`);
-    expect(cancelUrl).toBe(`${APP_URL}/settings?billing=canceled`);
+    expect(successUrl).toBe(`${APP_URL}/billings?billing=success`);
+    expect(cancelUrl).toBe(`${APP_URL}/billings?billing=canceled`);
   });
 
   it("an interval that isn't MONTH or YEAR is refused, and nothing is written", async () => {
@@ -198,10 +198,10 @@ describe("startCheckout: refusals (R11)", () => {
     expect(fakeAdapter.createCheckout).not.toHaveBeenCalled();
   });
 
-  it("a Pro user is sent to settings, and the vendor isn't asked", async () => {
+  it("a Pro user is sent to billings, and the vendor isn't asked", async () => {
     vi.mocked(requireCurrentUser).mockResolvedValue({ ...ada, plan: "PRO", isPro: true });
 
-    await expect(checkout()).rejects.toMatchObject(redirectedTo("/settings"));
+    await expect(checkout()).rejects.toMatchObject(redirectedTo("/billings"));
     expect(fakeAdapter.createCheckout).not.toHaveBeenCalled();
     expect(checkRateLimit).not.toHaveBeenCalled();
   });
@@ -234,14 +234,14 @@ describe("startCheckout: refusals (R11)", () => {
 });
 
 describe("openBillingPortal", () => {
-  it("sends a customer to the vendor's portal for their newest customer, returning to settings", async () => {
+  it("sends a customer to the vendor's portal for their newest customer, returning to billings", async () => {
     db.subscriptionPeriods.push(
       { id: "old", userId: "ada", vendor: "STRIPE", vendorCustomerId: "cus_old", interval: "MONTH", periodEnd: day(2), createdAt: day(1) },
       { id: "new", userId: "ada", vendor: "STRIPE", vendorCustomerId: "cus_new", interval: "MONTH", periodEnd: day(3), createdAt: day(2) },
     );
 
     await expect(openBillingPortal()).rejects.toMatchObject(redirectedTo("https://portal.test/session"));
-    expect(fakeAdapter.createPortalLink).toHaveBeenCalledWith("cus_new", `${APP_URL}/settings`);
+    expect(fakeAdapter.createPortalLink).toHaveBeenCalledWith("cus_new", `${APP_URL}/billings`);
   });
 
   it("a user who never paid has no portal; another user's customer is never used", async () => {
@@ -272,7 +272,7 @@ describe("return links follow where the app runs", () => {
 
     await expect(checkout()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
 
-    expect(fakeAdapter.createCheckout.mock.calls[0][0].successUrl).toBe("https://stashboard.vercel.app/settings?billing=success");
+    expect(fakeAdapter.createCheckout.mock.calls[0][0].successUrl).toBe("https://stashboard.vercel.app/billings?billing=success");
   });
 
   it("elsewhere, checkout returns to the host the user came from", async () => {
@@ -280,6 +280,6 @@ describe("return links follow where the app runs", () => {
 
     await expect(checkout()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
 
-    expect(fakeAdapter.createCheckout.mock.calls[0][0].cancelUrl).toBe("http://localhost:3000/settings?billing=canceled");
+    expect(fakeAdapter.createCheckout.mock.calls[0][0].cancelUrl).toBe("http://localhost:3000/billings?billing=canceled");
   });
 });

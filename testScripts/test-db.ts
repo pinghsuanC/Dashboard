@@ -74,7 +74,7 @@ const results = [
         email: true,
         // The plan's source: a live PAID period, as getCurrentUser() reads it.
         subscriptionPeriods: {
-          where: { status: "PAID", revokedAt: null, periodEnd: { gte: liveSince() } },
+          where: { status: "PAID", periodEnd: { gte: liveSince() } },
           orderBy: [{ periodEnd: "desc" }],
           take: 1,
           select: { vendor: true, interval: true, periodEnd: true },
